@@ -1,0 +1,3 @@
+### Health check for Hermes.
+# @name health-hermes
+GET {{host}}/api/health

@@ -1,0 +1,9 @@
+### Send a chat message to Hermes
+# @name send-chat-message-hermes
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "Hello, how can I help you?"
+}

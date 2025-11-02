@@ -1,0 +1,138 @@
+using Microsoft.Azure.Cosmos;
+using Hermes.Storage.Core.Models;
+using Hermes.Storage.Core.Exceptions;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+
+namespace Hermes.Storage.Core.CosmosDB
+{
+	/// <summary>
+	/// CosmosDB implementation of IStorageClient for NoSQL CRUD operations.
+	/// </summary>
+	public class CosmosDbStorageClient<T> : IStorageClient<T, string> where T : Document
+	{
+		private readonly CosmosClient _client;
+		private readonly Container _container;
+
+		public CosmosDbStorageClient(string connectionString, string databaseId, string containerId)
+		{
+			_client = new CosmosClient(connectionString);
+			_container = _client.GetContainer(databaseId, containerId);
+		}
+
+		/// <inheritdoc/>
+		public async Task CreateAsync(T item)
+		{
+			_ValidateDocument(item);
+			try
+			{
+				await _container.CreateItemAsync(item, new PartitionKey(item.PartitionKey));
+			}
+			catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+			{
+				throw new StorageException($"Document with id '{item.Id}' already exists.", ex, StorageExceptionTypes.ErrorCode.AlreadyExists);
+			}
+			catch (Exception ex)
+			{
+				_HandleCosmosException(ex, "create");
+			}
+		}
+
+		/// <inheritdoc/>
+		public async Task<T?> ReadAsync(string key, string partitionKey)
+		{
+			_ValidateKeyAndPartition(key, partitionKey);
+			try
+			{
+				var response = await _container.ReadItemAsync<T>(key, new PartitionKey(partitionKey));
+				return response.Resource;
+			}
+			catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+			{
+				return null;
+			}
+			catch (Exception ex)
+			{
+				_HandleCosmosException(ex, "read");
+				return null; // Unreachable, but required for compilation
+			}
+		}
+
+		/// <inheritdoc/>
+		public async Task UpdateAsync(string key, T item)
+		{
+			_ValidateDocument(item);
+			try
+			{
+				await _container.UpsertItemAsync(item, new PartitionKey(item.PartitionKey));
+			}
+			catch (Exception ex)
+			{
+				_HandleCosmosException(ex, "update");
+			}
+		}
+
+		/// <inheritdoc/>
+		public async Task DeleteAsync(string key, string partitionKey)
+		{
+			_ValidateKeyAndPartition(key, partitionKey);
+			try
+			{
+				await _container.DeleteItemAsync<T>(key, new PartitionKey(partitionKey));
+			}
+			catch (Exception ex)
+			{
+				_HandleCosmosException(ex, "delete");
+			}
+		}
+
+		/// <summary>
+		/// Handles and wraps common CosmosDB exceptions with StorageException.
+		/// </summary>
+		private void _HandleCosmosException(Exception ex, string operation)
+		{
+			if (ex is CosmosException cosmosEx)
+			{
+				if (cosmosEx.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+					throw new StorageException($"CosmosDB request timed out during {operation}: " + cosmosEx.Message, cosmosEx, StorageExceptionTypes.ErrorCode.Timeout);
+				if (cosmosEx.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+					throw new StorageException($"CosmosDB permission denied during {operation}: " + cosmosEx.Message, cosmosEx, StorageExceptionTypes.ErrorCode.PermissionDenied);
+				if (cosmosEx.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+					throw new StorageException($"CosmosDB service unavailable during {operation}: " + cosmosEx.Message, cosmosEx, StorageExceptionTypes.ErrorCode.ConnectionFailed);
+				throw new StorageException($"CosmosDB operation failed during {operation}: " + cosmosEx.Message, cosmosEx, StorageExceptionTypes.ErrorCode.OperationFailed);
+			}
+			if (ex is JsonSerializationException)
+				throw new StorageException($"Serialization error during {operation}: " + ex.Message, ex, StorageExceptionTypes.ErrorCode.SerializationError);
+			if (ex is SocketException)
+				throw new StorageException($"Network error during {operation}: " + ex.Message, ex, StorageExceptionTypes.ErrorCode.ConnectionFailed);
+			if (ex is ArgumentException)
+				throw new StorageException($"Invalid argument during {operation}: " + ex.Message, ex, StorageExceptionTypes.ErrorCode.InvalidInput);
+			throw new StorageException($"Unexpected error during {operation} operation: " + ex.Message, ex, StorageExceptionTypes.ErrorCode.OperationFailed);
+		}
+
+		/// <summary>
+		/// Validates that the document and its required properties are not null or empty.
+		/// </summary>
+		private void _ValidateDocument(T item)
+		{
+			if (item == null)
+				throw new StorageException("Item cannot be null.", StorageExceptionTypes.ErrorCode.InvalidInput);
+			if (string.IsNullOrWhiteSpace(item.Id))
+				throw new StorageException("Document Id cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
+			if (string.IsNullOrWhiteSpace(item.PartitionKey))
+				throw new StorageException("PartitionKey cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
+		}
+
+		/// <summary>
+		/// Validates that the key and partition key are not null or empty.
+		/// </summary>
+		private void _ValidateKeyAndPartition(string key, string partitionKey)
+		{
+			if (string.IsNullOrWhiteSpace(key))
+				throw new StorageException("Document key cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
+			if (string.IsNullOrWhiteSpace(partitionKey))
+				throw new StorageException("PartitionKey cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
+		}
+	}
+}

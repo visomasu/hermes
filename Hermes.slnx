@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Hermes.Tests/Hermes.Tests.csproj" Id="63ab4d52-96e5-46a8-a3d3-0a5209110509" />
+  <Project Path="Hermes/Hermes.csproj" />
+</Solution>
