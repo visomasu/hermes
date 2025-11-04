@@ -13,17 +13,59 @@ namespace Hermes.Storage.Core.CosmosDB
 	public class CosmosDbStorageClient<T> : IStorageClient<T, string> where T : Document
 	{
 		private readonly CosmosClient _client;
-		private readonly Container _container;
+		private Container _container;
+		private readonly string _databaseId;
+		private readonly string _containerId;
+		private bool _initialized = false;
+		private readonly object _initLock = new();
 
+		/// <summary>
+		/// Initializes a new instance of the CosmosDbStorageClient class.
+		/// </summary>
+		/// <param name="connectionString">Cosmos DB connection string.</param>
+		/// <param name="databaseId">Database ID.</param>
+		/// <param name="containerId">Container ID.</param>
 		public CosmosDbStorageClient(string connectionString, string databaseId, string containerId)
 		{
 			_client = new CosmosClient(connectionString);
+			_databaseId = databaseId;
+			_containerId = containerId;
 			_container = _client.GetContainer(databaseId, containerId);
 		}
 
+		private async Task InitializeAsync()
+		{
+			if (_initialized) return;
+			lock (_initLock)
+			{
+				if (_initialized) return;
+				_initialized = true;
+			}
+			var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(_databaseId);
+			var containerResponse = await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+				new ContainerProperties
+				{
+					Id = _containerId,
+					PartitionKeyPath = "/partitionkey"
+				});
+			_container = containerResponse.Container;
+		}
+
+		private async Task EnsureInitializedAsync()
+		{
+			if (!_initialized)
+				await InitializeAsync();
+		}
+
 		/// <inheritdoc/>
+		/// <summary>
+		/// Creates a new document in the Cosmos DB container.
+		/// Ensures the database and container are initialized before operation.
+		/// </summary>
+		/// <param name="item">The document to create.</param>
 		public async Task CreateAsync(T item)
 		{
+			await EnsureInitializedAsync();
 			_ValidateDocument(item);
 			try
 			{
@@ -40,8 +82,16 @@ namespace Hermes.Storage.Core.CosmosDB
 		}
 
 		/// <inheritdoc/>
+		/// <summary>
+		/// Reads a document from the Cosmos DB container by key and partition key.
+		/// Ensures the database and container are initialized before operation.
+		/// </summary>
+		/// <param name="key">The document key (id).</param>
+		/// <param name="partitionKey">The partition key value.</param>
+		/// <returns>The document if found, otherwise null.</returns>
 		public async Task<T?> ReadAsync(string key, string partitionKey)
 		{
+			await EnsureInitializedAsync();
 			_ValidateKeyAndPartition(key, partitionKey);
 			try
 			{
@@ -60,8 +110,15 @@ namespace Hermes.Storage.Core.CosmosDB
 		}
 
 		/// <inheritdoc/>
+		/// <summary>
+		/// Updates an existing document in the Cosmos DB container.
+		/// Ensures the database and container are initialized before operation.
+		/// </summary>
+		/// <param name="key">The document key (id).</param>
+		/// <param name="item">The updated document.</param>
 		public async Task UpdateAsync(string key, T item)
 		{
+			await EnsureInitializedAsync();
 			_ValidateDocument(item);
 			try
 			{
@@ -74,8 +131,15 @@ namespace Hermes.Storage.Core.CosmosDB
 		}
 
 		/// <inheritdoc/>
+		/// <summary>
+		/// Deletes a document from the Cosmos DB container by key and partition key.
+		/// Ensures the database and container are initialized before operation.
+		/// </summary>
+		/// <param name="key">The document key (id).</param>
+		/// <param name="partitionKey">The partition key value.</param>
 		public async Task DeleteAsync(string key, string partitionKey)
 		{
+			await EnsureInitializedAsync();
 			_ValidateKeyAndPartition(key, partitionKey);
 			try
 			{
