@@ -13,6 +13,8 @@
     <PackageReference Include="BitFaster.Caching" Version="2.5.4" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.0.0-preview.251016.1" />
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.54.0" />
+    <PackageReference Include="Microsoft.TeamFoundationServer.Client" Version="19.225.1" />
+    <PackageReference Include="Microsoft.VisualStudio.Services.Client" Version="19.225.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- Removed Microsoft.AspNetCore.OpenApi -->
   </ItemGroup>

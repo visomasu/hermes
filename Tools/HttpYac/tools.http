@@ -1,0 +1,4 @@
+### Retrieve work item tree from ADO as a tool call.
+# @name retrieve-work-item-ado
+GET {{host}}/api/tools/workitemtree?rootId=5753933&depth=2
+x-ms-correlation-id: {{$guid}}
