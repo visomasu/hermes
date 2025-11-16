@@ -3,11 +3,11 @@
         "rejectUnauthorized": false
     },
     "environments": {
-    "dev": {
-        "host": "http://localhost:5121"
-    },
-    "prod": {
-        "host": "https://prod.hermes.com"
-    }
+        "dev": {
+            "host": "http://localhost:5121"
+        },
+        "prod": {
+            "host": "https://prod.hermes.com"
+        }
     }
 }

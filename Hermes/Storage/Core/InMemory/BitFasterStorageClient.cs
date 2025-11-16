@@ -1,7 +1,6 @@
 using BitFaster.Caching.Lru;
-using Hermes.Storage.Core.Models;
 using Hermes.Storage.Core.Exceptions;
-using System;
+using Hermes.Storage.Core.Models;
 
 namespace Hermes.Storage.Core.InMemory
 {
@@ -81,6 +80,20 @@ namespace Hermes.Storage.Core.InMemory
 				_HandleException(ex, "delete");
 			}
 			return Task.CompletedTask;
+		}
+
+		/// <inheritdoc/>
+		public Task<IReadOnlyList<T>?> ReadAllByPartitionKeyAsync(string partitionKey)
+		{
+			if (string.IsNullOrWhiteSpace(partitionKey))
+				throw new StorageException("Partition key cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
+
+			var results = _cache
+				.Select(pair => pair.Value)
+				.Where(item => item.PartitionKey == partitionKey)
+				.ToList();
+
+			return Task.FromResult((IReadOnlyList<T>?)results);
 		}
 
 		/// <summary>

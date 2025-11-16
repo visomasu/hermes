@@ -1,5 +1,7 @@
 using Hermes.Storage.Core.Exceptions;
 using Hermes.Storage.Core.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Hermes.Storage.Core
 {
@@ -61,6 +63,32 @@ namespace Hermes.Storage.Core
         {
             await _l2.DeleteAsync(key, partitionKey); // Always delete from L2 first
             await _l1.DeleteAsync(key, partitionKey); // Then delete from L1
+        }
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlyList<T>?> ReadAllByPartitionKeyAsync(string partitionKey)
+        {
+            try
+            {
+                var l1Results = await _l1.ReadAllByPartitionKeyAsync(partitionKey);
+                if (l1Results != null && l1Results.Count > 0)
+                    return l1Results;
+            }
+            catch (StorageException)
+            {
+                // Ignore L1 errors, fallback to L2
+            }
+
+            var l2Results = await _l2.ReadAllByPartitionKeyAsync(partitionKey);
+            if (l2Results != null && l2Results.Count > 0)
+            {
+                // Optionally populate L1 cache for future reads
+                foreach (var item in l2Results)
+                {
+                    await _l1.UpdateAsync(item.Id, item);
+                }
+            }
+            return l2Results;
         }
     }
 }

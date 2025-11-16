@@ -33,5 +33,12 @@ namespace Hermes.Storage.Repositories
 		/// </summary>
 		/// <param name="key">The string key of the entity to delete.</param>
 		Task DeleteAsync(string key);
+
+		/// <summary>
+		/// Reads all entities from the repository under a given partition key.
+		/// </summary>
+		/// <param name="partitionKey">The partition key to filter entities.</param>
+		/// <returns>A task representing the asynchronous operation, with a list of entities in the partition.</returns>
+		Task<IReadOnlyList<T>?> ReadAllByPartitionKeyAsync(string partitionKey);
 	}
 }

@@ -4,6 +4,7 @@ using Hermes.Storage.Core.Exceptions;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace Hermes.Storage.Core.CosmosDB
 {
@@ -20,17 +21,33 @@ namespace Hermes.Storage.Core.CosmosDB
 		private readonly object _initLock = new();
 
 		/// <summary>
-		/// Initializes a new instance of the CosmosDbStorageClient class.
+		/// Initializes a new instance of the <see cref="CosmosDbStorageClient{T}"/> class.
 		/// </summary>
 		/// <param name="connectionString">Cosmos DB connection string.</param>
 		/// <param name="databaseId">Database ID.</param>
 		/// <param name="containerId">Container ID.</param>
+		/// <remarks>
+		/// The constructor sets up the Cosmos DB client and container references, but does not create the database or container. Initialization occurs on first operation.
+		/// </remarks>
 		public CosmosDbStorageClient(string connectionString, string databaseId, string containerId)
 		{
 			_client = new CosmosClient(connectionString);
 			_databaseId = databaseId;
 			_containerId = containerId;
 			_container = _client.GetContainer(databaseId, containerId);
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="CosmosDbStorageClient{T}"/> class for testing or mocking purposes.
+		/// </summary>
+		/// <param name="container">Existing Cosmos DB container instance.</param>
+		public CosmosDbStorageClient(Container container)
+		{
+			_container = container;
+			_client = null!;
+			_databaseId = "";
+			_containerId = "";
+			_initialized = true;
 		}
 
 		private async Task InitializeAsync()
@@ -58,18 +75,14 @@ namespace Hermes.Storage.Core.CosmosDB
 		}
 
 		/// <inheritdoc/>
-		/// <summary>
-		/// Creates a new document in the Cosmos DB container.
-		/// Ensures the database and container are initialized before operation.
-		/// </summary>
-		/// <param name="item">The document to create.</param>
 		public async Task CreateAsync(T item)
 		{
 			await EnsureInitializedAsync();
 			_ValidateDocument(item);
 			try
 			{
-				await _container.CreateItemAsync(item, new PartitionKey(item.PartitionKey));
+				var partitionKey = new PartitionKey(item.PartitionKey);
+                await _container.CreateItemAsync(item, new PartitionKey(item.PartitionKey));
 			}
 			catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
 			{
@@ -82,13 +95,6 @@ namespace Hermes.Storage.Core.CosmosDB
 		}
 
 		/// <inheritdoc/>
-		/// <summary>
-		/// Reads a document from the Cosmos DB container by key and partition key.
-		/// Ensures the database and container are initialized before operation.
-		/// </summary>
-		/// <param name="key">The document key (id).</param>
-		/// <param name="partitionKey">The partition key value.</param>
-		/// <returns>The document if found, otherwise null.</returns>
 		public async Task<T?> ReadAsync(string key, string partitionKey)
 		{
 			await EnsureInitializedAsync();
@@ -110,12 +116,6 @@ namespace Hermes.Storage.Core.CosmosDB
 		}
 
 		/// <inheritdoc/>
-		/// <summary>
-		/// Updates an existing document in the Cosmos DB container.
-		/// Ensures the database and container are initialized before operation.
-		/// </summary>
-		/// <param name="key">The document key (id).</param>
-		/// <param name="item">The updated document.</param>
 		public async Task UpdateAsync(string key, T item)
 		{
 			await EnsureInitializedAsync();
@@ -131,12 +131,6 @@ namespace Hermes.Storage.Core.CosmosDB
 		}
 
 		/// <inheritdoc/>
-		/// <summary>
-		/// Deletes a document from the Cosmos DB container by key and partition key.
-		/// Ensures the database and container are initialized before operation.
-		/// </summary>
-		/// <param name="key">The document key (id).</param>
-		/// <param name="partitionKey">The partition key value.</param>
 		public async Task DeleteAsync(string key, string partitionKey)
 		{
 			await EnsureInitializedAsync();
@@ -149,6 +143,28 @@ namespace Hermes.Storage.Core.CosmosDB
 			{
 				_HandleCosmosException(ex, "delete");
 			}
+		}
+
+		/// <inheritdoc/>
+		public async Task<IReadOnlyList<T>?> ReadAllByPartitionKeyAsync(string partitionKey)
+		{
+			await EnsureInitializedAsync();
+			if (string.IsNullOrWhiteSpace(partitionKey))
+				throw new StorageException("PartitionKey cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
+
+			var query = new QueryDefinition("SELECT * FROM c WHERE c.partitionkey = @partitionKey")
+				.WithParameter("@partitionKey", partitionKey);
+
+			var results = new List<T>();
+			using (FeedIterator<T> resultSet = _container.GetItemQueryIterator<T>(query))
+			{
+				while (resultSet.HasMoreResults)
+				{
+					FeedResponse<T> response = await resultSet.ReadNextAsync();
+					results.AddRange(response);
+				}
+			}
+			return results;
 		}
 
 		/// <summary>
