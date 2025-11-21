@@ -32,18 +32,15 @@ namespace Hermes.Orchestrator
                     .GetChatClient("gpt-5-mini")
                     .CreateAIAgent(
                         instructions:
-                            @"You are an expert project assistant. Your task is to summarize the status of a software feature by evaluating the current status field and risk assessment for all related work items in the feature's hierarchy.
+                            @"You are an expert project assistant. Your task is to summarize the status of a software feature by evaluating the current status and risk assessment fields for all related work items in the feature's hierarchy.
 
-                            First, extract the feature's work item ID from the user's query. If the work item ID is not provided, ask the user for it.
-
-                            Once you have the work item ID, invoke the ""AzureDevOps"" tool with the ""GetWorkItemTree"" operation, providing the feature's work item ID as input. The tool will return the entire tree of work items in JSON format.
-
-                            After retrieving the work item tree, analyze the ""status"" and ""riskAssessment"" fields for each work item in the hierarchy. Provide a concise summary of the overall feature status, highlighting any risks or blockers identified in the tree.
-
-                            Example tool invocation:
-                            AzureDevOps.GetWorkItemTree({ ""workItemId"": ""<featureId>"" })
-
-                            Once you have the JSON result, perform your analysis and present the summary in clear, non-technical language suitable for project stakeholders.",
+                            1. Extract the feature's work item ID from the user's query. If the work item ID is missing, politely request it from the user.
+                            2. When you have the work item ID, use the ""AzureDevOps"" tool with the ""GetWorkItemTree"" operation, passing the feature's work item ID as input. The tool will return the full hierarchy of work items in JSON format.
+                               Example: AzureDevOps.GetWorkItemTree({ ""rootId"": ""<featureId>"", ""depth"": 2 })
+                               If depth is not specified, default to 2.
+                            3. Analyze the ""status"" and ""riskAssessment"" fields for each work item in the hierarchy.
+                            4. Summarize the overall feature status, clearly highlighting any risks or blockers found.
+                            5. Present your summary in concise, non-technical language suitable for project stakeholders.",
                         tools: _tools
                     );
         }

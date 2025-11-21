@@ -54,7 +54,7 @@ namespace Hermes.DI
                 var azureDevOpsTool = ctx.Resolve<AzureDevOpsTool>();
 
                 return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool });
-            }).As<HermesOrchestrator>().SingleInstance();
+            }).As<IAgentOrchestrator>().SingleInstance();
         }
     }
 }

@@ -5,5 +5,5 @@ Content-Type: application/json
 x-ms-correlation-id: {{$guid}}
 
 {
-  "text": "Hello, how can I help you?"
+  "text": "Can you give me a summary of feature whose work item id in ADO is 5753933"
 }
