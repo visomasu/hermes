@@ -57,6 +57,15 @@ namespace Hermes.Storage.Repositories
 			return _storage.DeleteAsync(key, key); // Default: use key as partitionKey
 		}
 
+        /// <inheritdoc/>
+        public virtual Task<IReadOnlyList<T>?> ReadAllByPartitionKeyAsync(string partitionKey)
+		{
+			if (string.IsNullOrWhiteSpace(partitionKey))
+				throw new StorageException("Partition key cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
+
+			return _storage.ReadAllByPartitionKeyAsync(partitionKey);
+		}
+
 		/// <summary>
 		/// Validates that the entity is not null and has a valid Id.
 		/// </summary>

@@ -34,5 +34,12 @@ namespace Hermes.Storage.Core
 		/// <param name="key">The key of the item to delete.</param>
 		/// <param name="partitionKey">The partition key of the item.</param>
 		Task DeleteAsync(TKey key, string partitionKey);
+
+		/// <summary>
+		/// Reads all items from the storage under a given partition key.
+		/// </summary>
+		/// <param name="partitionKey">The partition key to filter items.</param>
+		/// <returns>A task representing the asynchronous operation, with a list of items in the partition.</returns>
+		Task<IReadOnlyList<T>?> ReadAllByPartitionKeyAsync(string partitionKey);
 	}
 }

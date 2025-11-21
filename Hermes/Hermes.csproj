@@ -19,4 +19,8 @@
     <!-- Removed Microsoft.AspNetCore.OpenApi -->
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Integrations\Gemini\" />
+  </ItemGroup>
+
 </Project>

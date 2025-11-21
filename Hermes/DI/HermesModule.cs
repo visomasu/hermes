@@ -1,4 +1,7 @@
 ﻿using Autofac;
+using Hermes.Orchestrator;
+using Hermes.Tools;
+using Hermes.Tools.AzureDevOps;
 
 namespace Hermes.DI
 {
@@ -28,6 +31,30 @@ namespace Hermes.DI
             builder.RegisterModule(new IntegrationsModule(_configuration, _environment));
             // Register AgentToolsModule for tools-related dependencies
             builder.RegisterModule(new AgentToolsModule());
+
+            // Register HermesOrchestrator and pass only AzureDevOpsTool
+            builder.Register(ctx =>
+            {
+                var config = ctx.Resolve<IConfiguration>();
+                var env = ctx.Resolve<IHostEnvironment>();
+                string endpoint;
+                string apiKey;
+
+                if (env.IsDevelopment())
+                {
+                    endpoint = "https://visomasu-project-hermes.openai.azure.com/";
+                    apiKey = "dev-api-key";
+                }
+                else
+                {
+                    endpoint = config["OpenAI:Endpoint"] ?? string.Empty;
+                    apiKey = config["OpenAI:ApiKey"] ?? string.Empty;
+                }
+
+                var azureDevOpsTool = ctx.Resolve<AzureDevOpsTool>();
+
+                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool });
+            }).As<IAgentOrchestrator>().SingleInstance();
         }
     }
 }

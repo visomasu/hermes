@@ -4,6 +4,7 @@ using Hermes.Storage.Core.CosmosDB;
 using Hermes.Storage.Core.InMemory;
 using Hermes.Storage.Repositories;
 using Hermes.Storage.Repositories.Sample;
+using Hermes.Storage.Repositories.HermesInstructions;
 
 namespace Hermes.DI
 {
@@ -72,6 +73,11 @@ namespace Hermes.DI
             // Register SampleRepository as IRepository<SampleRepositoryModel>
             builder.RegisterType<SampleRepository>()
                 .As<IRepository<SampleRepositoryModel>>()
+                .SingleInstance();
+
+            // Register HermesInstructionsRepository as IHermesInstructionsRepository
+            builder.RegisterType<HermesInstructionsRepository>()
+                .As<IHermesInstructionsRepository>()
                 .SingleInstance();
         }
     }
