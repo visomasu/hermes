@@ -23,10 +23,10 @@ namespace Hermes.Tests.Storage.Repositories
 			var repo = new TestRepository(mock.Object);
 			var doc = new TestDocument { Id = "test-id" };
 			await repo.CreateAsync(doc);
-			await repo.ReadAsync("id");
+			await repo.ReadAsync("id", "partitionKey");
 			await repo.UpdateAsync("id", new TestDocument { Id = "test-id" });
-			await repo.DeleteAsync("id");
-			Xunit.Assert.True(true);
+			await repo.DeleteAsync("id", "partitionKey");
+			Assert.True(true);
 		}
 
 		[Fact]
@@ -53,8 +53,8 @@ namespace Hermes.Tests.Storage.Repositories
 		{
 			var mock = new Mock<IStorageClient<TestDocument, string>>();
 			var repo = new TestRepository(mock.Object);
-			await repo.ReadAsync("mykey");
-			mock.Verify(s => s.ReadAsync("mykey", "mykey"), Times.Once);
+			await repo.ReadAsync("mykey", "mypartition");
+			mock.Verify(s => s.ReadAsync("mykey", "mypartition"), Times.Once);
 		}
 
 		[Fact]
@@ -62,8 +62,10 @@ namespace Hermes.Tests.Storage.Repositories
 		{
 			var mock = new Mock<IStorageClient<TestDocument, string>>();
 			var repo = new TestRepository(mock.Object);
-			await Assert.ThrowsAsync<StorageException>(() => repo.ReadAsync((string?)null!));
-			await Assert.ThrowsAsync<StorageException>(() => repo.ReadAsync(""));
+			await Assert.ThrowsAsync<StorageException>(() => repo.ReadAsync((string?)null!, "partitionKey"));
+			await Assert.ThrowsAsync<StorageException>(() => repo.ReadAsync("", "partitionKey"));
+			await Assert.ThrowsAsync<StorageException>(() => repo.ReadAsync("id", (string?)null!));
+			await Assert.ThrowsAsync<StorageException>(() => repo.ReadAsync("id", ""));
 		}
 
 		[Fact]
@@ -92,8 +94,8 @@ namespace Hermes.Tests.Storage.Repositories
 		{
 			var mock = new Mock<IStorageClient<TestDocument, string>>();
 			var repo = new TestRepository(mock.Object);
-			await repo.DeleteAsync("id");
-			mock.Verify(s => s.DeleteAsync("id", "id"), Times.Once);
+			await repo.DeleteAsync("id", "partitionKey");
+			mock.Verify(s => s.DeleteAsync("id", "partitionKey"), Times.Once);
 		}
 
 		[Fact]
@@ -101,8 +103,10 @@ namespace Hermes.Tests.Storage.Repositories
 		{
 			var mock = new Mock<IStorageClient<TestDocument, string>>();
 			var repo = new TestRepository(mock.Object);
-			await Assert.ThrowsAsync<StorageException>(() => repo.DeleteAsync((string?)null!));
-			await Assert.ThrowsAsync<StorageException>(() => repo.DeleteAsync(""));
+			await Assert.ThrowsAsync<StorageException>(() => repo.DeleteAsync((string?)null!, "partitionKey"));
+			await Assert.ThrowsAsync<StorageException>(() => repo.DeleteAsync("", "partitionKey"));
+			await Assert.ThrowsAsync<StorageException>(() => repo.DeleteAsync("id", (string?)null!));
+			await Assert.ThrowsAsync<StorageException>(() => repo.DeleteAsync("id", ""));
 		}
 
 		[Fact]

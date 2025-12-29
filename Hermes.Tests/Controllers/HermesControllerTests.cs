@@ -120,7 +120,7 @@ namespace Hermes.Tests.Controllers
 		{
 			// Arrange
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
-			instructionsRepoMock.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant,1)).ReturnsAsync((HermesInstructions)null);
+			instructionsRepoMock.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant,1)).ReturnsAsync((HermesInstructions?)null);
 			var controller = CreateController(instructionsRepoMock);
 
 			// Act

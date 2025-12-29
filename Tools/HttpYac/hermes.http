@@ -1,0 +1,45 @@
+### Send a chat message to Hermes
+# @name send-chat-message-hermes
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "Can you give me a summary of feature whose work item id in ADO is 5753933"
+}
+
+### Create instruction for Hermes
+# @name create-hermes-instructions
+POST {{host}}/api/hermes/v1.0/instructions
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "instruction": "You are an expert project assistant. Your task is to summarize the status of a software feature by evaluating the current status and risk assessment fields for all related work items in the feature's hierarchy. 1. Extract the feature's work item ID from the user's query. If the work item ID is missing, politely request it from the user. 2. When you have the work item ID, use the \"AzureDevOps\" tool with the \"GetWorkItemTree\" operation, passing the feature's work item ID as input. The tool will return the full hierarchy of work items in JSON format. Example: AzureDevOps.GetWorkItemTree({ \"rootId\": \"<featureId>\", \"depth\": 2 }) If depth is not specified, default to 2. 3. Analyze the \"status\" and \"riskAssessment\" fields for each work item in the hierarchy. 4. Summarize the overall feature status, clearly highlighting any risks or blockers found. 5. Present your summary in concise, non-technical language suitable for project stakeholders.",
+  "instructionType": "ProjectAssistant",
+  "version": 1
+}
+
+### Get instruction for Hermes
+# @name get-hermes-instructions
+GET {{host}}/api/hermes/v1.0/instructions/ProjectAssistant?version=1
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+### Update instruction for Hermes
+# @name update-hermes-instructions
+PUT {{host}}/api/hermes/v1.0/instructions
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "newInstruction": "Update the project assistant instructions to include new onboarding steps.",
+  "instructionType": "ProjectAssistant",
+  "version": 1
+}
+
+### Delete instruction for Hermes
+# @name delete-hermes-instructions  
+DELETE {{host}}/api/hermes/v1.0/instructions/ProjectAssistant?version=2
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}

@@ -21,7 +21,8 @@ namespace Integrations.AzureDevOps
 		{
 			"System.Id",
 			"System.Title",
-			"System.Description"
+			"System.Description",
+			"System.State"
 		};
 
 		// Lowercase naming policy for JSON serialization

@@ -1,5 +1,6 @@
 using Hermes.Storage.Core.Models;
 using System;
+using Newtonsoft.Json;
 
 namespace Hermes.Storage.Repositories.HermesInstructions
 {
@@ -36,13 +37,22 @@ namespace Hermes.Storage.Repositories.HermesInstructions
 			PartitionKey = instructionType.ToString();
 		}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="HermesInstructions"/> class with the specified instruction and instruction type.
-		/// Sets the partition key as the instruction type. Version defaults to0.
-		/// </summary>
-		/// <param name="instruction">The instruction string for the agent.</param>
-		/// <param name="instructionType">The type of instruction for the agent.</param>
-		public HermesInstructions(string instruction, HermesInstructionType instructionType)
-			: this(instruction, instructionType,0) { }
-	}
+        /// <summary>
+        /// Initializes a new instance of the <see cref="HermesInstructions"/> class for deserialization.
+        /// </summary>
+        [JsonConstructor]
+        public HermesInstructions(
+            string id,
+            string partitionKey,
+            string instruction,
+            HermesInstructionType instructionType,
+            int version)
+        {
+            Id = id;
+            PartitionKey = partitionKey;
+            Instruction = instruction;
+            InstructionType = instructionType;
+            Version = version;
+        }
+    }
 }

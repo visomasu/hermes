@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Integrations.AzureDevOps;
+using System.Text.Json;
 
 namespace Hermes.Tools.AzureDevOps
 {
@@ -10,6 +10,14 @@ namespace Hermes.Tools.AzureDevOps
 	{
 		private readonly IAzureDevOpsWorkItemClient _client;
 		private readonly int _defaultDepth =2;
+
+		// Static mapping of work item type to fields
+		private static readonly Dictionary<string, List<string>> FieldsByType = new()
+		{
+			{ "Feature", new List<string> { "System.Id", "System.Title", "System.State", "System.WorkItemType", "System.Description", "Custom.PrivatePreviewDate", "Custom.PublicPreviewDate", "Custom.GAdate", "Microsoft.VSTS.Scheduling.StartDate", "Microsoft.VSTS.Scheduling.TargetDate", "Microsoft.VSTS.Scheduling.FinishDate", "Custom.CurrentStatus", "Custom.RiskAssessmentComment" } },
+			{ "User Story", new List<string> { "System.Id", "System.Title", "System.State", "System.WorkItemType", "System.Description", "Custom.RiskAssessmentComment", "Custom.StoryField1", "Microsoft.VSTS.Scheduling.StartDate", "Microsoft.VSTS.Scheduling.TargetDate", "Microsoft.VSTS.Scheduling.FinishDate" } },
+			{ "Task", new List<string> { "System.Id", "System.Title", "System.State", "System.WorkItemType", "System.Description", "System.AssignedTo", "Custom.TaskField1", "Microsoft.VSTS.Scheduling.StartDate", "Microsoft.VSTS.Scheduling.TargetDate", "Microsoft.VSTS.Scheduling.FinishDate" } }
+		};
 
 		/// <summary>
 		/// Initializes a new instance of <see cref="AzureDevOpsTool"/>.
@@ -92,9 +100,30 @@ namespace Hermes.Tools.AzureDevOps
 
 		private async Task<JsonElement> GetWorkItemTreeAsync(int id, int depth)
 		{
+			// Fetch root work item with fields based on its type
 			var json = await _client.GetWorkItemAsync(id);
 			using var doc = JsonDocument.Parse(json);
 			var root = doc.RootElement.Clone();
+
+			string? type = null;
+			if (root.TryGetProperty("fields", out var fieldsElem) && fieldsElem.TryGetProperty("System.WorkItemType", out var typeElem))
+			{
+				type = typeElem.GetString();
+			}
+
+			IEnumerable<string>? fields = null;
+			if (type != null && FieldsByType.TryGetValue(type, out var typeFields))
+			{
+				fields = typeFields;
+			}
+
+			// If fields are specified, re-fetch with those fields
+			if (fields != null && fields.Any())
+			{
+				json = await _client.GetWorkItemAsync(id, fields);
+				using var doc2 = JsonDocument.Parse(json);
+				root = doc2.RootElement.Clone();
+			}
 
 			if (depth <=0 || !root.TryGetProperty("relations", out var relations))
 				return root;

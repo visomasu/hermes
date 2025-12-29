@@ -75,7 +75,7 @@ namespace Hermes.Storage.Repositories.HermesInstructions
 			{
 				throw new StorageException($"Instruction for type '{instructionType}' and version '{version}' does not exist.", StorageExceptionTypes.ErrorCode.NotFound);
 			}
-			await DeleteAsync(record.Id);
+			await DeleteAsync(record.Id, record.PartitionKey);
 		}
 
 		/// <summary>

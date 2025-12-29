@@ -1,4 +1,5 @@
 using Hermes.Orchestrator;
+using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -17,9 +18,15 @@ namespace Hermes.Tests.Orchestrator
 				new Mock<IAgentTool>().Object
 			};
 			var agentMock = new Mock<AIAgent>();
+			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 
 			// Act
-			var orchestrator = new HermesOrchestrator(agentMock.Object, tools);
+			var orchestrator = new HermesOrchestrator(
+				agentMock.Object, 
+				"https://test.openai.azure.com/", 
+				"test-api-key", 
+				instructionsRepoMock.Object, 
+				tools);
 
 			// Assert
 			Assert.NotNull(orchestrator);
@@ -31,6 +38,7 @@ namespace Hermes.Tests.Orchestrator
 			// Arrange
 			var tools = new List<IAgentTool>();
 			var agentMock = new Mock<AIAgent>();
+			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 
 			var chatResponseMock = new ChatResponse(new ChatMessage(ChatRole.Assistant, "The status is in-progress."));
 			var agentResponseMock = new AgentRunResponse(chatResponseMock);
@@ -42,7 +50,12 @@ namespace Hermes.Tests.Orchestrator
 				It.IsAny<CancellationToken>()
 			)).ReturnsAsync(agentResponseMock);
 
-			var orchestrator = new HermesOrchestrator(agentMock.Object, tools);
+			var orchestrator = new HermesOrchestrator(
+				agentMock.Object, 
+				"https://test.openai.azure.com/", 
+				"test-api-key", 
+				instructionsRepoMock.Object, 
+				tools);
 
 			// Act
 			var response = await orchestrator.OrchestrateAsync("What is the status of feature123?");
