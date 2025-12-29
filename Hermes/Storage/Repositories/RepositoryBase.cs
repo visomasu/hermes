@@ -32,12 +32,18 @@ namespace Hermes.Storage.Repositories
 			return _storage.CreateAsync(entity);
 		}
 
-		/// <inheritdoc/>
-		public virtual Task<T?> ReadAsync(string key)
+		/// <summary>
+		/// Reads an entity from the repository by key and partition key.
+		/// </summary>
+		/// <param name="key">The string key of the entity to read.</param>
+		/// <param name="partitionKey">The partition key of the entity to read.</param>
+		/// <returns>The entity if found, otherwise null.</returns>
+		public virtual Task<T?> ReadAsync(string key, string partitionKey)
 		{
 			_ValidateKey(key);
+			_ValidateKey(partitionKey);
 
-			return _storage.ReadAsync(key, key); // Default: use key as partitionKey
+			return _storage.ReadAsync(key, partitionKey);
 		}
 
 		/// <inheritdoc/>
@@ -49,12 +55,17 @@ namespace Hermes.Storage.Repositories
 			return _storage.UpdateAsync(key, entity);
 		}
 
-		/// <inheritdoc/>
-		public virtual Task DeleteAsync(string key)
+		/// <summary>
+		/// Deletes an entity from the repository by key and partition key.
+		/// </summary>
+		/// <param name="key">The string key of the entity to delete.</param>
+		/// <param name="partitionKey">The partition key of the entity to delete.</param>
+		public virtual Task DeleteAsync(string key, string partitionKey)
 		{
 			_ValidateKey(key);
+			_ValidateKey(partitionKey);
 
-			return _storage.DeleteAsync(key, key); // Default: use key as partitionKey
+			return _storage.DeleteAsync(key, partitionKey);
 		}
 
         /// <inheritdoc/>

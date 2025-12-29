@@ -37,16 +37,17 @@ namespace Hermes.Controllers
 		}
 
 		/// <summary>
-		/// Reads a sample repository model by id.
+		/// Reads a sample repository model by id and partition key.
 		/// </summary>
 		/// <param name="id">The id of the model to read.</param>
+		/// <param name="partitionKey">The partition key of the model to read.</param>
 		/// <returns>The model if found, otherwise HTTP404 Not Found.</returns>
 		[HttpGet("{id}")]
-		public async Task<ActionResult<SampleRepositoryModel?>> Read(string id)
+		public async Task<ActionResult<SampleRepositoryModel?>> Read(string id, [FromQuery] string partitionKey)
 		{
-			_logger.LogInformation("[{ClassName}] Entry: Read endpoint called for id {Id}.", nameof(StorageController), id);
+			_logger.LogInformation("[{ClassName}] Entry: Read endpoint called for id {Id} and partitionKey {PartitionKey}.", nameof(StorageController), id, partitionKey);
 
-			var result = await _repository.ReadAsync(id);
+			var result = await _repository.ReadAsync(id, partitionKey);
 			if (result == null) return NotFound();
 			return Ok(result);
 		}
@@ -67,16 +68,17 @@ namespace Hermes.Controllers
 		}
 
 		/// <summary>
-		/// Deletes a sample repository model by id.
+		/// Deletes a sample repository model by id and partition key.
 		/// </summary>
 		/// <param name="id">The id of the model to delete.</param>
+		/// <param name="partitionKey">The partition key of the model to delete.</param>
 		/// <returns>HTTP200 OK if successful.</returns>
 		[HttpDelete("{id}")]
-		public async Task<IActionResult> Delete(string id)
+		public async Task<IActionResult> Delete(string id, [FromQuery] string partitionKey)
 		{
-			_logger.LogInformation("[{ClassName}] Entry: Delete endpoint called for id {Id}.", nameof(StorageController), id);
+			_logger.LogInformation("[{ClassName}] Entry: Delete endpoint called for id {Id} and partitionKey {PartitionKey}.", nameof(StorageController), id, partitionKey);
 
-			await _repository.DeleteAsync(id);
+			await _repository.DeleteAsync(id, partitionKey);
 			return Ok();
 		}
 	}

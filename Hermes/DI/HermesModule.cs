@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Hermes.Orchestrator;
+using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Tools;
 using Hermes.Tools.AzureDevOps;
 
@@ -52,8 +53,9 @@ namespace Hermes.DI
                 }
 
                 var azureDevOpsTool = ctx.Resolve<AzureDevOpsTool>();
+                var instructionsRepository = ctx.Resolve<IHermesInstructionsRepository>();
 
-                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool });
+                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool }, instructionsRepository);
             }).As<IAgentOrchestrator>().SingleInstance();
         }
     }

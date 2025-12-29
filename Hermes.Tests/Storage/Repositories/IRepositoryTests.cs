@@ -14,10 +14,10 @@ namespace Hermes.Tests.Storage.Repositories
 		{
 			var mock = new Mock<IRepository<TestDocument>>();
 			await mock.Object.CreateAsync(new TestDocument());
-			await mock.Object.ReadAsync("id");
+			await mock.Object.ReadAsync("id", "partitionKey");
 			await mock.Object.UpdateAsync("id", new TestDocument());
-			await mock.Object.DeleteAsync("id");
-			Xunit.Assert.True(true);
+			await mock.Object.DeleteAsync("id", "partitionKey");
+			Assert.True(true);
 		}
 	}
 }

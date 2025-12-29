@@ -1,4 +1,5 @@
 using Hermes.Storage.Repositories.HermesInstructions;
+using System.Text.Json.Serialization;
 
 namespace Hermes.Controllers.Models.Instructions
 {
@@ -13,16 +14,20 @@ namespace Hermes.Controllers.Models.Instructions
         /// <summary>
         /// The new instruction text to be applied.
         /// </summary>
+        [JsonPropertyName("newInstruction")]
         public required string NewInstruction { get; set; }
 
         /// <summary>
         /// The type of instruction to update, as defined by <see cref="HermesInstructionType"/>.
         /// </summary>
+        [JsonPropertyName("instructionType")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public HermesInstructionType InstructionType { get; set; }
 
 		/// <summary>
 		/// The optional version number for the updated instruction.
 		/// </summary>
+		[JsonPropertyName("version")]
 		public int? Version { get; set; }
 	}
 }

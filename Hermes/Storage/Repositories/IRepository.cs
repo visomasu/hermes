@@ -15,11 +15,12 @@ namespace Hermes.Storage.Repositories
 		Task CreateAsync(T entity);
 
 		/// <summary>
-		/// Reads an entity from the repository by key.
+		/// Reads an entity from the repository by key and partition key.
 		/// </summary>
 		/// <param name="key">The string key of the entity to read.</param>
+		/// <param name="partitionKey">The partition key of the entity to read.</param>
 		/// <returns>The entity if found, otherwise null.</returns>
-		Task<T?> ReadAsync(string key);
+		Task<T?> ReadAsync(string key, string partitionKey);
 
 		/// <summary>
 		/// Updates an existing entity in the repository.
@@ -29,10 +30,11 @@ namespace Hermes.Storage.Repositories
 		Task UpdateAsync(string key, T entity);
 
 		/// <summary>
-		/// Deletes an entity from the repository by key.
+		/// Deletes an entity from the repository by key and partition key.
 		/// </summary>
 		/// <param name="key">The string key of the entity to delete.</param>
-		Task DeleteAsync(string key);
+		/// <param name="partitionKey">The partition key of the entity to delete.</param>
+		Task DeleteAsync(string key, string partitionKey);
 
 		/// <summary>
 		/// Reads all entities from the repository under a given partition key.
