@@ -22,8 +22,9 @@ namespace Integrations.AzureDevOps
 			"System.Id",
 			"System.Title",
 			"System.Description",
-			"System.State"
-		};
+			"System.State",
+            "System.WorkItemType"
+        };
 
 		// Lowercase naming policy for JSON serialization
 		private static readonly JsonSerializerOptions LowercaseJsonOptions = new JsonSerializerOptions

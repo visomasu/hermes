@@ -4,7 +4,7 @@
     },
     "environments": {
         "dev": {
-            "host": "http://localhost:5121"
+            "host": "http://localhost:3978"
         },
         "prod": {
             "host": "https://prod.hermes.com"

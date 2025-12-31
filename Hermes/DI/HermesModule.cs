@@ -28,10 +28,15 @@ namespace Hermes.DI
 
             // Register StorageModule for storage-related dependencies, injecting config and env
             builder.RegisterModule(new StorageModule(_configuration, _environment));
+
             // Register IntegrationsModule for integration-related dependencies
             builder.RegisterModule(new IntegrationsModule(_configuration, _environment));
+
             // Register AgentToolsModule for tools-related dependencies
             builder.RegisterModule(new AgentToolsModule());
+
+            // Register TeamsModule for Teams channel-related dependencies
+            builder.RegisterModule(new TeamsModule(_configuration, _environment));
 
             // Register HermesOrchestrator and pass only AzureDevOpsTool
             builder.Register(ctx =>
