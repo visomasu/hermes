@@ -30,12 +30,18 @@ namespace Hermes.Tests.Channels.Teams
         }
 
         [Fact]
-        public async Task WelcomeMessageAsync_SendsWelcomeToNonBotMembers()
+        public async Task WelcomeMessageAsync_UsesOrchestratorAndFallsBackWhenEmpty()
         {
             // Arrange
             var storageMock = new Mock<IStorage>();
             var options = new AgentApplicationOptions(storage: storageMock.Object);
             var orchestratorMock = new Mock<IAgentOrchestrator>();
+
+            // First call returns empty, so we assert the fallback text is used
+            orchestratorMock
+                .Setup(o => o.OrchestrateAsync(It.IsAny<string>()))
+                .ReturnsAsync(string.Empty);
+
             var agent = new HermesTeamsAgent(options, orchestratorMock.Object);
 
             var botAccount = new ChannelAccount(id: "bot-id");
@@ -59,7 +65,6 @@ namespace Hermes.Tests.Channels.Teams
                 .Callback<IActivity, CancellationToken>((a, _) => sentActivity = (Activity)a)
                 .ReturnsAsync(new ResourceResponse());
 
-            // Use reflection to invoke the private WelcomeMessageAsync method
             var method = typeof(HermesTeamsAgent)
                 .GetMethod("WelcomeMessageAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -71,18 +76,23 @@ namespace Hermes.Tests.Channels.Teams
             )!;
 
             // Assert
+            orchestratorMock.Verify(o => o.OrchestrateAsync(It.IsAny<string>()), Times.Once);
             Assert.NotNull(sentActivity);
             Assert.Equal(ActivityTypes.Message, sentActivity!.Type);
-            Assert.Equal("Hello and Welcome!", sentActivity.Text);
+            Assert.Contains("Hello and welcome! I am Hermes.", sentActivity.Text);
         }
 
         [Fact]
-        public async Task OnMessageAsync_SendsEchoForMessageActivity()
+        public async Task OnMessageAsync_UsesOrchestratorResponse()
         {
             // Arrange
             var storageMock = new Mock<IStorage>();
             var options = new AgentApplicationOptions(storage: storageMock.Object);
             var orchestratorMock = new Mock<IAgentOrchestrator>();
+
+            orchestratorMock
+                .Setup(o => o.OrchestrateAsync("hello from teams"))
+                .ReturnsAsync("orchestrated response");
 
             var agent = new HermesTeamsAgent(options, orchestratorMock.Object);
 
@@ -107,7 +117,6 @@ namespace Hermes.Tests.Channels.Teams
                 .Callback<IActivity, CancellationToken>((a, _) => sentActivity = (Activity)a)
                 .ReturnsAsync(new ResourceResponse());
 
-            // Use reflection to invoke the private OnMessageAsync method
             var method = typeof(HermesTeamsAgent)
                 .GetMethod("OnMessageAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -119,9 +128,10 @@ namespace Hermes.Tests.Channels.Teams
             )!;
 
             // Assert
+            orchestratorMock.Verify(o => o.OrchestrateAsync("hello from teams"), Times.Once);
             Assert.NotNull(sentActivity);
             Assert.Equal(ActivityTypes.Message, sentActivity!.Type);
-            Assert.Equal("You said: hello from teams", sentActivity.Text);
+            Assert.Equal("orchestrated response", sentActivity.Text);
         }
     }
 }
