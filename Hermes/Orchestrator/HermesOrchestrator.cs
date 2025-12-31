@@ -84,8 +84,18 @@ namespace Hermes.Orchestrator
         /// </summary>
         private async Task<AIAgent> GetAgentAsync()
         {
-            var instructions = await _instructionsRepository.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant);
-            var instructionText = instructions?.Instruction ?? GetDefaultInstructions();
+            string instructionText;
+
+            // Use default instructions in development to simplify local testing
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                instructionText = GetDefaultInstructions();
+            }
+            else
+            {
+                var instructions = await _instructionsRepository.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant);
+                instructionText = instructions?.Instruction ?? GetDefaultInstructions();
+            }
 
             var cacheKey = GenerateCacheKey(HermesInstructionType.ProjectAssistant, instructionText);
 
@@ -134,7 +144,7 @@ namespace Hermes.Orchestrator
 
             ---
 
-            # [Project Name] – Initiative Newsletter
+            # [Project Name]  Initiative Newsletter
 
             ## Overview
             [Provide a customer-focused summary of the project based on the feature/epic description. Include the current phase based on work item status.]
@@ -175,7 +185,7 @@ namespace Hermes.Orchestrator
 
             **Current Focus:** [Identify the milestone/phase currently in progress based on Active work items]
 
-            **Progress:** [Calculate completion percentage: (Completed items / Total items in milestone) × 100. Provide next steps based on active/upcoming work items.]
+            **Progress:** [Calculate completion percentage: (Completed items / Total items in milestone)  d7 100. Provide next steps based on active/upcoming work items.]
 
             **Example:** ""60% complete (6 of 10 user stories closed); integration testing scheduled for next week.""
 
@@ -210,7 +220,12 @@ namespace Hermes.Orchestrator
             ""Generate a newsletter for epic 123456""
 
             ## Example Response Structure:
-            Follow the template exactly as shown above, filling in all sections with data from the Azure DevOps work item hierarchy.";
+            Follow the template exactly as shown above, filling in all sections with data from the Azure DevOps work item hierarchy.
+
+            ## Supported capabilities and how users can interact with you:
+            - When the user provides an Azure DevOps epic or feature ID, generate a project newsletter using the steps and template above.
+            - When the user asks what you can do or asks for capabilities, briefly describe that you can analyze Azure DevOps work items and generate an executive-friendly newsletter summarizing status, outcomes, risks, and timelines.
+            - If the user asks for 'help' or 'what can you do', respond with a concise list of the supported actions and examples of queries (for example: 'Generate a newsletter for epic 123456').";
         }
 
         /// <summary>

@@ -26,7 +26,7 @@ namespace Hermes.Channels.Teams
 
             // Register WelcomeMessageAsync delegate to handle when members are added to the conversation
             OnConversationUpdate(ConversationUpdateEvents.MembersAdded, WelcomeMessageAsync);
-            
+
             // Register OnMessageAsync delegate to handle all incoming message activities (runs last)
             OnActivity(ActivityTypes.Message, OnMessageAsync, rank: RouteRank.Last);
         }
@@ -34,6 +34,8 @@ namespace Hermes.Channels.Teams
         /// <summary>
         /// Sends a welcome message to new members added to the conversation.
         /// Excludes the bot itself from receiving welcome messages.
+        /// Also invokes the agent orchestrator to provide a description of supported actions
+        /// so users know how to interact with the agent.
         /// </summary>
         /// <param name="turnContext">The turn context containing information about the current conversation turn.</param>
         /// <param name="turnState">The state object for the current turn, providing access to user, conversation, and temporary state information.</param>
@@ -43,16 +45,36 @@ namespace Hermes.Channels.Teams
         {
             foreach (ChannelAccount member in turnContext.Activity.MembersAdded)
             {
-                if (member.Id != turnContext.Activity.Recipient.Id)
+                if (member.Id == turnContext.Activity.Recipient.Id)
                 {
-                    await turnContext.SendActivityAsync(MessageFactory.Text("Hello and Welcome!"), cancellationToken);
+                    continue;
                 }
+
+                // Prompt the orchestrator to describe the supported set of actions
+                const string capabilitiesPrompt =
+                    "Provide a concise, user-friendly description of the supported actions and capabilities " +
+                    "of the Hermes agent in Microsoft Teams so a new user understands how to interact with it. " +
+                    "If the user is asking for help or capabilities, answer accordingly based on your supported capabilities section.";
+
+                string capabilities = await _orchestrator.OrchestrateAsync(capabilitiesPrompt);
+
+                // Fallback in case orchestrator returns an empty response
+                if (string.IsNullOrWhiteSpace(capabilities))
+                {
+                    capabilities = "Hello and welcome! I am Hermes. I can analyze Azure DevOps work items and " +
+                        "generate an executive-friendly newsletter summarizing project status, outcomes, risks, and timelines. " +
+                        "For example, you can say: 'Generate a newsletter for epic 123456'.";
+                }
+
+                await turnContext.SendActivityAsync(
+                    MessageFactory.Text(capabilities),
+                    cancellationToken);
             }
         }
 
         /// <summary>
         /// Handles incoming message activities from Teams users.
-        /// Currently echoes back the user's message as a placeholder implementation.
+        /// Uses the Hermes orchestrator to process the user's message and returns the AI response.
         /// </summary>
         /// <param name="turnContext">The turn context containing information about the current conversation turn, including the incoming message activity.</param>
         /// <param name="turnState">The state object for the current turn, providing access to user, conversation, and temporary state information.</param>
@@ -60,7 +82,19 @@ namespace Hermes.Channels.Teams
         /// <returns>A task that represents the asynchronous operation of processing and responding to the incoming message.</returns>
         private async Task OnMessageAsync(ITurnContext turnContext, ITurnState turnState, CancellationToken cancellationToken)
         {
-            await turnContext.SendActivityAsync(MessageFactory.Text($"You said: {turnContext.Activity.Text}"), cancellationToken: cancellationToken);
+            var userText = turnContext.Activity.Text ?? string.Empty;
+
+            // Delegate processing of the user's message to the orchestrator
+            var response = await _orchestrator.OrchestrateAsync(userText);
+
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                response = "Sorry, I was unable to generate a response. Please try rephrasing your request.";
+            }
+
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text(response),
+                cancellationToken: cancellationToken);
         }
     }
 }
