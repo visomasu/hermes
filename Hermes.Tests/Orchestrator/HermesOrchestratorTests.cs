@@ -21,12 +21,20 @@ namespace Hermes.Tests.Orchestrator
 			var agentMock = new Mock<AIAgent>();
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 
-			// Act
+			// Return a basic instruction so the orchestrator can resolve instructions if needed
+			instructionsRepoMock
+				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
+				.ReturnsAsync(new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions(
+					"Test instructions",
+					HermesInstructionType.ProjectAssistant,
+					1));
+
+			// Act - use the test-only constructor that accepts an AIAgent
 			var orchestrator = new HermesOrchestrator(
-				agentMock.Object, 
-				"https://test.openai.azure.com/", 
-				"test-api-key", 
-				instructionsRepoMock.Object, 
+				agentMock.Object,
+				"https://test.openai.azure.com/",
+				"test-api-key",
+				instructionsRepoMock.Object,
 				tools,
 				new Mock<IConversationHistoryRepository>().Object);
 
@@ -43,15 +51,21 @@ namespace Hermes.Tests.Orchestrator
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 			var historyRepoMock = new Mock<IConversationHistoryRepository>();
 
+			// Ensure instructions repository returns a basic instruction
+			instructionsRepoMock
+				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
+				.ReturnsAsync(new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions(
+					"Test instructions",
+					HermesInstructionType.ProjectAssistant,
+					1));
+
 			var chatResponseMock = new ChatResponse(new ChatMessage(ChatRole.Assistant, "The status is in-progress."));
 			var agentResponseMock = new AgentRunResponse(chatResponseMock);
 
-			agentMock.Setup(a => a.RunAsync(
-				It.IsAny<IEnumerable<ChatMessage>>(),
-				It.IsAny<AgentThread>(),
-				It.IsAny<AgentRunOptions>(),
-				It.IsAny<CancellationToken>()
-			)).ReturnsAsync(agentResponseMock);
+			// Match the RunAsync overload used by HermesOrchestrator: RunAsync(ChatMessage, AgentRunOptions?, CancellationToken)
+			agentMock
+				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(agentResponseMock);
 
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
@@ -83,15 +97,21 @@ namespace Hermes.Tests.Orchestrator
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 			var historyRepoMock = new Mock<IConversationHistoryRepository>();
 
+			// Ensure instructions repository returns a basic instruction
+			instructionsRepoMock
+				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
+				.ReturnsAsync(new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions(
+					"Test instructions",
+					HermesInstructionType.ProjectAssistant,
+					1));
+
 			var chatResponseMock = new ChatResponse(new ChatMessage(ChatRole.Assistant, "History test response."));
 			var agentResponseMock = new AgentRunResponse(chatResponseMock);
 
-			agentMock.Setup(a => a.RunAsync(
-				It.IsAny<IEnumerable<ChatMessage>>(),
-				It.IsAny<AgentThread>(),
-				It.IsAny<AgentRunOptions>(),
-				It.IsAny<CancellationToken>()
-			)).ReturnsAsync(agentResponseMock);
+			// Match the RunAsync overload used by HermesOrchestrator: RunAsync(ChatMessage, AgentRunOptions?, CancellationToken)
+			agentMock
+				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(agentResponseMock);
 
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
