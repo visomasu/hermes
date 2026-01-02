@@ -5,6 +5,7 @@ using Hermes.Storage.Core.InMemory;
 using Hermes.Storage.Repositories;
 using Hermes.Storage.Repositories.Sample;
 using Hermes.Storage.Repositories.HermesInstructions;
+using Hermes.Storage.Repositories.ConversationHistory;
 
 namespace Hermes.DI
 {
@@ -78,6 +79,11 @@ namespace Hermes.DI
             // Register HermesInstructionsRepository as IHermesInstructionsRepository
             builder.RegisterType<HermesInstructionsRepository>()
                 .As<IHermesInstructionsRepository>()
+                .SingleInstance();
+
+            // Register ConversationHistoryRepository as IConversationHistoryRepository
+            builder.RegisterType<ConversationHistoryRepository>()
+                .As<IConversationHistoryRepository>()
                 .SingleInstance();
         }
     }

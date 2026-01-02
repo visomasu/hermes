@@ -39,7 +39,7 @@ namespace Hermes.Tests.Channels.Teams
 
             // First call returns empty, so we assert the fallback text is used
             orchestratorMock
-                .Setup(o => o.OrchestrateAsync(It.IsAny<string>()))
+                .Setup(o => o.OrchestrateAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync(string.Empty);
 
             var agent = new HermesTeamsAgent(options, orchestratorMock.Object);
@@ -51,7 +51,8 @@ namespace Hermes.Tests.Channels.Teams
             {
                 Type = ActivityTypes.ConversationUpdate,
                 Recipient = botAccount,
-                MembersAdded = [ userAccount, botAccount ]
+                MembersAdded = [ userAccount, botAccount ],
+                Conversation = new ConversationAccount(id: "conv-id")
             };
 
             var turnContextMock = new Mock<ITurnContext>();
@@ -76,7 +77,7 @@ namespace Hermes.Tests.Channels.Teams
             )!;
 
             // Assert
-            orchestratorMock.Verify(o => o.OrchestrateAsync(It.IsAny<string>()), Times.Once);
+            orchestratorMock.Verify(o => o.OrchestrateAsync("conv-id", It.IsAny<string>()), Times.Once);
             Assert.NotNull(sentActivity);
             Assert.Equal(ActivityTypes.Message, sentActivity!.Type);
             Assert.Contains("Hello and welcome! I am Hermes.", sentActivity.Text);
@@ -91,7 +92,7 @@ namespace Hermes.Tests.Channels.Teams
             var orchestratorMock = new Mock<IAgentOrchestrator>();
 
             orchestratorMock
-                .Setup(o => o.OrchestrateAsync("hello from teams"))
+                .Setup(o => o.OrchestrateAsync("conv-id", "hello from teams"))
                 .ReturnsAsync("orchestrated response");
 
             var agent = new HermesTeamsAgent(options, orchestratorMock.Object);
@@ -128,7 +129,7 @@ namespace Hermes.Tests.Channels.Teams
             )!;
 
             // Assert
-            orchestratorMock.Verify(o => o.OrchestrateAsync("hello from teams"), Times.Once);
+            orchestratorMock.Verify(o => o.OrchestrateAsync("conv-id", "hello from teams"), Times.Once);
             Assert.NotNull(sentActivity);
             Assert.Equal(ActivityTypes.Message, sentActivity!.Type);
             Assert.Equal("orchestrated response", sentActivity.Text);

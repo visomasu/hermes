@@ -34,7 +34,7 @@ namespace Hermes.Controllers
 		{
 			this.logger.LogInformation("[{ClassName}] New chat requested.", nameof(HermesController));
 
-			var result = await _orchestrator.OrchestrateAsync(input.Text);
+			var result = await _orchestrator.OrchestrateAsync("session-1", input.Text);
 			return Ok(result);
 		}
 

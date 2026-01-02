@@ -56,7 +56,7 @@ namespace Hermes.Channels.Teams
                     "of the Hermes agent in Microsoft Teams so a new user understands how to interact with it. " +
                     "If the user is asking for help or capabilities, answer accordingly based on your supported capabilities section.";
 
-                string capabilities = await _orchestrator.OrchestrateAsync(capabilitiesPrompt);
+                string capabilities = await _orchestrator.OrchestrateAsync(turnContext.Activity.Conversation?.Id ?? string.Empty, capabilitiesPrompt);
 
                 // Fallback in case orchestrator returns an empty response
                 if (string.IsNullOrWhiteSpace(capabilities))
@@ -84,8 +84,10 @@ namespace Hermes.Channels.Teams
         {
             var userText = turnContext.Activity.Text ?? string.Empty;
 
-            // Delegate processing of the user's message to the orchestrator
-            var response = await _orchestrator.OrchestrateAsync(userText);
+            // Use the Teams conversation id as the session id for history and orchestration
+            var sessionId = turnContext.Activity.Conversation?.Id ?? string.Empty;
+
+            var response = await _orchestrator.OrchestrateAsync(sessionId, userText);
 
             if (string.IsNullOrWhiteSpace(response))
             {

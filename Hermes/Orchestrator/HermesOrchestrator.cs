@@ -1,6 +1,7 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
 using Hermes.Storage.Repositories.HermesInstructions;
+using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -20,6 +21,7 @@ namespace Hermes.Orchestrator
         private readonly string _apiKey;
 
         private readonly IHermesInstructionsRepository _instructionsRepository;
+        private readonly IConversationHistoryRepository _conversationHistoryRepository;
 
         private readonly List<AITool> _tools = new();
         private readonly Dictionary<string, AIAgent> _agentCache = new();
@@ -31,13 +33,16 @@ namespace Hermes.Orchestrator
         /// <param name="apiKey">The API key used to authenticate requests to the Azure OpenAI service. Cannot be null or empty.</param>
         /// <param name="agentTools">An optional list of agent tools to register with the agent.</param>
         /// <param name="instructionsRepository">Repository for fetching agent instructions.</param>
+        /// <param name="conversationHistoryRepository">Repository for persisting conversation history across turns.</param>
         public HermesOrchestrator(
-            string endpoint, 
-            string apiKey, 
+            string endpoint,
+            string apiKey,
             IEnumerable<IAgentTool> agentTools,
-            IHermesInstructionsRepository instructionsRepository)
+            IHermesInstructionsRepository instructionsRepository,
+            IConversationHistoryRepository conversationHistoryRepository)
         {
             _instructionsRepository = instructionsRepository;
+            _conversationHistoryRepository = conversationHistoryRepository;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -47,9 +52,10 @@ namespace Hermes.Orchestrator
         /// <summary>
         /// Test-only constructor for injecting a mock AIAgent.
         /// </summary>
-        public HermesOrchestrator(AIAgent agent, string endpoint, string apiKey, IHermesInstructionsRepository instructionsRepository, IEnumerable<IAgentTool> agentTools)
+        public HermesOrchestrator(AIAgent agent, string endpoint, string apiKey, IHermesInstructionsRepository instructionsRepository, IEnumerable<IAgentTool> agentTools, IConversationHistoryRepository conversationHistoryRepository)
         {
             _instructionsRepository = instructionsRepository;
+            _conversationHistoryRepository = conversationHistoryRepository;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -261,19 +267,42 @@ namespace Hermes.Orchestrator
 
         /// <summary>
         /// Orchestrates operations based on the user's query and returns the response.
+        /// Also records the user and assistant messages into the conversation history.
         /// </summary>
+        /// <param name="sessionId">Logical session or conversation identifier used to scope history.</param>
         /// <param name="query">The input query from the user.</param>
         /// <returns>Response as a string.</returns>
-        public async Task<string> OrchestrateAsync(string query)
+        public async Task<string> OrchestrateAsync(string sessionId, string query)
         {
             var agent = await GetAgentAsync();
-            
+
             ChatMessage message = new(ChatRole.User, [
                 new TextContent(query),
             ]);
 
             var response = await agent.RunAsync(message);
-            return response.AsChatResponse().Text;
+            var responseText = response.AsChatResponse().Text;
+
+            // Persist this turn into conversation history for the given session.
+            var historyEntries = new List<ConversationMessage>
+            {
+                new ConversationMessage
+                {
+                    Role = "user",
+                    Content = query,
+                    Timestamp = DateTimeOffset.UtcNow
+                },
+                new ConversationMessage
+                {
+                    Role = "assistant",
+                    Content = responseText,
+                    Timestamp = DateTimeOffset.UtcNow
+                }
+            };
+
+            await _conversationHistoryRepository.WriteConversationHistoryAsync(sessionId, historyEntries);
+
+            return responseText;
         }
     }
 }
