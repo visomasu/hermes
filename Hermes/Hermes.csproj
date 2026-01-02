@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <Folder Include="Integrations\Gemini\" />
+    <Folder Include="Storage\Repositories\Memory\" />
   </ItemGroup>
 
 </Project>
