@@ -213,6 +213,7 @@ namespace Hermes.Orchestrator
                 return new List<ChatMessage>();
             }
 
+            // Deserialize the history JSON into ConversationMessage objects.
             var history = JsonSerializer.Deserialize<List<ConversationMessage>>(historyJson) ?? new List<ConversationMessage>();
 
             if (history.Count == 0)
@@ -220,60 +221,21 @@ namespace Hermes.Orchestrator
                 return new List<ChatMessage>();
             }
 
+            // Sort ascending by timestamp.
             var ordered = history
                 .OrderBy(m => m.Timestamp)
                 .ToList();
 
-            var result = new List<ConversationMessage>();
-            var turnsCollected = 0;
+            // Take the last N items (or all if fewer).
+            var lastN = ordered
+                .Skip(Math.Max(0, ordered.Count - topNTurns))
+                .ToList();
 
-            // Walk backwards, collecting (user, assistant) pairs as "turns".
-            for (var i = ordered.Count - 1; i >= 0 && turnsCollected < topNTurns;)
-            {
-                ConversationMessage? assistant = null;
-                ConversationMessage? user = null;
-
-                if (i >= 0 && string.Equals(ordered[i].Role, "assistant", StringComparison.OrdinalIgnoreCase))
-                {
-                    assistant = ordered[i];
-                    i--;
-                }
-
-                if (i >= 0 && string.Equals(ordered[i].Role, "user", StringComparison.OrdinalIgnoreCase))
-                {
-                    user = ordered[i];
-                    i--;
-                }
-
-                if (assistant != null || user != null)
-                {
-                    // Insert at front to keep chronological order.
-                    if (user != null)
-                    {
-                        result.Insert(0, user);
-                    }
-
-                    if (assistant != null)
-                    {
-                        result.Insert(0, assistant);
-                    }
-
-                    turnsCollected++;
-                }
-            }
-
-            var messages = new List<ChatMessage>(result.Count);
-
-            foreach (var entry in result)
-            {
-                var role = string.Equals(entry.Role, "assistant", StringComparison.OrdinalIgnoreCase)
-                    ? ChatRole.Assistant
-                    : ChatRole.User;
-
-                messages.Add(new ChatMessage(role, [new TextContent(entry.Content ?? string.Empty)]));
-            }
-
-            return messages;
+            return lastN
+                .Select(m => new ChatMessage(
+                    m.Role == "user" ? ChatRole.User : ChatRole.Assistant,
+                    [new TextContent(m.Content ?? string.Empty)]))
+                .ToList();
         }
     }
 }
