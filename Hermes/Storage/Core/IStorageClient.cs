@@ -1,7 +1,7 @@
 namespace Hermes.Storage.Core
 {
 	/// <summary>
-	/// Interface for basic CRUD operations on NoSQL storage.
+	/// Interface for basic CRUD operations for storage.
 	/// </summary>
 	/// <typeparam name="T">The type of the document being stored.</typeparam>
 	/// <typeparam name="TKey">The type of the key used to identify documents.</typeparam>

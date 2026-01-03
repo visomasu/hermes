@@ -28,7 +28,7 @@ namespace Hermes.Tests.Controllers
 			var logger = new Mock<ILogger<HermesController>>();
 			var orchestratorMock = new Mock<IAgentOrchestrator>();
 			var instructionsRepo = new Mock<IHermesInstructionsRepository>().Object;
-			orchestratorMock.Setup(o => o.OrchestrateAsync(It.IsAny<string>())).ReturnsAsync("mock-response");
+			orchestratorMock.Setup(o => o.OrchestrateAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync("mock-response");
 			var controller = new HermesController(logger.Object, orchestratorMock.Object, instructionsRepo);
 			var input = new ChatInput(text: "Hello");
 

@@ -22,7 +22,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Instructions\" />
     <Folder Include="Integrations\Gemini\" />
+    <Folder Include="Storage\Repositories\Memory\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Resources\Instructions\ProjectAssistant_Instructions">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

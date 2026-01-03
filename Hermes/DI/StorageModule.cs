@@ -2,9 +2,12 @@ using Autofac;
 using Hermes.Storage.Core;
 using Hermes.Storage.Core.CosmosDB;
 using Hermes.Storage.Core.InMemory;
+using Hermes.Storage.Core.File;
 using Hermes.Storage.Repositories;
 using Hermes.Storage.Repositories.Sample;
 using Hermes.Storage.Repositories.HermesInstructions;
+using Hermes.Storage.Repositories.ConversationHistory;
+using Hermes.Storage.Core.Models;
 
 namespace Hermes.DI
 {
@@ -57,6 +60,14 @@ namespace Hermes.DI
                 .WithParameter("containerId", containerId)
                 .SingleInstance();
 
+            // Register FileStorageClient as a named file-backed storage client for FileDocument
+            builder.RegisterType<FileStorageClient>()
+                .Named<IStorageClient<FileDocument, string>>("file")
+                .WithParameter(
+                    "rootPath",
+                    Path.Combine(AppContext.BaseDirectory, "Resources"))
+                .SingleInstance();
+
             // Register HierarchicalStorageClient as the default IStorageClient<T, string>
             builder.RegisterGeneric(typeof(HierarchicalStorageClient<>))
                 .As(typeof(IStorageClient<,>))
@@ -75,9 +86,21 @@ namespace Hermes.DI
                 .As<IRepository<SampleRepositoryModel>>()
                 .SingleInstance();
 
-            // Register HermesInstructionsRepository as IHermesInstructionsRepository
+            // Explicitly wire HermesInstructionsRepository so its second constructor parameter
+            // (fileStorageClient) is backed by the FileStorageClient<HermesInstructions, string>.
             builder.RegisterType<HermesInstructionsRepository>()
                 .As<IHermesInstructionsRepository>()
+                .WithParameter(
+                    (pi, ctx) => pi.ParameterType == typeof(IStorageClient<FileDocument, string>)
+                                  && pi.Name == "fileStorageClient",
+                    (pi, ctx) => ctx.ResolveNamed(
+                        "file",
+                        typeof(IStorageClient<FileDocument, string>)))
+                .SingleInstance();
+
+            // Register ConversationHistoryRepository as IConversationHistoryRepository
+            builder.RegisterType<ConversationHistoryRepository>()
+                .As<IConversationHistoryRepository>()
                 .SingleInstance();
         }
     }
