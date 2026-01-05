@@ -27,7 +27,10 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			Assert.Equal("AzureDevOpsTool", tool.Name);
 			Assert.Contains("retrieving work item trees", tool.Description);
 			Assert.Contains("GetWorkItemTree", tool.Capabilities);
-			Assert.Contains("Capabilities: [GetWorkItemTree]", tool.GetMetadata());
+			Assert.Contains("GetWorkItemsByAreaPath", tool.Capabilities);
+			Assert.Contains("GetParentHierarchy", tool.Capabilities);
+			Assert.Contains("GetFullHierarchy", tool.Capabilities);
+			Assert.Contains("Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy]", tool.GetMetadata());
 		}
 
 		[Fact]
@@ -45,7 +48,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 				.ReturnsAsync(childJson);
 
 			var tool = new AzureDevOpsTool(mockClient.Object);
-			var input = JsonSerializer.Serialize(new { rootId =1, depth =1 });
+			var input = JsonSerializer.Serialize(new { rootId = 1, depth = 1 });
 			var result = await tool.ExecuteAsync("GetWorkItemTree", input);
 
 			Assert.Contains("workItem", result);
@@ -80,14 +83,14 @@ namespace Hermes.Tests.Tools.AzureDevOps
 				.Callback<int, IEnumerable<string>>((id, fields) => requestedFields[id] = (fields ?? Enumerable.Empty<string>()).ToList())
 				.ReturnsAsync((int id, IEnumerable<string> fields) =>
 				{
-					if (id ==1) return featureJson;
-					if (id ==2) return userStoryJson;
-					if (id ==3) return taskJson;
+					if (id == 1) return featureJson;
+					if (id == 2) return userStoryJson;
+					if (id == 3) return taskJson;
 					return "{}";
 				});
 
 			var tool = new AzureDevOpsTool(mockClient.Object);
-			var input = JsonSerializer.Serialize(new { rootId =1, depth =2 });
+			var input = JsonSerializer.Serialize(new { rootId = 1, depth = 2 });
 			await tool.ExecuteAsync("GetWorkItemTree", input);
 
 			// Validate correct fields requested for each type
@@ -125,7 +128,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 				.ReturnsAsync(featureJson);
 
 			var tool = new AzureDevOpsTool(mockClient.Object);
-			var input = JsonSerializer.Serialize(new { rootId =1, depth =0 });
+			var input = JsonSerializer.Serialize(new { rootId = 1, depth = 0 });
 			await tool.ExecuteAsync("GetWorkItemTree", input);
 
 			foreach (var field in FeatureFields)
@@ -149,7 +152,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 				.ReturnsAsync(userStoryJson);
 
 			var tool = new AzureDevOpsTool(mockClient.Object);
-			var input = JsonSerializer.Serialize(new { rootId =2, depth =0 });
+			var input = JsonSerializer.Serialize(new { rootId = 2, depth = 0 });
 			await tool.ExecuteAsync("GetWorkItemTree", input);
 
 			foreach (var field in UserStoryFields)
@@ -173,13 +176,177 @@ namespace Hermes.Tests.Tools.AzureDevOps
 				.ReturnsAsync(taskJson);
 
 			var tool = new AzureDevOpsTool(mockClient.Object);
-			var input = JsonSerializer.Serialize(new { rootId =3, depth =0 });
+			var input = JsonSerializer.Serialize(new { rootId = 3, depth = 0 });
 			await tool.ExecuteAsync("GetWorkItemTree", input);
 
 			foreach (var field in TaskFields)
 			{
 				Assert.Contains(field, requestedFields);
 			}
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_GetWorkItemsByAreaPath_CallsClientWithParsedInputs()
+		{
+			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+			string expectedJson = "[{\"id\":1},{\"id\":2}]";
+
+			IEnumerable<string>? capturedTypes = null;
+			IEnumerable<string>? capturedFields = null;
+			string? capturedAreaPath = null;
+
+			mockClient
+				.Setup(x => x.GetWorkItemsByAreaPathAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+				.Callback<string, IEnumerable<string>?, IEnumerable<string>?>((area, types, fields) =>
+				{
+					capturedAreaPath = area;
+					capturedTypes = types;
+					capturedFields = fields;
+				})
+				.ReturnsAsync(expectedJson);
+
+			var tool = new AzureDevOpsTool(mockClient.Object);
+			var input = JsonSerializer.Serialize(new
+			{
+				areaPath = "Project\\Team\\Area",
+				workItemTypes = new[] { "Feature", "User Story" },
+				fields = new[] { "System.Id", "System.Title" }
+			});
+
+			var result = await tool.ExecuteAsync("GetWorkItemsByAreaPath", input);
+
+			Assert.Equal(expectedJson, result);
+			Assert.Equal("Project\\Team\\Area", capturedAreaPath);
+			Assert.NotNull(capturedTypes);
+			Assert.Contains("Feature", capturedTypes!);
+			Assert.Contains("User Story", capturedTypes!);
+			Assert.NotNull(capturedFields);
+			Assert.Contains("System.Id", capturedFields!);
+			Assert.Contains("System.Title", capturedFields!);
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_GetWorkItemsByAreaPath_ThrowsIfAreaPathMissingOrInvalid()
+		{
+			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+			var tool = new AzureDevOpsTool(mockClient.Object);
+
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetWorkItemsByAreaPath", "{}"));
+
+			var nonStringAreaPath = JsonSerializer.Serialize(new { areaPath = 123 });
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetWorkItemsByAreaPath", nonStringAreaPath));
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_GetParentHierarchy_CallsClientWithParsedInputs()
+		{
+			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+			string expectedJson = "[{\"id\":1},{\"id\":2}]";
+
+			int capturedId = 0;
+			IEnumerable<string>? capturedFields = null;
+
+			mockClient
+				.Setup(x => x.GetParentHierarchyAsync(It.IsAny<int>(), It.IsAny<IEnumerable<string>>()))
+				.Callback<int, IEnumerable<string>?>((id, fields) =>
+				{
+					capturedId = id;
+					capturedFields = fields;
+				})
+				.ReturnsAsync(expectedJson);
+
+			var tool = new AzureDevOpsTool(mockClient.Object);
+			var input = JsonSerializer.Serialize(new
+			{
+				workItemId = 42,
+				fields = new[] { "System.Id", "System.Title" }
+			});
+
+			var result = await tool.ExecuteAsync("GetParentHierarchy", input);
+
+			Assert.Equal(expectedJson, result);
+			Assert.Equal(42, capturedId);
+			Assert.NotNull(capturedFields);
+			Assert.Contains("System.Id", capturedFields!);
+			Assert.Contains("System.Title", capturedFields!);
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_GetParentHierarchy_ThrowsIfWorkItemIdMissingOrInvalid()
+		{
+			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+			var tool = new AzureDevOpsTool(mockClient.Object);
+
+			// Missing workItemId
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetParentHierarchy", "{}"));
+
+			// Non-convertible string
+			var nonIntId = JsonSerializer.Serialize(new { workItemId = "abc" });
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetParentHierarchy", nonIntId));
+
+			// Wrong type (e.g., object)
+			var wrongTypeId = JsonSerializer.Serialize(new { workItemId = new { id = 1 } });
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetParentHierarchy", wrongTypeId));
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_GetFullHierarchy_CallsParentAndBuildsSubtree()
+		{
+			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+
+			// Parent chain JSON (already in the final serialized form from client)
+			var parentJson = "[{\"id\":10,\"fields\":{\"System.Id\":10}},{\"id\":20,\"fields\":{\"System.Id\":20}}]";
+
+			mockClient
+				.Setup(c => c.GetParentHierarchyAsync(42, It.IsAny<IEnumerable<string>>()))
+				.ReturnsAsync(parentJson);
+
+			// For the subtree, AzureDevOpsTool will call GetWorkItemAsync on the client.
+			// We simulate a simple task with no children.
+			var workItemJson = "{\"id\":42,\"fields\":{\"System.WorkItemType\":\"Task\"}}";
+			mockClient
+				.Setup(c => c.GetWorkItemAsync(42))
+				.ReturnsAsync(workItemJson);
+			mockClient
+				.Setup(c => c.GetWorkItemAsync(42, It.IsAny<IEnumerable<string>>()))
+				.ReturnsAsync(workItemJson);
+
+			var tool = new AzureDevOpsTool(mockClient.Object);
+			var input = JsonSerializer.Serialize(new
+			{
+				workItemId = 42,
+				depth = 0,
+				fields = new[] { "System.Id" }
+			});
+
+			var result = await tool.ExecuteAsync("GetFullHierarchy", input);
+
+			// Result should contain both parents and children keys.
+			Assert.Contains("\"parents\"", result);
+			Assert.Contains("\"children\"", result);
+			Assert.Contains("\"id\":10", result);
+			Assert.Contains("\"id\":42", result);
+
+			mockClient.Verify(c => c.GetParentHierarchyAsync(42, It.IsAny<IEnumerable<string>>()), Times.Once);
+			mockClient.Verify(c => c.GetWorkItemAsync(42), Times.Once);
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_GetFullHierarchy_ThrowsIfWorkItemIdMissingOrInvalid()
+		{
+			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+			var tool = new AzureDevOpsTool(mockClient.Object);
+
+			// Missing workItemId
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetFullHierarchy", "{}"));
+
+			// Non-convertible workItemId
+			var nonIntId = JsonSerializer.Serialize(new { workItemId = "abc" });
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetFullHierarchy", nonIntId));
+
+			// Wrong type for workItemId
+			var wrongTypeId = JsonSerializer.Serialize(new { workItemId = new { id = 1 } });
+			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetFullHierarchy", wrongTypeId));
 		}
 	}
 }

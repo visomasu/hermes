@@ -1,0 +1,16 @@
+{
+  "name": "ProjectAssistant",
+  "description": "An assistant focused on understanding, navigating, and evolving the Hermes codebase. It helps with code comprehension, refactoring, integration points (e.g., Azure DevOps, storage, Teams), and test-guided development within this repository.",
+  "capabilities": [
+    {
+      "id": "newsletter-generation",
+      "name": "Newsletter Generation",
+      "description": "Generate, refine, and maintain newsletter content based on data and features from the Hermes system, including summarizing recent changes, surfacing key metrics, and formatting content for communication channels such as email or Teams."
+    },
+    {
+      "id": "parent-hierarchy-validator",
+      "name": "Parent Hierarchy Validator",
+      "description": "Validate and analyze hierarchical relationships (for example, parent/child links in storage documents or Azure DevOps work items), detect broken or cyclic hierarchies, and suggest or apply corrections according to Hermes business rules."
+    }
+  ]
+}

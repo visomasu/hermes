@@ -7,6 +7,7 @@ using Microsoft.Extensions.AI;
 using Moq;
 using Xunit;
 using System.Text.Json;
+using Hermes.Orchestrator.Prompts;
 
 namespace Hermes.Tests.Orchestrator
 {
@@ -37,7 +38,8 @@ namespace Hermes.Tests.Orchestrator
 				"test-api-key",
 				instructionsRepoMock.Object,
 				tools,
-				new Mock<IConversationHistoryRepository>().Object);
+				new Mock<IConversationHistoryRepository>().Object,
+				new Mock<IAgentPromptComposer>().Object);
 
 			// Assert
 			Assert.NotNull(orchestrator);
@@ -90,7 +92,8 @@ namespace Hermes.Tests.Orchestrator
 				"test-api-key",
 				instructionsRepoMock.Object,
 				tools,
-				historyRepoMock.Object);
+				historyRepoMock.Object,
+				new Mock<IAgentPromptComposer>().Object);
 
 			// Act
 			var response = await orchestrator.OrchestrateAsync("session-1", "What is the status of feature123?");
@@ -149,7 +152,8 @@ namespace Hermes.Tests.Orchestrator
 				"test-api-key",
 				instructionsRepoMock.Object,
 				tools,
-				historyRepoMock.Object);
+				historyRepoMock.Object,
+				new Mock<IAgentPromptComposer>().Object);
 
 			var sessionId = "history-session";
 			var query = "History test query";
@@ -220,7 +224,8 @@ namespace Hermes.Tests.Orchestrator
 				"test-api-key",
 				instructionsRepoMock.Object,
 				tools,
-				historyRepoMock.Object);
+				historyRepoMock.Object,
+				new Mock<IAgentPromptComposer>().Object);
 
 			// Act
 			await orchestrator.OrchestrateAsync("session-with-history", "New question");

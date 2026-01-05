@@ -24,11 +24,18 @@
   <ItemGroup>
     <Folder Include="Instructions\" />
     <Folder Include="Integrations\Gemini\" />
+    <Folder Include="Resources\Instructions\ProjectAssistant\Capabilities\" />
     <Folder Include="Storage\Repositories\Memory\" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Resources\Instructions\ProjectAssistant_Instructions">
+    <None Update="Resources\Instructions\ProjectAssistant\Capabilities\newsletter-generation.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\Instructions\ProjectAssistant\Capabilities\parent-hierarchy-validator.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\Instructions\ProjectAssistant\ProjectAssistant_Common">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
