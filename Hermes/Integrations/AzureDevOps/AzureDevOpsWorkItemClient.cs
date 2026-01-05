@@ -164,5 +164,180 @@ namespace Integrations.AzureDevOps
 				throw new IntegrationException($"Unexpected error while retrieving work items: {ex.Message}", IntegrationException.ErrorCode.UnexpectedError, ex);
 			}
 		}
+
+		/// <inheritdoc/>
+		public async Task<string> GetWorkItemsByAreaPathAsync(string areaPath, IEnumerable<string>? workItemTypes = null, IEnumerable<string>? fields = null)
+		{
+			if (string.IsNullOrWhiteSpace(areaPath))
+			{
+				throw new IntegrationException("areaPath must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
+			}
+
+			// Normalize and validate work item types if provided
+			var workItemTypesList = workItemTypes?
+				.Where(t => !string.IsNullOrWhiteSpace(t))
+				.Select(t => t.Trim())
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			try
+			{
+				var allFields = (fields ?? Enumerable.Empty<string>())
+					.Concat(MandatoryFields)
+					.Distinct()
+					.ToList();
+
+				var wiql = BuildAreaPathWiql(areaPath, workItemTypesList);
+
+				var client = GetClient();
+				var queryResult = await client.QueryByWiqlAsync(wiql, _project);
+
+				if (queryResult.WorkItems == null || !queryResult.WorkItems.Any())
+				{
+					return JsonSerializer.Serialize(Array.Empty<object>(), LowercaseJsonOptions);
+				}
+
+				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
+				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All);
+
+				var filteredResults = workItems.Select(workItem => new
+				{
+					workItem.Id,
+					workItem.Rev,
+					workItem.Relations,
+					Fields = workItem.Fields
+						.Where(kvp => allFields.Contains(kvp.Key))
+						.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
+				});
+
+				return JsonSerializer.Serialize(filteredResults, LowercaseJsonOptions);
+			}
+			catch (VssServiceException ex)
+			{
+				throw new IntegrationException($"Azure DevOps service error while querying work items by area path '{areaPath}': {ex.Message}", IntegrationException.ErrorCode.ServiceError, ex);
+			}
+			catch (VssAuthenticationException ex)
+			{
+				throw new IntegrationException($"Azure DevOps authentication error: {ex.Message}", IntegrationException.ErrorCode.AuthenticationError, ex);
+			}
+			catch (Exception ex)
+			{
+				throw new IntegrationException($"Unexpected error while querying work items by area path '{areaPath}': {ex.Message}", IntegrationException.ErrorCode.UnexpectedError, ex);
+			}
+		}
+
+		/// <inheritdoc/>
+		public async Task<string> GetParentHierarchyAsync(int id, IEnumerable<string>? fields = null)
+		{
+			try
+			{
+				// Ensure we always include the mandatory fields when traversing the hierarchy.
+				var allFields = (fields ?? Enumerable.Empty<string>())
+					.Concat(MandatoryFields)
+					.Distinct()
+					.ToList();
+
+				var client = GetClient();
+				var hierarchy = new List<object>();
+				var visited = new HashSet<int>();
+				int? currentId = id;
+
+				// Walk up the parent chain until there is no parent or a cycle is detected.
+				while (currentId.HasValue)
+				{
+					if (!visited.Add(currentId.Value))
+					{
+						// Cycle detected; stop traversal.
+						break;
+					}
+
+					var workItem = await client.GetWorkItemAsync(
+						currentId.Value,
+						fields: null,
+						asOf: null,
+						expand: WorkItemExpand.Relations,
+						userState: null,
+						cancellationToken: CancellationToken.None);
+
+					var filteredFields = workItem.Fields
+						.Where(kvp => allFields.Contains(kvp.Key))
+						.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+					hierarchy.Add(new
+					{
+						workItem.Id,
+						workItem.Rev,
+						workItem.Relations,
+						Fields = filteredFields
+					});
+
+					// Find the parent relation (Hierarchy-Reverse is parent link in Azure DevOps).
+					var parentRelation = workItem.Relations?
+						.FirstOrDefault(r => string.Equals(r.Rel, "System.LinkTypes.Hierarchy-Reverse", StringComparison.OrdinalIgnoreCase));
+
+					// Ensure the URL points to a work item; accept standard ADO URLs like '.../workItems/{id}'.
+					if (parentRelation == null || !parentRelation.Url.Contains("/workItems/", StringComparison.OrdinalIgnoreCase))
+					{
+						currentId = null;
+						continue;
+					}
+
+					// Extract the parent work item id from the URL.
+					var segments = parentRelation.Url.Split('/', StringSplitOptions.RemoveEmptyEntries);
+					if (int.TryParse(segments.Last(), out var parentId))
+					{
+						currentId = parentId;
+					}
+					else
+					{
+						currentId = null;
+					}
+				}
+
+				// The traversal built the hierarchy from the starting item up to the root.
+				// Reverse to get topmost parent first.
+				hierarchy.Reverse();
+
+				return JsonSerializer.Serialize(hierarchy, LowercaseJsonOptions);
+			}
+			catch (VssServiceException ex)
+			{
+				throw new IntegrationException($"Azure DevOps service error while retrieving parent hierarchy for work item {id}: {ex.Message}", IntegrationException.ErrorCode.ServiceError, ex);
+			}
+			catch (VssAuthenticationException ex)
+			{
+				throw new IntegrationException($"Azure DevOps authentication error: {ex.Message}", IntegrationException.ErrorCode.AuthenticationError, ex);
+			}
+			catch (Exception ex)
+			{
+				throw new IntegrationException($"Unexpected error while retrieving parent hierarchy for work item {id}: {ex.Message}", IntegrationException.ErrorCode.UnexpectedError, ex);
+			}
+		}
+
+		// Builds a WIQL query for selecting work items under an area path with optional type filters.
+		private static Wiql BuildAreaPathWiql(string areaPath, IList<string>? workItemTypes)
+		{
+			var wiqlClauses = new List<string>
+			{
+				"[System.TeamProject] = @project",
+				$"[System.AreaPath] UNDER '{areaPath.Replace("'", "''")}'"
+			};
+
+			if (workItemTypes != null && workItemTypes.Count > 0)
+			{
+				var typeConditions = workItemTypes
+					.Select(t => $"[System.WorkItemType] = '{t.Replace("'", "''")}'");
+				wiqlClauses.Add($"({string.Join(" OR ", typeConditions)})");
+			}
+
+			return new Wiql
+			{
+				Query =
+					"SELECT [System.Id] " +
+					"FROM WorkItems " +
+					"WHERE " + string.Join(" AND ", wiqlClauses) +
+					" ORDER BY [System.ChangedDate] DESC"
+			};
+		}
 	}
 }

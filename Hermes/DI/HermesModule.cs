@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Hermes.Orchestrator;
+using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Tools;
@@ -39,6 +40,10 @@ namespace Hermes.DI
             // Register TeamsModule for Teams channel-related dependencies
             builder.RegisterModule(new TeamsModule(_configuration, _environment));
 
+            builder.RegisterType<AgentPromptComposer>()
+                .As<IAgentPromptComposer>()
+                .SingleInstance();
+
             // Register HermesOrchestrator and pass only AzureDevOpsTool
             builder.Register(ctx =>
             {
@@ -62,7 +67,7 @@ namespace Hermes.DI
                 var instructionsRepository = ctx.Resolve<IHermesInstructionsRepository>();
                 var conversationHistoryRepository = ctx.Resolve<IConversationHistoryRepository>();
 
-                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool }, instructionsRepository, conversationHistoryRepository);
+                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool }, instructionsRepository, conversationHistoryRepository, ctx.Resolve<IAgentPromptComposer>());
             }).As<IAgentOrchestrator>().SingleInstance();
         }
     }

@@ -1,5 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
+using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Tools;
@@ -23,6 +24,7 @@ namespace Hermes.Orchestrator
 
         private readonly IHermesInstructionsRepository _instructionsRepository;
         private readonly IConversationHistoryRepository _conversationHistoryRepository;
+        private readonly IAgentPromptComposer _agentPromptComposer;
 
         private readonly List<AITool> _tools = new();
         private readonly Dictionary<string, AIAgent> _agentCache = new();
@@ -38,15 +40,18 @@ namespace Hermes.Orchestrator
         /// <param name="agentTools">An optional list of agent tools to register with the agent.</param>
         /// <param name="instructionsRepository">Repository for fetching agent instructions.</param>
         /// <param name="conversationHistoryRepository">Repository for persisting conversation history across turns.</param>
+        /// <param name="agentPromptComposer">Component responsible for composing agent prompts from instruction files.</param>
         public HermesOrchestrator(
             string endpoint,
             string apiKey,
             IEnumerable<IAgentTool> agentTools,
             IHermesInstructionsRepository instructionsRepository,
-            IConversationHistoryRepository conversationHistoryRepository)
+            IConversationHistoryRepository conversationHistoryRepository,
+            IAgentPromptComposer agentPromptComposer)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
+            _agentPromptComposer = agentPromptComposer;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -63,10 +68,12 @@ namespace Hermes.Orchestrator
             string apiKey,
             IHermesInstructionsRepository instructionsRepository,
             IEnumerable<IAgentTool> agentTools,
-            IConversationHistoryRepository conversationHistoryRepository)
+            IConversationHistoryRepository conversationHistoryRepository,
+            IAgentPromptComposer agentPromptComposer)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
+            _agentPromptComposer = agentPromptComposer;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -80,9 +87,9 @@ namespace Hermes.Orchestrator
         #region Agent Initialization
 
         /// <summary>
-        /// Creates the AI agent with instructions from the repository.
+        /// Creates the AI agent with instructions from the prompt composer for the given instruction type.
         /// </summary>
-        private async Task<AIAgent> CreateAgentAsync(string instructions)
+        private async Task<AIAgent> CreateAgentAsync(string instructionText)
         {
             var chatClient = new AzureOpenAIClient(
                 new Uri(_endpoint),
@@ -90,7 +97,7 @@ namespace Hermes.Orchestrator
                     .GetChatClient("gpt-5-mini");
 
             return chatClient.CreateAIAgent(
-                instructions: instructions,
+                instructions: instructionText,
                 tools: _tools
             );
         }
@@ -110,13 +117,13 @@ namespace Hermes.Orchestrator
 
             var instructionType = HermesInstructionType.ProjectAssistant;
 
-            var instructionsEntity = await _instructionsRepository.GetByInstructionTypeAsync(instructionType).ConfigureAwait(false);
-            if (instructionsEntity == null || string.IsNullOrWhiteSpace(instructionsEntity.Instruction))
-            {
-                throw new InvalidOperationException($"No instructions found for type '{instructionType}'.");
-            }
+            //var instructionsEntity = await _instructionsRepository.GetByInstructionTypeAsync(instructionType).ConfigureAwait(false);
+            //if (instructionsEntity == null || string.IsNullOrWhiteSpace(instructionsEntity.Instruction))
+            //{
+            //    throw new InvalidOperationException($"No instructions found for type '{instructionType}'.");
+            //}
 
-            var instructionText = instructionsEntity.Instruction;
+            var instructionText = _agentPromptComposer.ComposePrompt(instructionType);
             var cacheKey = GenerateCacheKey(instructionType, instructionText);
 
             if (!_agentCache.TryGetValue(cacheKey, out var agent))

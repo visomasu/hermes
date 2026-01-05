@@ -66,5 +66,32 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 			Assert.Equal("High", riskProp.GetString());
 			Assert.Equal("Active", statusProp.GetString());
 		}
+
+		[Fact]
+		public async Task GetWorkItemsByAreaPathAsync_ReturnsJsonString()
+		{
+			// Arrange
+			var mock = new Mock<IAzureDevOpsWorkItemClient>();
+			mock
+				.Setup(x => x.GetWorkItemsByAreaPathAsync(
+					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>()))
+				.ReturnsAsync("[{\"id\":10},{\"id\":20}]");
+
+			// Act
+			var result = await mock.Object.GetWorkItemsByAreaPathAsync(
+				"Project\\Team\\Area",
+				new[] { "Feature" },
+				new[] { "System.Id" });
+
+			// Assert
+			Assert.StartsWith("[", result);
+			Assert.Contains("id\":10", result);
+			Assert.Contains("id\":20", result);
+			var json = JsonDocument.Parse(result);
+			Assert.Equal(JsonValueKind.Array, json.RootElement.ValueKind);
+			Assert.Equal(2, json.RootElement.GetArrayLength());
+		}
 	}
 }
