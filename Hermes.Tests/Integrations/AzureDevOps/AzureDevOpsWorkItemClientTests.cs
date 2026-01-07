@@ -119,9 +119,9 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 			var clientType = typeof(AzureDevOpsWorkItemClient);
 			var workItemClientField = clientType.GetField("_workItemClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 			workItemClientField!.SetValue(testClient, witClientMock.Object);
-
+ 
 			// Act
-			var json = await testClient.GetWorkItemsByAreaPathAsync("proj\\team\\area", new[] { "Feature", "User Story" }, new[] { "System.Id", "System.Title" });
+			var json = await testClient.GetWorkItemsByAreaPathAsync("proj\\team\\area", new[] { "Feature", "User Story" }, new[] { "System.Id", "System.Title" }, skip: 0, top: 2);
 
 			// Assert: WIQL contains expected clauses and project, and GetWorkItemsAsync called with ids 1 and 2
 			Assert.NotNull(capturedWiql);
@@ -134,6 +134,79 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 			Assert.NotNull(capturedIds);
 			Assert.Equal(new[] { 1, 2 }, capturedIds!.OrderBy(id => id));
 			Assert.Contains("id\":1", json);
+			Assert.Contains("id\":2", json);
+		}
+
+		[Fact]
+		public async Task GetWorkItemsByAreaPathAsync_AppliesSkipAndTopToQueryResults()
+		{
+			// Arrange: 3 work item references, but paging asks for the middle one only
+			var organization = "org";
+			var project = "proj";
+			var pat = "token";
+
+			var queryResult = new WorkItemQueryResult
+			{
+				WorkItems = new List<WorkItemReference>
+				{
+					new WorkItemReference { Id = 1 },
+					new WorkItemReference { Id = 2 },
+					new WorkItemReference { Id = 3 }
+				}
+			};
+
+			var returnedItems = new List<WorkItem>
+			{
+				new WorkItem { Id = 2, Rev = 1, Fields = new Dictionary<string, object?> { { "System.Id", 2 }, { "System.Title", "Item 2" } } }
+			};
+
+			IReadOnlyList<int>? capturedIds = null;
+
+			var connection = new VssConnection(
+				new Uri($"https://dev.azure.com/{organization}"),
+				new VssBasicCredential(string.Empty, pat));
+
+			var testClient = new TestableAzureDevOpsWorkItemClient(connection, project);
+
+			var witClientMock = new Mock<WorkItemTrackingHttpClient>(MockBehavior.Strict, new Uri("https://dev.azure.com/org"), new VssCredentials());
+
+			witClientMock
+				.Setup(c => c.QueryByWiqlAsync(
+					It.IsAny<Wiql>(),
+					It.IsAny<string>(),
+					It.IsAny<bool?>(),
+					It.IsAny<int?>(),
+					It.IsAny<object>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync(queryResult);
+
+			witClientMock
+				.Setup(c => c.GetWorkItemsAsync(
+					It.IsAny<IEnumerable<int>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<DateTime?>(),
+					It.IsAny<WorkItemExpand?>(),
+					It.IsAny<WorkItemErrorPolicy?>(),
+					It.IsAny<object>(),
+					It.IsAny<CancellationToken>()))
+				.Callback<IEnumerable<int>, IEnumerable<string>, DateTime?, WorkItemExpand?, WorkItemErrorPolicy?, object, CancellationToken>(
+					(ids, _, _, _, _, _, _) =>
+					{
+						capturedIds = ids.ToList();
+					})
+				.ReturnsAsync(returnedItems);
+
+			var clientType = typeof(AzureDevOpsWorkItemClient);
+			var workItemClientField = clientType.GetField("_workItemClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			workItemClientField!.SetValue(testClient, witClientMock.Object);
+
+			// Act: skip first, take one (id 2)
+			var json = await testClient.GetWorkItemsByAreaPathAsync("proj\\team\\area", null, new[] { "System.Id", "System.Title" }, skip: 1, top: 1);
+
+			// Assert: only id 2 requested and present in json
+			Assert.NotNull(capturedIds);
+			Assert.Single(capturedIds!);
+			Assert.Equal(2, capturedIds!.Single());
 			Assert.Contains("id\":2", json);
 		}
 

@@ -166,7 +166,7 @@ namespace Integrations.AzureDevOps
 		}
 
 		/// <inheritdoc/>
-		public async Task<string> GetWorkItemsByAreaPathAsync(string areaPath, IEnumerable<string>? workItemTypes = null, IEnumerable<string>? fields = null)
+		public async Task<string> GetWorkItemsByAreaPathAsync(string areaPath, IEnumerable<string>? workItemTypes = null, IEnumerable<string>? fields = null, int pageNumber = 1, int pageSize = 5)
 		{
 			if (string.IsNullOrWhiteSpace(areaPath))
 			{
@@ -180,26 +180,49 @@ namespace Integrations.AzureDevOps
 				.Distinct(StringComparer.OrdinalIgnoreCase)
 				.ToList();
 
+			// Normalize paging arguments (1-based pageNumber, positive pageSize)
+			if (pageNumber < 1)
+			{
+				pageNumber = 1;
+			}
+
+			if (pageSize <= 0)
+			{
+				pageSize = 5;
+			}
+ 
 			try
 			{
 				var allFields = (fields ?? Enumerable.Empty<string>())
 					.Concat(MandatoryFields)
 					.Distinct()
 					.ToList();
-
+ 
 				var wiql = BuildAreaPathWiql(areaPath, workItemTypesList);
-
+ 
 				var client = GetClient();
 				var queryResult = await client.QueryByWiqlAsync(wiql, _project);
-
+ 
 				if (queryResult.WorkItems == null || !queryResult.WorkItems.Any())
 				{
 					return JsonSerializer.Serialize(Array.Empty<object>(), LowercaseJsonOptions);
 				}
 
-				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
-				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All);
+				// Apply paging over the list of work item references
+				var skip = (pageNumber - 1) * pageSize;
+				var page = queryResult.WorkItems
+					.Skip(skip)
+					.Take(pageSize)
+					.ToList();
 
+				if (!page.Any())
+				{
+					return JsonSerializer.Serialize(Array.Empty<object>(), LowercaseJsonOptions);
+				}
+
+				var ids = page.Select(w => w.Id).ToList();
+				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All);
+ 
 				var filteredResults = workItems.Select(workItem => new
 				{
 					workItem.Id,
@@ -209,7 +232,7 @@ namespace Integrations.AzureDevOps
 						.Where(kvp => allFields.Contains(kvp.Key))
 						.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
 				});
-
+ 
 				return JsonSerializer.Serialize(filteredResults, LowercaseJsonOptions);
 			}
 			catch (VssServiceException ex)
@@ -328,6 +351,9 @@ namespace Integrations.AzureDevOps
 				var typeConditions = workItemTypes
 					.Select(t => $"[System.WorkItemType] = '{t.Replace("'", "''")}'");
 				wiqlClauses.Add($"({string.Join(" OR ", typeConditions)})");
+
+				// Only include work items that are in New or Active state when types are specified.
+				wiqlClauses.Add("[System.State] IN ('New','Active')");
 			}
 
 			return new Wiql

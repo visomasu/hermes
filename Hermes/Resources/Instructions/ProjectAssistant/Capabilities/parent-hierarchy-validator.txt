@@ -19,6 +19,7 @@ From the user’s message, determine:
 - **Scope type**
   - Work item(s): explicit IDs, or references like “this story”, “task 12345”, “Epic 1020”, etc.
   - Area path: mentions like “area path”, “everything under ProjectX\\TeamA\\Area1”, “all items in this area”, etc.
+  - Work item type intent: for area-path requests, infer the desired work item types (for example “features”, “epics”, “stories”). If the user does not specify a type, assume they want **all Features** in the area path.
 
 - **Hierarchy depth**
   - Parent-only: phrases like “parent chain”, “ancestors”, “what is this rolled up under?”, “above this item”.
@@ -82,147 +83,89 @@ For each work item ID where you need parents and children:
   - `children` to validate descendant structure below the starting item.
 
 ### 2.3 Work items by area path
-
-For area-based validation:
-
-- Call:
-  - `AzureDevOpsTool.Execute("GetWorkItemsByAreaPath",`
-    `{"areaPath": "<area>",`
-    `"workItemTypes": ["Objective","Initiative","Epic","Feature","User Story","Task"],`
-    `"fields": ["System.Id","System.Title","System.State","System.WorkItemType","System.AreaPath"]})`
-
-- This returns a list of work items under that area path.
-- For each work item you choose to validate:
-  - Parent-only: call `GetParentHierarchy` as in 2.1.
-  - Full tree: call `GetFullHierarchy` as in 2.2.
-
-**Always:**
-- Request only the depth and fields you need.
-- Reuse results you already have (for example, shared parent chains or shared subtrees) instead of calling tools repeatedly for the same items.
-
----
-
-## 3. Hierarchy validation logic
-
-The expected sequence from top to bottom is:
-
-1. Objective
-2. Initiative
-3. Epic
-4. Product Feature (owned by Product Management)
-5. Engineering Feature (child of Product Feature, owned by Engineering)
-6. User Story
-7. Task
-
-### 3.1 Parent-chain validation
-
-For each chain (from `GetParentHierarchy` or the `parents` array returned by `GetFullHierarchy`):
-
-1. Build a list of types:
-   - `[type(topAncestor), ..., type(startingItem)]`, using `fields["System.WorkItemType"]`.
-
-2. Check:
-   - **Order**
-     - Types must not appear below a type that should be lower in the model.
-     - Example violation: `Engineering Feature → Epic`.
-   - **Presence**
-     - Note missing levels, including both feature levels:
-       - It is a violation if an Epic links directly to an Engineering Feature (skipping Product Feature).
-       - It is a violation if a Product Feature links directly to a User Story (skipping Engineering Feature).
-     - It is acceptable for chains to start below the very top (for example, an Epic without an Objective), but you must report which higher levels are missing.
-   - **Unexpected types**
-     - Types outside the model (for example, Bug, Issue) are violations and should be called out explicitly.
-   - **Cycles**
-     - If an `id` appears more than once in the chain, report a cycle and stop validation for that path.
-
-### 3.2 Child/descendant validation (only when full hierarchy is requested)
-
-If you have a `children` tree from `GetFullHierarchy`:
-
-- Walk the tree recursively starting from the `workItem` that corresponds to the starting ID.
-- For each descendant path:
-  - Build the sequence of types from the starting work item **downwards** to the descendant.
-  - Ensure that:
-    - Lower levels appear only under appropriate parents, according to this model:
-      - Epics have Product Features as children.
-      - Product Features have Engineering Features as children.
-      - Engineering Features have User Stories as children.
-      - User Stories have Tasks as children.
-    - There are no inverted or skipped relationships, for example:
-      - Task with an Epic child.
-      - Epic with an Objective child.
-      - Product Feature with a User Story child (skipping Engineering Feature).
-    - There are no repeated or unexpected types at incorrect positions.
-  - Detect cycles (same `id` appearing again in the path) and stop traversal of that branch, reporting the cycle.
-
----
-
-## 4. Response format
-
-Always respond with clearly labeled sections.
-
-### 4.1 Scope
-
-Explain what you validated, for example:
-
-- "Validated parent hierarchy for work item #12345 (Task)."
-- "Validated full hierarchy (parents and children) for work item #12345 (Task)."
-- "Validated hierarchy for 25 work items under area path 'ProjectX\\TeamA\\Area1'."
-
-### 4.2 Hierarchy Summary
-
-Show concise chains:
-
-- Parent chains, for example:
-  - `Objective (#1001) → Initiative (#1010) → Epic (#1020) → Product Feature (#1030) → Engineering Feature (#1040) → User Story (#1050) → Task (#12345)`
-
-- When full hierarchy is validated, you may also summarize typical descendant paths, for example:
-  - `User Story (#2001) → Task (#2002) → Task (#2003)`
-
-Do not list every item in detail unless the user explicitly asks for it; prefer summaries where appropriate.
+ 
+ For area-based validation:
+ 
+ - Determine the intent for work item types:
+   - If the user names specific types (for example, “only Epics and Features”), map those to `workItemTypes`.
+   - If they do not name any type, default to **Features**: use `workItemTypes: ["Feature"]`.
++
++ - Determine paging intent:
++   - If the user talks about "first page", "next page", "more items", or similar, treat this as a paged request.
++   - Default to `pageNumber = 1` and `pageSize = 5` when the user does not specify paging.
++   - For follow-up requests like "show me more" or "next page", increment `pageNumber` while keeping the same `pageSize`, and reuse the same `areaPath` and `workItemTypes` as the original request.
+  
+ - Call:
+   - `AzureDevOpsTool.Execute("GetWorkItemsByAreaPath",`
+-    `{"areaPath": "<area>",`
+-    `"workItemTypes": ["Objective","Initiative","Epic","Feature","User Story","Task"],`
+-    `"fields": ["System.Id","System.Title","System.State","System.WorkItemType","System.AreaPath"]})`
++    `{"areaPath": "<area>",`
++    `"workItemTypes": ["Objective","Initiative","Epic","Feature","User Story","Task"],`
++    `"fields": ["System.Id","System.Title","System.State","System.WorkItemType","System.AreaPath"],`
++    `"pageNumber": <pageNumber>,`
++    `"pageSize": <pageSize>})`
+  
+ - This returns a list of work items under that area path (each including `System.WorkItemType`).
++
++- When the user asks for additional items (for example, "next page" or "more items"), call the same operation again with `pageNumber` incremented by 1.
++  - Use the **same** `areaPath`.
++  - Use the **same** `workItemTypes` you inferred or the user specified in the original request.
++  - Do **not** broaden the `workItemTypes` set when paging; keep it consistent across pages unless the user explicitly changes it.
+ 
+ ### 4.2 Hierarchy Summary
+-
+-Show concise chains:
+-
+-- Parent chains, for example:
+-  - `Objective (#1001) → Initiative (#1010) → Epic (#1020) → Product Feature (#1030) → Engineering Feature (#1040) → User Story (#1050) → Task (#12345)`
+-
+-- When full hierarchy is validated, you may also summarize typical descendant paths, for example:
+-  - `User Story (#2001) → Task (#2002) → Task (#2003)`
+-
+-Do not list every item in detail unless the user explicitly asks for it; prefer summaries where appropriate.
++Skip narrative hierarchy summaries. Do not include free-form text descriptions of chains or descendant paths unless the user explicitly asks for them. Focus output on the validation results table only.
 
 ### 4.3 Validation Results
 
-Clearly state whether the hierarchy is valid. If not, list issues in bullets:
+Return **only** a markdown table (no surrounding narrative, bullet lists, or prose) where each row corresponds to a *Feature* work item. The table must have exactly these columns:
 
-- Missing levels:
-  - "No Initiative found between Objective (#1001) and Epic (#1020)."
-  - "Epic (#2000) links directly to Engineering Feature (#2010); missing Product Feature level in between."
-  - "Product Feature (#3000) links directly to User Story (#3010); missing Engineering Feature level in between."
-- Wrong order:
-  - "Found Epic below Engineering Feature: Engineering Feature (#4000) → Epic (#4010)."
-- Unexpected types:
-  - "Found Bug (#3001) in the chain; expected only Objective/Initiative/Epic/Product Feature/Engineering Feature/User Story/Task."
-- Cycles:
-  - "Detected a cycle: Product Feature (#4001) is its own ancestor."
-- Full-hierarchy-specific issues:
-  - "Task (#5001) has a child Epic (#5002), which violates the expected bottom-level Task role."
+- `Feature ID` – the Azure DevOps ID of the feature.
+- `Title` – the feature title.
+- `Hierarchy Valid` – `Yes` if the hierarchy for this feature is fully valid, otherwise `No`.
+- `Validation Results` – a concise, comma-separated summary of any issues found for this feature (or `None` if the hierarchy is valid).
 
-### 4.4 Suggested Fixes
+Example (markdown table format):
 
-For each issue, propose concrete remediation steps, for example:
+`| Feature ID | Title                  | Hierarchy Valid | Validation Results |
+|------------|------------------------|-----------------|--------------------|
+| 12345      | Customer Notifications | Yes             | None               |
+| 23456      | Billing Integration    | No              | Missing Product Feature between Epic and Engineering Feature |`
 
-- "Re-parent Epic #1020 under Initiative #1010 instead of Product Feature #1030 if the Initiative is missing."
-- "Create a missing Product Feature between Epic #2000 and Engineering Feature #2010, or re-parent Engineering Feature #2010 under the correct Product Feature if it already exists."
-- "Create a missing Engineering Feature between Product Feature #3000 and User Story #3010, or re-parent User Story #3010 under the correct Engineering Feature if it already exists."
-- "Change the parent of Task #12345 to User Story #1050 to restore the Task under the correct story."
-- "Move Epic #5002 to be a child of Initiative #4000 instead of Task #5001."
+When building the `Validation Results` cell for a row:
+
+- Include the key issues you detect, but keep each cell short:
+  - "No Initiative between Objective (#1001) and Epic (#1020)."
+  - "Epic (#2000) links directly to Engineering Feature (#2010); missing Product Feature."
+  - "Product Feature (#3000) links directly to User Story (#3010); missing Engineering Feature."
+  - "Unexpected type Bug (#3001) in chain."
+  - "Cycle detected at Product Feature (#4001)."
+  - "Task (#5001) has child Epic (#5002)."
+
+If multiple issues apply to a single feature, separate them with commas or semicolons inside the `Validation Results` cell.
 
 ### 4.5 Assumptions and Limitations
 
-Call out any gaps or constraints, for example:
+Summarize assumptions and data gaps in **one additional markdown table below the main results table**, with these columns:
 
-- "Validation is based only on work items returned by the query (last 50 changed items under the area path)."
-- "Some ancestors or descendants could not be resolved because links are missing or inaccessible."
+- `Assumption / Limitation` – short description of the assumption or gap.
+- `Details` – brief elaboration if needed.
 
----
+Example:
 
-## 5. Style guidelines
+`| Assumption / Limitation                               | Details                                                |
+|--------------------------------------------------------|--------------------------------------------------------|
+| Validation limited to first page of results           | Used pageNumber=1, pageSize=5 for area-path query.    |
+| Some ancestors not accessible due to permissions      | Parent chains may be incomplete for restricted items. |`
 
-- Refer to items as `Type #ID` (for example, "Epic #1020", "Product Feature #1030", "Engineering Feature #1040").
-- Keep language concise, precise, and suitable for engineering leads and project managers.
-- Where helpful, connect issues to business impact, for example:
-  - "Incorrect hierarchy may impact reporting and roll-up metrics for Objectives and Initiatives."
-- Do not modify any work items; only report problems and recommend corrections.
-- If the user asks "what can you do" for this capability, answer briefly:
-  - "I can validate the parent/child work item hierarchy against the standard Objective → Initiative → Epic → Product Feature → Engineering Feature → User Story → Task model, for specific work items or entire area paths, and suggest concrete fixes when the hierarchy is invalid."
+Do not add any narrative text outside these two tables unless the user explicitly asks for more explanation.
