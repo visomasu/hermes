@@ -121,7 +121,7 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 			workItemClientField!.SetValue(testClient, witClientMock.Object);
  
 			// Act
-			var json = await testClient.GetWorkItemsByAreaPathAsync("proj\\team\\area", new[] { "Feature", "User Story" }, new[] { "System.Id", "System.Title" }, skip: 0, top: 2);
+			var json = await testClient.GetWorkItemsByAreaPathAsync("proj\\team\\area", new[] { "Feature", "User Story" }, new[] { "System.Id", "System.Title" }, pageNumber: 1, pageSize: 2);
 
 			// Assert: WIQL contains expected clauses and project, and GetWorkItemsAsync called with ids 1 and 2
 			Assert.NotNull(capturedWiql);
@@ -138,9 +138,9 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 		}
 
 		[Fact]
-		public async Task GetWorkItemsByAreaPathAsync_AppliesSkipAndTopToQueryResults()
+		public async Task GetWorkItemsByAreaPathAsync_AppliesPagingToQueryResults()
 		{
-			// Arrange: 3 work item references, but paging asks for the middle one only
+			// Arrange: 3 work item references, but paging asks for the middle one only (pageNumber=2, pageSize=1)
 			var organization = "org";
 			var project = "proj";
 			var pat = "token";
@@ -200,8 +200,8 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 			var workItemClientField = clientType.GetField("_workItemClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 			workItemClientField!.SetValue(testClient, witClientMock.Object);
 
-			// Act: skip first, take one (id 2)
-			var json = await testClient.GetWorkItemsByAreaPathAsync("proj\\team\\area", null, new[] { "System.Id", "System.Title" }, skip: 1, top: 1);
+			// Act: pageNumber=2, pageSize=1 => skip first, take one (id 2)
+			var json = await testClient.GetWorkItemsByAreaPathAsync("proj\\team\\area", null, new[] { "System.Id", "System.Title" }, pageNumber: 2, pageSize: 1);
 
 			// Assert: only id 2 requested and present in json
 			Assert.NotNull(capturedIds);
