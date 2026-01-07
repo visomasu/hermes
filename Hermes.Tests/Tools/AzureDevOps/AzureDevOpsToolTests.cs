@@ -1,7 +1,7 @@
+using System.Text.Json;
 using Hermes.Tools.AzureDevOps;
 using Integrations.AzureDevOps;
 using Moq;
-using System.Text.Json;
 using Xunit;
 
 namespace Hermes.Tests.Tools.AzureDevOps
@@ -196,8 +196,13 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			string? capturedAreaPath = null;
 
 			mockClient
-				.Setup(x => x.GetWorkItemsByAreaPathAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
-				.Callback<string, IEnumerable<string>?, IEnumerable<string>?>((area, types, fields) =>
+				.Setup(x => x.GetWorkItemsByAreaPathAsync(
+					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<int>(),
+					It.IsAny<int>()))
+				.Callback<string, IEnumerable<string>?, IEnumerable<string>?, int, int>((area, types, fields, pageNumber, pageSize) =>
 				{
 					capturedAreaPath = area;
 					capturedTypes = types;
@@ -215,7 +220,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 
 			var result = await tool.ExecuteAsync("GetWorkItemsByAreaPath", input);
 
-			Assert.Equal(expectedJson, result);
+			// Assert that the client was called with correctly parsed inputs
 			Assert.Equal("Project\\Team\\Area", capturedAreaPath);
 			Assert.NotNull(capturedTypes);
 			Assert.Contains("Feature", capturedTypes!);
@@ -223,6 +228,11 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			Assert.NotNull(capturedFields);
 			Assert.Contains("System.Id", capturedFields!);
 			Assert.Contains("System.Title", capturedFields!);
+
+			// Optionally assert that the tool returned a JSON array
+			using var doc = JsonDocument.Parse(result);
+			var root = doc.RootElement;
+			Assert.Equal(JsonValueKind.Array, root.ValueKind);
 		}
 
 		[Fact]
@@ -241,7 +251,33 @@ namespace Hermes.Tests.Tools.AzureDevOps
 		public async Task ExecuteAsync_GetParentHierarchy_CallsClientWithParsedInputs()
 		{
 			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
-			string expectedJson = "[{\"id\":1},{\"id\":2}]";
+
+			var clientObjects = new[]
+			{
+				new
+				{
+					id = 1,
+					fields = new Dictionary<string, object?>
+					{
+						["System.Title"] = "Parent",
+						["System.WorkItemType"] = "Epic",
+						["System.AreaPath"] = "proj/team"
+					},
+					level = 0
+				},
+				new
+				{
+					id = 42,
+					fields = new Dictionary<string, object?>
+					{
+						["System.Title"] = "Child",
+						["System.WorkItemType"] = "Feature",
+						["System.AreaPath"] = "proj/team/area"
+					},
+					level = 1
+				}
+			};
+			var clientResult = JsonSerializer.Serialize(clientObjects);
 
 			int capturedId = 0;
 			IEnumerable<string>? capturedFields = null;
@@ -253,7 +289,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 					capturedId = id;
 					capturedFields = fields;
 				})
-				.ReturnsAsync(expectedJson);
+				.ReturnsAsync(clientResult);
 
 			var tool = new AzureDevOpsTool(mockClient.Object);
 			var input = JsonSerializer.Serialize(new
@@ -264,11 +300,31 @@ namespace Hermes.Tests.Tools.AzureDevOps
 
 			var result = await tool.ExecuteAsync("GetParentHierarchy", input);
 
-			Assert.Equal(expectedJson, result);
+			// Assert inputs to client
 			Assert.Equal(42, capturedId);
 			Assert.NotNull(capturedFields);
 			Assert.Contains("System.Id", capturedFields!);
 			Assert.Contains("System.Title", capturedFields!);
+
+			// Assert transformed minimal output
+			using var doc = JsonDocument.Parse(result);
+			var root = doc.RootElement;
+			Assert.Equal(JsonValueKind.Array, root.ValueKind);
+			Assert.Equal(2, root.GetArrayLength());
+
+			var parent = root[0];
+			Assert.Equal(1, parent.GetProperty("Id").GetInt32());
+			Assert.Equal("Parent", parent.GetProperty("Title").GetString());
+			Assert.Equal("Epic", parent.GetProperty("WorkItemType").GetString());
+			Assert.Equal("proj/team", parent.GetProperty("AreaPath").GetString());
+			Assert.Equal(0, parent.GetProperty("Level").GetInt32());
+
+			var child = root[1];
+			Assert.Equal(42, child.GetProperty("Id").GetInt32());
+			Assert.Equal("Child", child.GetProperty("Title").GetString());
+			Assert.Equal("Feature", child.GetProperty("WorkItemType").GetString());
+			Assert.Equal("proj/team/area", child.GetProperty("AreaPath").GetString());
+			Assert.Equal(1, child.GetProperty("Level").GetInt32());
 		}
 
 		[Fact]
@@ -347,6 +403,156 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			// Wrong type for workItemId
 			var wrongTypeId = JsonSerializer.Serialize(new { workItemId = new { id = 1 } });
 			await Assert.ThrowsAsync<ArgumentException>(() => tool.ExecuteAsync("GetFullHierarchy", wrongTypeId));
+		}
+
+		[Fact]
+		public async Task Execute_GetWorkItemsByAreaPath_PassesPagingAndReturnsMinimalFields()
+		{
+			// Arrange
+			var clientMock = new Mock<IAzureDevOpsWorkItemClient>(MockBehavior.Strict);
+			var tool = new AzureDevOpsTool(clientMock.Object);
+
+			var input = JsonSerializer.Serialize(new
+			{
+				areaPath = "proj/team/area",
+				workItemTypes = new[] { "Feature" },
+				fields = new[] { "System.Id", "System.Title", "System.WorkItemType", "System.AreaPath" },
+				pageNumber = 2,
+				pageSize = 5
+			});
+
+			// Client returns full shape from Azure DevOps
+			var clientObjects = new []
+			{
+				new
+				{
+					id = 10,
+					fields = new Dictionary<string, object?>
+					{
+						["System.Title"] = "Item 10",
+						["System.WorkItemType"] = "Feature",
+						["System.AreaPath"] = "proj/team/area"
+					},
+					relations = Array.Empty<object>()
+				},
+				new
+				{
+					id = 11,
+					fields = new Dictionary<string, object?>
+					{
+						["System.Title"] = "Item 11",
+						["System.WorkItemType"] = "Feature",
+						["System.AreaPath"] = "proj/team/area"
+					},
+					relations = Array.Empty<object>()
+				}
+			};
+			var clientResult = JsonSerializer.Serialize(clientObjects);
+
+			clientMock
+				.Setup(c => c.GetWorkItemsByAreaPathAsync(
+					"proj/team/area",
+					It.Is<IEnumerable<string>>(t => t.Single() == "Feature"),
+					It.Is<IEnumerable<string>>(f => f.Contains("System.Id") && f.Contains("System.Title")),
+					2,
+					5))
+				.ReturnsAsync(clientResult);
+
+			// Act
+			var json = await tool.ExecuteAsync("GetWorkItemsByAreaPath", input);
+
+			// Assert: ensure we requested with correct paging and that output is minimal
+			clientMock.VerifyAll();
+
+			using var doc = JsonDocument.Parse(json);
+			var root = doc.RootElement;
+			Assert.Equal(JsonValueKind.Array, root.ValueKind);
+			Assert.Equal(2, root.GetArrayLength());
+
+			var first = root[0];
+			Assert.True(first.TryGetProperty("Id", out var idProp));
+			Assert.Equal(10, idProp.GetInt32());
+			Assert.True(first.TryGetProperty("Title", out var titleProp));
+			Assert.Equal("Item 10", titleProp.GetString());
+			Assert.True(first.TryGetProperty("WorkItemType", out var typeProp));
+			Assert.Equal("Feature", typeProp.GetString());
+			Assert.True(first.TryGetProperty("AreaPath", out var areaProp));
+			Assert.Equal("proj/team/area", areaProp.GetString());
+
+			// Should not surface relations from the client response
+			Assert.False(first.TryGetProperty("relations", out _));
+		}
+
+		[Fact]
+		public async Task Execute_GetParentHierarchy_ReturnsMinimalFieldsPerNode()
+		{
+			// Arrange
+			var clientMock = new Mock<IAzureDevOpsWorkItemClient>(MockBehavior.Strict);
+			var tool = new AzureDevOpsTool(clientMock.Object);
+
+			var input = JsonSerializer.Serialize(new
+			{
+				workItemId = 42,
+				fields = new[] { "System.Id", "System.Title", "System.WorkItemType", "System.AreaPath" }
+			});
+
+			var parentChildObjects = new []
+			{
+				new
+				{
+					id = 1,
+					fields = new Dictionary<string, object?>
+					{
+						["System.Title"] = "Parent",
+						["System.WorkItemType"] = "Epic",
+						["System.AreaPath"] = "proj/team"
+					},
+					level = 0
+				},
+				new
+				{
+					id = 42,
+					fields = new Dictionary<string, object?>
+					{
+						["System.Title"] = "Child",
+						["System.WorkItemType"] = "Feature",
+						["System.AreaPath"] = "proj/team/area"
+					},
+					level = 1
+				}
+			};
+			var clientResult = JsonSerializer.Serialize(parentChildObjects);
+
+			clientMock
+				.Setup(c => c.GetParentHierarchyAsync(
+					42,
+					It.Is<IEnumerable<string>>(f => f.Contains("System.Id") && f.Contains("System.Title"))))
+				.ReturnsAsync(clientResult);
+
+			// Act
+			var json = await tool.ExecuteAsync("GetParentHierarchy", input);
+
+			// Assert
+			clientMock.VerifyAll();
+
+			using var doc = JsonDocument.Parse(json);
+			var root = doc.RootElement;
+			Assert.Equal(JsonValueKind.Array, root.ValueKind);
+			Assert.Equal(2, root.GetArrayLength());
+
+			var parent = root[0];
+			Assert.Equal(1, parent.GetProperty("Id").GetInt32());
+			Assert.Equal("Parent", parent.GetProperty("Title").GetString());
+			Assert.Equal("Epic", parent.GetProperty("WorkItemType").GetString());
+			Assert.Equal("proj/team", parent.GetProperty("AreaPath").GetString());
+			Assert.Equal(0, parent.GetProperty("Level").GetInt32());
+
+			var child = root[1];
+			Assert.Equal(42, child.GetProperty("Id").GetInt32());
+			Assert.Equal("Child", child.GetProperty("Title").GetString());
+			Assert.Equal("Feature", child.GetProperty("WorkItemType").GetString());
+			Assert.Equal("proj/team/area", child.GetProperty("AreaPath").GetString());
+			Assert.Equal(1, child.GetProperty("Level").GetInt32());
 		}
 	}
 }

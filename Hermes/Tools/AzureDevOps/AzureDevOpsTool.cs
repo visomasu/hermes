@@ -41,7 +41,7 @@ namespace Hermes.Tools.AzureDevOps
 		public string GetMetadata() =>
 			"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy] | " +
 			"Input (GetWorkItemTree): { 'workItemId': int, 'depth': int } | " +
-			"Input (GetWorkItemsByAreaPath): { 'areaPath': string, 'workItemTypes': string[]?, 'fields': string[]? } | " +
+			"Input (GetWorkItemsByAreaPath): { 'areaPath': string, 'workItemTypes': string[]?, 'fields': string[]?, 'pageNumber': int?, 'pageSize': int? } | " +
 			"Input (GetParentHierarchy): { 'workItemId': int, 'fields': string[]? } | " +
 			"Input (GetFullHierarchy): { 'workItemId': int, 'depth': int?, 'fields': string[]? } | " +
 			"Output: JSON";
@@ -199,6 +199,37 @@ namespace Hermes.Tools.AzureDevOps
 
 			// Delegate to the Azure DevOps client, which handles mandatory fields and traversal.
 			var resultJson = await _client.GetParentHierarchyAsync(workItemId, fields);
+
+			// For hierarchy validation, only return minimal data per node: id, title, type, area path, level.
+			using var resultDoc = JsonDocument.Parse(resultJson);
+			if (resultDoc.RootElement.ValueKind == JsonValueKind.Array)
+			{
+				var minimalItems = resultDoc.RootElement
+					.EnumerateArray()
+					.Select(item => new
+					{
+						Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : (int?)null,
+						Title = item.TryGetProperty("fields", out var fieldsElement) &&
+							fieldsElement.TryGetProperty("System.Title", out var titleProp)
+								? titleProp.GetString()
+								: null,
+						WorkItemType = item.TryGetProperty("fields", out fieldsElement) &&
+							fieldsElement.TryGetProperty("System.WorkItemType", out var typeProp)
+								? typeProp.GetString()
+								: null,
+						AreaPath = item.TryGetProperty("fields", out fieldsElement) &&
+							fieldsElement.TryGetProperty("System.AreaPath", out var areaProp)
+								? areaProp.GetString()
+								: null,
+						Level = item.TryGetProperty("level", out var levelProp) && levelProp.ValueKind == JsonValueKind.Number
+							? levelProp.GetInt32()
+							: (int?)null
+					})
+					.ToList();
+
+				return JsonSerializer.Serialize(minimalItems);
+			}
+
 			return resultJson;
 		}
 
@@ -294,9 +325,37 @@ namespace Hermes.Tools.AzureDevOps
 			using var doc = JsonDocument.Parse(input);
 			var root = doc.RootElement;
 
-			ResolveAreaPathParameters(root, out var areaPath, out var workItemTypes, out var fields);
+			ResolveAreaPathParameters(root, out var areaPath, out var workItemTypes, out var fields, out var pageNumber, out var pageSize);
 
-			var resultJson = await _client.GetWorkItemsByAreaPathAsync(areaPath, workItemTypes, fields);
+			var resultJson = await _client.GetWorkItemsByAreaPathAsync(areaPath, workItemTypes, fields, pageNumber, pageSize);
+
+			// For hierarchy validation, only return minimal data: id, title, type, area path.
+			using var resultDoc = JsonDocument.Parse(resultJson);
+			if (resultDoc.RootElement.ValueKind == JsonValueKind.Array)
+			{
+				var minimalItems = resultDoc.RootElement
+					.EnumerateArray()
+					.Select(item => new
+					{
+						Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : (int?)null,
+						Title = item.TryGetProperty("fields", out var fieldsElement) &&
+							fieldsElement.TryGetProperty("System.Title", out var titleProp)
+								? titleProp.GetString()
+								: null,
+						WorkItemType = item.TryGetProperty("fields", out fieldsElement) &&
+							fieldsElement.TryGetProperty("System.WorkItemType", out var typeProp)
+								? typeProp.GetString()
+								: null,
+						AreaPath = item.TryGetProperty("fields", out fieldsElement) &&
+							fieldsElement.TryGetProperty("System.AreaPath", out var areaProp)
+								? areaProp.GetString()
+								: null
+					})
+					.ToList();
+
+				return JsonSerializer.Serialize(minimalItems);
+			}
+
 			return resultJson;
 		}
 
@@ -304,7 +363,9 @@ namespace Hermes.Tools.AzureDevOps
 			JsonElement root,
 			out string areaPath,
 			out IEnumerable<string>? workItemTypes,
-			out IEnumerable<string>? fields)
+			out IEnumerable<string>? fields,
+			out int pageNumber,
+			out int pageSize)
 		{
 			if (!root.TryGetProperty("areaPath", out var areaPathProp) || areaPathProp.ValueKind != JsonValueKind.String)
 			{
@@ -340,6 +401,47 @@ namespace Hermes.Tools.AzureDevOps
 				}
 				fields = fieldList.Count > 0 ? fieldList : null;
 			}
+
+			// Optional paging parameters; default to API defaults when absent
+			pageNumber = 1;
+			if (root.TryGetProperty("pageNumber", out var pageNumberProp))
+			{
+				if (pageNumberProp.ValueKind == JsonValueKind.Number)
+				{
+					pageNumber = pageNumberProp.GetInt32();
+				}
+				else if (pageNumberProp.ValueKind == JsonValueKind.String && int.TryParse(pageNumberProp.GetString(), out var pn))
+				{
+					pageNumber = pn;
+				}
+			}
+
+			pageSize = 5;
+			if (root.TryGetProperty("pageSize", out var pageSizeProp))
+			{
+				if (pageSizeProp.ValueKind == JsonValueKind.Number)
+				{
+					pageSize = pageSizeProp.GetInt32();
+				}
+				else if (pageSizeProp.ValueKind == JsonValueKind.String && int.TryParse(pageSizeProp.GetString(), out var ps))
+				{
+					pageSize = ps;
+				}
+			}
+		}
+
+		private static object? JsonElementToNetObject(JsonElement element)
+		{
+			return element.ValueKind switch
+			{
+				JsonValueKind.String => element.GetString(),
+				JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+				JsonValueKind.True => true,
+				JsonValueKind.False => false,
+				JsonValueKind.Null => null,
+				JsonValueKind.Undefined => null,
+				_ => JsonSerializer.Deserialize<object>(element.GetRawText())
+			};
 		}
 
 		#endregion

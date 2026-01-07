@@ -33,8 +33,10 @@ namespace Integrations.AzureDevOps
 		/// If null or empty, all work item types are returned.
 		/// </param>
 		/// <param name="fields">The list of field reference names to include in the response.</param>
+		/// <param name="pageNumber">1-based page number for paging through the result set.</param>
+		/// <param name="pageSize">Maximum number of work items to return per page.</param>
 		/// <returns>A JSON string representing a list of WorkItem objects.</returns>
-		Task<string> GetWorkItemsByAreaPathAsync(string areaPath, IEnumerable<string>? workItemTypes = null, IEnumerable<string>? fields = null);
+		Task<string> GetWorkItemsByAreaPathAsync(string areaPath, IEnumerable<string>? workItemTypes = null, IEnumerable<string>? fields = null, int pageNumber = 1, int pageSize = 5);
 
 		/// <summary>
 		/// Retrieves the full parent hierarchy for the specified work item, walking up the parent chain.
