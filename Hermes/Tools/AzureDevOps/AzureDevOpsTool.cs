@@ -1,8 +1,5 @@
 using Integrations.AzureDevOps;
 using System.Text.Json;
-using Hermes.Tools.AzureDevOps.Capabilities;
-using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
-using System.Reflection;
 
 namespace Hermes.Tools.AzureDevOps
 {
@@ -12,9 +9,6 @@ namespace Hermes.Tools.AzureDevOps
 	public class AzureDevOpsTool : IAgentTool
 	{
 		private readonly IAzureDevOpsWorkItemClient _client;
-
-		private readonly IAgentToolCapability<GetWorkItemTreeCapabilityInput> _getWorkItemTreeCapability;
-		private readonly IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> _getWorkItemsByAreaPathCapability;
 		private readonly int _defaultDepth = 2;
 
 		// Static mapping of work item type to fields
@@ -29,17 +23,9 @@ namespace Hermes.Tools.AzureDevOps
 		/// Initializes a new instance of <see cref="AzureDevOpsTool"/>.
 		/// </summary>
 		/// <param name="client">The Azure DevOps work item client.</param>
-		/// <param name="getWorkItemTreeCapability">Capability implementation for GetWorkItemTree.</param>
-		/// <param name="getWorkItemsByAreaPathCapability">Capability implementation for GetWorkItemsByAreaPath.</param>
-		public AzureDevOpsTool(
-			IAzureDevOpsWorkItemClient client,
-			IAgentToolCapability<GetWorkItemTreeCapabilityInput> getWorkItemTreeCapability,
-			IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> getWorkItemsByAreaPathCapability)
+		public AzureDevOpsTool(IAzureDevOpsWorkItemClient client)
 		{
 			_client = client;
-
-			_getWorkItemTreeCapability = getWorkItemTreeCapability;
-			_getWorkItemsByAreaPathCapability = getWorkItemsByAreaPathCapability;
 		}
 
 		/// <inheritdoc/>
@@ -52,57 +38,13 @@ namespace Hermes.Tools.AzureDevOps
 		public IReadOnlyList<string> Capabilities => new[] { "GetWorkItemTree", "GetWorkItemsByAreaPath", "GetParentHierarchy", "GetFullHierarchy" };
 
 		/// <inheritdoc/>
-		public string GetMetadata()
-		{
-			var getWorkItemTreeInput = BuildInputSchemaDescription(typeof(GetWorkItemTreeCapabilityInput));
-			var getWorkItemsByAreaPathInput = BuildInputSchemaDescription(typeof(GetWorkItemsByAreaPathCapabilityInput));
-
-			return
-				"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy] | " +
-				$"Input (GetWorkItemTree): {getWorkItemTreeInput} | " +
-				$"Input (GetWorkItemsByAreaPath): {getWorkItemsByAreaPathInput} | " +
-				"Input (GetParentHierarchy): { 'workItemId': int, 'fields': string[]? } | " +
-				"Input (GetFullHierarchy): { 'workItemId': int, 'depth': int?, 'fields': string[]? } | " +
-				"Output: JSON";
-		}
-
-		private static string BuildInputSchemaDescription(Type inputType)
-		{
-			// Render a JSON-like shape from public properties on the input type, using camelCase names.
-			var properties = inputType
-				.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-				.Where(p => p.CanRead)
-				.Select(p => $"'{ToCamelCase(p.Name)}': {MapTypeToSchemaName(p.PropertyType)}");
-
-			return "{" + string.Join(", ", properties) + "}";
-		}
-
-		private static string ToCamelCase(string name)
-		{
-			if (string.IsNullOrEmpty(name) || char.IsLower(name[0]))
-			{
-				return name;
-			}
-
-			if (name.Length == 1)
-			{
-				return name.ToLowerInvariant();
-			}
-
-			return char.ToLowerInvariant(name[0]) + name[1..];
-		}
-
-		private static string MapTypeToSchemaName(Type type)
-		{
-			if (type == typeof(int) || type == typeof(int?)) return "int";
-			if (type == typeof(string)) return "string";
-			if (type.IsArray)
-			{
-				var elementType = type.GetElementType() ?? typeof(object);
-				return MapTypeToSchemaName(elementType) + "[]";
-			}
-			return "object";
-		}
+		public string GetMetadata() =>
+			"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy] | " +
+			"Input (GetWorkItemTree): { 'workItemId': int, 'depth': int } | " +
+			"Input (GetWorkItemsByAreaPath): { 'areaPath': string, 'workItemTypes': string[]?, 'fields': string[]?, 'pageNumber': int?, 'pageSize': int? } | " +
+			"Input (GetParentHierarchy): { 'workItemId': int, 'fields': string[]? } | " +
+			"Input (GetFullHierarchy): { 'workItemId': int, 'depth': int?, 'fields': string[]? } | " +
+			"Output: JSON";
 
 		/// <inheritdoc/>
 		public virtual async Task<string> ExecuteAsync(string operation, string input)
@@ -121,11 +63,127 @@ namespace Hermes.Tools.AzureDevOps
 
 		private async Task<string> ExecuteGetWorkItemTreeAsync(string input)
 		{
-			// Use the capability for the actual implementation; keep JSON contract the same.
-			var model = JsonSerializer.Deserialize<GetWorkItemTreeCapabilityInput>(input)
-				?? throw new ArgumentException("Invalid input for GetWorkItemTree.");
+			var doc = JsonDocument.Parse(input);
+			int rootId = ExtractRootId(doc.RootElement);
+			int depth = ExtractDepth(doc.RootElement);
 
-			return await _getWorkItemTreeCapability.ExecuteAsync(model);
+			var tree = await GetWorkItemTreeAsync(rootId, depth);
+			return JsonSerializer.Serialize(tree);
+		}
+
+		private int ExtractRootId(JsonElement root)
+		{
+			var rootIdElem = root.GetProperty("rootId");
+			if (rootIdElem.ValueKind == JsonValueKind.String)
+			{
+				if (int.TryParse(rootIdElem.GetString(), out int rootId))
+					return rootId;
+				throw new ArgumentException("rootId must be convertible to int.");
+			}
+			else if (rootIdElem.ValueKind == JsonValueKind.Number)
+			{
+				return rootIdElem.GetInt32();
+			}
+			else
+			{
+				throw new ArgumentException("rootId must be a string or number.");
+			}
+		}
+
+		private int ExtractDepth(JsonElement root)
+		{
+			if (root.TryGetProperty("depth", out var depthElem))
+			{
+				if (depthElem.ValueKind == JsonValueKind.String)
+				{
+					if (int.TryParse(depthElem.GetString(), out int depth))
+						return depth;
+					return _defaultDepth;
+				}
+				else if (depthElem.ValueKind == JsonValueKind.Number)
+				{
+					return depthElem.GetInt32();
+				}
+			}
+			return _defaultDepth;
+		}
+
+		private async Task<JsonElement> GetWorkItemTreeAsync(int id, int depth)
+		{
+			// Fetch root work item with fields based on its type
+			var json = await _client.GetWorkItemAsync(id);
+			using var doc = JsonDocument.Parse(json);
+			var root = doc.RootElement.Clone();
+
+			string? type = null;
+			if (root.TryGetProperty("fields", out var fieldsElem) && fieldsElem.TryGetProperty("System.WorkItemType", out var typeElem))
+			{
+				type = typeElem.GetString();
+			}
+
+			IEnumerable<string>? fields = null;
+			if (type != null && FieldsByType.TryGetValue(type, out var typeFields))
+			{
+				fields = typeFields;
+			}
+
+			// If fields are specified, re-fetch with those fields
+			if (fields != null && fields.Any())
+			{
+				json = await _client.GetWorkItemAsync(id, fields);
+				using var doc2 = JsonDocument.Parse(json);
+				root = doc2.RootElement.Clone();
+			}
+
+			if (depth <= 0 || !root.TryGetProperty("relations", out var relations))
+				return root;
+
+			var children = new List<JsonElement>();
+			foreach (var rel in relations.EnumerateArray())
+			{
+				if (IsChildRelation(rel) && TryGetChildIdFromRelation(rel, out int childId))
+				{
+					var child = await GetWorkItemTreeAsync(childId, depth - 1);
+					children.Add(child);
+				}
+			}
+
+			using var rootDoc = JsonDocument.Parse(JsonSerializer.Serialize(root));
+			var rootObj = rootDoc.RootElement.Clone();
+			using var childrenDoc = JsonDocument.Parse(JsonSerializer.Serialize(children));
+			var childrenArr = childrenDoc.RootElement.Clone();
+
+			using var mergedDoc = JsonDocument.Parse(JsonSerializer.Serialize(new
+			{
+				workItem = rootObj,
+				children = childrenArr
+			}));
+
+			return mergedDoc.RootElement.Clone();
+		}
+
+		private bool IsChildRelation(JsonElement rel)
+		{
+			return rel.TryGetProperty("rel", out var relType) &&
+				relType.GetString() == "System.LinkTypes.Hierarchy-Forward" &&
+				rel.TryGetProperty("attributes", out var attributes) &&
+				attributes.TryGetProperty("name", out var nameProp) &&
+				nameProp.GetString() == "Child";
+		}
+
+		private bool TryGetChildIdFromRelation(JsonElement rel, out int childId)
+		{
+			childId = 0;
+			if (rel.TryGetProperty("url", out var urlProp))
+			{
+				var url = urlProp.GetString();
+				if (url != null && int.TryParse(url.Split('/').Last(), out int id))
+				{
+					childId = id;
+					return true;
+				}
+			}
+			return false;
 		}
 
 		#endregion
@@ -192,14 +250,12 @@ namespace Hermes.Tools.AzureDevOps
 			var parentsElement = parentDoc.RootElement.Clone();
 
 			// Children: reuse the existing work item tree logic starting from the same work item.
-			var subtreeJson = await ExecuteGetWorkItemTreeAsync(JsonSerializer.Serialize(new { workItemId = workItemId, depth }));
-			using var subtreeDoc = JsonDocument.Parse(subtreeJson);
-			var childrenElement = subtreeDoc.RootElement.Clone();
+			var subtree = await GetWorkItemTreeAsync(workItemId, depth);
 
 			using var mergedDoc = JsonDocument.Parse(JsonSerializer.Serialize(new
 			{
 				parents = parentsElement,
-				children = childrenElement
+				children = subtree
 			}));
 
 			return JsonSerializer.Serialize(mergedDoc.RootElement);
@@ -266,10 +322,112 @@ namespace Hermes.Tools.AzureDevOps
 
 		private async Task<string> ExecuteGetWorkItemsByAreaPathAsync(string input)
 		{
-			var model = JsonSerializer.Deserialize<GetWorkItemsByAreaPathCapabilityInput>(input)
-				?? throw new ArgumentException("Invalid input for GetWorkItemsByAreaPath.");
+			using var doc = JsonDocument.Parse(input);
+			var root = doc.RootElement;
 
-			return await _getWorkItemsByAreaPathCapability.ExecuteAsync(model);
+			ResolveAreaPathParameters(root, out var areaPath, out var workItemTypes, out var fields, out var pageNumber, out var pageSize);
+
+			var resultJson = await _client.GetWorkItemsByAreaPathAsync(areaPath, workItemTypes, fields, pageNumber, pageSize);
+
+			// For hierarchy validation, only return minimal data: id, title, type, area path.
+			using var resultDoc = JsonDocument.Parse(resultJson);
+			if (resultDoc.RootElement.ValueKind == JsonValueKind.Array)
+			{
+				var minimalItems = resultDoc.RootElement
+					.EnumerateArray()
+					.Select(item => new
+					{
+						Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : (int?)null,
+						Title = item.TryGetProperty("fields", out var fieldsElement) &&
+							fieldsElement.TryGetProperty("System.Title", out var titleProp)
+								? titleProp.GetString()
+								: null,
+						WorkItemType = item.TryGetProperty("fields", out fieldsElement) &&
+							fieldsElement.TryGetProperty("System.WorkItemType", out var typeProp)
+								? typeProp.GetString()
+								: null,
+						AreaPath = item.TryGetProperty("fields", out fieldsElement) &&
+							fieldsElement.TryGetProperty("System.AreaPath", out var areaProp)
+								? areaProp.GetString()
+								: null
+					})
+					.ToList();
+
+				return JsonSerializer.Serialize(minimalItems);
+			}
+
+			return resultJson;
+		}
+
+		private void ResolveAreaPathParameters(
+			JsonElement root,
+			out string areaPath,
+			out IEnumerable<string>? workItemTypes,
+			out IEnumerable<string>? fields,
+			out int pageNumber,
+			out int pageSize)
+		{
+			if (!root.TryGetProperty("areaPath", out var areaPathProp) || areaPathProp.ValueKind != JsonValueKind.String)
+			{
+				throw new ArgumentException("'areaPath' is required and must be a string.");
+			}
+
+			areaPath = areaPathProp.GetString() ?? string.Empty;
+
+			workItemTypes = null;
+			if (root.TryGetProperty("workItemTypes", out var typesProp) && typesProp.ValueKind == JsonValueKind.Array)
+			{
+				var list = new List<string>();
+				foreach (var t in typesProp.EnumerateArray())
+				{
+					if (t.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(t.GetString()))
+					{
+						list.Add(t.GetString()!);
+					}
+				}
+				workItemTypes = list.Count > 0 ? list : null;
+			}
+
+			fields = null;
+			if (root.TryGetProperty("fields", out var fieldsProp) && fieldsProp.ValueKind == JsonValueKind.Array)
+			{
+				var fieldList = new List<string>();
+				foreach (var f in fieldsProp.EnumerateArray())
+				{
+					if (f.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(f.GetString()))
+					{
+						fieldList.Add(f.GetString()!);
+					}
+				}
+				fields = fieldList.Count > 0 ? fieldList : null;
+			}
+
+			// Optional paging parameters; default to API defaults when absent
+			pageNumber = 1;
+			if (root.TryGetProperty("pageNumber", out var pageNumberProp))
+			{
+				if (pageNumberProp.ValueKind == JsonValueKind.Number)
+				{
+					pageNumber = pageNumberProp.GetInt32();
+				}
+				else if (pageNumberProp.ValueKind == JsonValueKind.String && int.TryParse(pageNumberProp.GetString(), out var pn))
+				{
+					pageNumber = pn;
+				}
+			}
+
+			pageSize = 5;
+			if (root.TryGetProperty("pageSize", out var pageSizeProp))
+			{
+				if (pageSizeProp.ValueKind == JsonValueKind.Number)
+				{
+					pageSize = pageSizeProp.GetInt32();
+				}
+				else if (pageSizeProp.ValueKind == JsonValueKind.String && int.TryParse(pageSizeProp.GetString(), out var ps))
+				{
+					pageSize = ps;
+				}
+			}
 		}
 
 		private static object? JsonElementToNetObject(JsonElement element)

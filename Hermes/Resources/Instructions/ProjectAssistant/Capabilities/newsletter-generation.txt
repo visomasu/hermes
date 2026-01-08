@@ -13,7 +13,7 @@ Follow these steps:
 2. Retrieve the work item hierarchy
    - Use the `AzureDevOps` tool with the `GetWorkItemTree` operation to fetch the hierarchy rooted at the provided ID.
    - Example:
-     - `AzureDevOps.GetWorkItemTree({ "workItemId": "<featureId>", "depth": 3 })`
+     - `AzureDevOps.GetWorkItemTree({ "rootId": "<featureId>", "depth": 3 })`
    - Request sufficient depth to include:
      - The root epic/feature,
      - Child features or user stories,
