@@ -5,16 +5,30 @@ using Hermes.Tools.AzureDevOps;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using Integrations.AzureDevOps;
+using Hermes.Tools;
+using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
+using Hermes.Tools.AzureDevOps.Capabilities;
 
 namespace Hermes.Tests.Controllers
 {
 	public class ToolsControllerTests
 	{
+		private static Mock<AzureDevOpsTool> CreateMockTool()
+		{
+			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+			var mockTreeCapability = new Mock<IAgentToolCapability<GetWorkItemTreeCapabilityInput>>();
+			var mockAreaPathCapability = new Mock<IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput>>();
+			var mockParentHierarchyCapability = new Mock<IAgentToolCapability<GetParentHierarchyCapabilityInput>>();
+			var mockFullHierarchyCapability = new Mock<IAgentToolCapability<GetFullHierarchyCapabilityInput>>();
+
+			return new Mock<AzureDevOpsTool>(MockBehavior.Default, mockClient.Object, mockTreeCapability.Object, mockAreaPathCapability.Object, mockParentHierarchyCapability.Object, mockFullHierarchyCapability.Object);
+		}
+
 		[Fact]
 		public async Task GetWorkItemTree_ReturnsJsonResult()
 		{
 			// Arrange
-			var mockTool = new Mock<AzureDevOpsTool>(MockBehavior.Default, new Mock<IAzureDevOpsWorkItemClient>().Object);
+			var mockTool = CreateMockTool();
 			mockTool.Setup(x => x.ExecuteAsync("GetWorkItemTree", It.IsAny<string>()))
 				.ReturnsAsync("{\"workItem\":{\"id\":1},\"children\":[]}");
 			var controller = new ToolsController(mockTool.Object);
@@ -32,7 +46,7 @@ namespace Hermes.Tests.Controllers
 		public async Task GetWorkItemTree_WhenToolThrows_ReturnsServerError()
 		{
 			// Arrange
-			var mockTool = new Mock<AzureDevOpsTool>(MockBehavior.Default, new Mock<IAzureDevOpsWorkItemClient>().Object);
+			var mockTool = CreateMockTool();
 			mockTool.Setup(x => x.ExecuteAsync("GetWorkItemTree", It.IsAny<string>()))
 				.ThrowsAsync(new System.Exception("Tool error"));
 			var controller = new ToolsController(mockTool.Object);

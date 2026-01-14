@@ -1,6 +1,8 @@
 using Autofac;
 using Hermes.Tools;
 using Hermes.Tools.AzureDevOps;
+using Hermes.Tools.AzureDevOps.Capabilities;
+using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
 
 namespace Hermes.DI
 {
@@ -11,6 +13,27 @@ namespace Hermes.DI
 	{
 		protected override void Load(ContainerBuilder builder)
 		{
+            // Azure DevOps
+            builder.RegisterType<GetWorkItemTreeCapability>()
+				.As<IAgentToolCapability<GetWorkItemTreeCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			builder.RegisterType<GetWorkItemsByAreaPathCapability>()
+				.As<IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			builder.RegisterType<GetParentHierarchyCapability>()
+				.As<IAgentToolCapability<GetParentHierarchyCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			builder.RegisterType<GetFullHierarchyCapability>()
+				.As<IAgentToolCapability<GetFullHierarchyCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
 			builder.RegisterType<AzureDevOpsTool>()
 				.AsSelf()
 				.SingleInstance();
