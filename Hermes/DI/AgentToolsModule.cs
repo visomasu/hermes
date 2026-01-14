@@ -24,6 +24,16 @@ namespace Hermes.DI
 				.AsSelf()
 				.InstancePerDependency();
 
+			builder.RegisterType<GetParentHierarchyCapability>()
+				.As<IAgentToolCapability<GetParentHierarchyCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			builder.RegisterType<GetFullHierarchyCapability>()
+				.As<IAgentToolCapability<GetFullHierarchyCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
 			builder.RegisterType<AzureDevOpsTool>()
 				.AsSelf()
 				.SingleInstance();

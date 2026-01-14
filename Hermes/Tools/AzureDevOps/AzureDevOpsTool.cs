@@ -15,6 +15,8 @@ namespace Hermes.Tools.AzureDevOps
 
 		private readonly IAgentToolCapability<GetWorkItemTreeCapabilityInput> _getWorkItemTreeCapability;
 		private readonly IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> _getWorkItemsByAreaPathCapability;
+		private readonly IAgentToolCapability<GetParentHierarchyCapabilityInput> _getParentHierarchyCapability;
+		private readonly IAgentToolCapability<GetFullHierarchyCapabilityInput> _getFullHierarchyCapability;
 		private readonly int _defaultDepth = 2;
 
 		// Static mapping of work item type to fields
@@ -31,15 +33,21 @@ namespace Hermes.Tools.AzureDevOps
 		/// <param name="client">The Azure DevOps work item client.</param>
 		/// <param name="getWorkItemTreeCapability">Capability implementation for GetWorkItemTree.</param>
 		/// <param name="getWorkItemsByAreaPathCapability">Capability implementation for GetWorkItemsByAreaPath.</param>
+		/// <param name="getParentHierarchyCapability">Capability implementation for GetParentHierarchy.</param>
+		/// <param name="getFullHierarchyCapability">Capability implementation for GetFullHierarchy.</param>
 		public AzureDevOpsTool(
 			IAzureDevOpsWorkItemClient client,
 			IAgentToolCapability<GetWorkItemTreeCapabilityInput> getWorkItemTreeCapability,
-			IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> getWorkItemsByAreaPathCapability)
+			IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> getWorkItemsByAreaPathCapability,
+			IAgentToolCapability<GetParentHierarchyCapabilityInput> getParentHierarchyCapability,
+			IAgentToolCapability<GetFullHierarchyCapabilityInput> getFullHierarchyCapability)
 		{
 			_client = client;
 
 			_getWorkItemTreeCapability = getWorkItemTreeCapability;
 			_getWorkItemsByAreaPathCapability = getWorkItemsByAreaPathCapability;
+			_getParentHierarchyCapability = getParentHierarchyCapability;
+			_getFullHierarchyCapability = getFullHierarchyCapability;
 		}
 
 		/// <inheritdoc/>
@@ -56,13 +64,15 @@ namespace Hermes.Tools.AzureDevOps
 		{
 			var getWorkItemTreeInput = BuildInputSchemaDescription(typeof(GetWorkItemTreeCapabilityInput));
 			var getWorkItemsByAreaPathInput = BuildInputSchemaDescription(typeof(GetWorkItemsByAreaPathCapabilityInput));
+			var getParentHierarchyInput = BuildInputSchemaDescription(typeof(GetParentHierarchyCapabilityInput));
+			var getFullHierarchyInput = BuildInputSchemaDescription(typeof(GetFullHierarchyCapabilityInput));
 
 			return
 				"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy] | " +
 				$"Input (GetWorkItemTree): {getWorkItemTreeInput} | " +
 				$"Input (GetWorkItemsByAreaPath): {getWorkItemsByAreaPathInput} | " +
-				"Input (GetParentHierarchy): { 'workItemId': int, 'fields': string[]? } | " +
-				"Input (GetFullHierarchy): { 'workItemId': int, 'depth': int?, 'fields': string[]? } | " +
+				$"Input (GetParentHierarchy): {getParentHierarchyInput} | " +
+				$"Input (GetFullHierarchy): {getFullHierarchyInput} | " +
 				"Output: JSON";
 		}
 
@@ -134,45 +144,11 @@ namespace Hermes.Tools.AzureDevOps
 
 		private async Task<string> ExecuteGetParentHierarchyAsync(string input)
 		{
-			using var doc = JsonDocument.Parse(input);
-			var root = doc.RootElement;
+			// Use the capability for the actual implementation; keep JSON contract the same.
+			var model = JsonSerializer.Deserialize<GetParentHierarchyCapabilityInput>(input)
+				?? throw new ArgumentException("Invalid input for GetParentHierarchy.");
 
-			ResolveWorkItemParameters(root, out var workItemId, out _, out var fields);
-
-			// Delegate to the Azure DevOps client, which handles mandatory fields and traversal.
-			var resultJson = await _client.GetParentHierarchyAsync(workItemId, fields);
-
-			// For hierarchy validation, only return minimal data per node: id, title, type, area path, level.
-			using var resultDoc = JsonDocument.Parse(resultJson);
-			if (resultDoc.RootElement.ValueKind == JsonValueKind.Array)
-			{
-				var minimalItems = resultDoc.RootElement
-					.EnumerateArray()
-					.Select(item => new
-					{
-						Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : (int?)null,
-						Title = item.TryGetProperty("fields", out var fieldsElement) &&
-							fieldsElement.TryGetProperty("System.Title", out var titleProp)
-								? titleProp.GetString()
-								: null,
-						WorkItemType = item.TryGetProperty("fields", out fieldsElement) &&
-							fieldsElement.TryGetProperty("System.WorkItemType", out var typeProp)
-								? typeProp.GetString()
-								: null,
-						AreaPath = item.TryGetProperty("fields", out fieldsElement) &&
-							fieldsElement.TryGetProperty("System.AreaPath", out var areaProp)
-								? areaProp.GetString()
-								: null,
-						Level = item.TryGetProperty("level", out var levelProp) && levelProp.ValueKind == JsonValueKind.Number
-							? levelProp.GetInt32()
-							: (int?)null
-					})
-					.ToList();
-
-				return JsonSerializer.Serialize(minimalItems);
-			}
-
-			return resultJson;
+			return await _getParentHierarchyCapability.ExecuteAsync(model);
 		}
 
 		#endregion
@@ -181,83 +157,11 @@ namespace Hermes.Tools.AzureDevOps
 
 		private async Task<string> ExecuteGetFullHierarchyAsync(string input)
 		{
-			using var doc = JsonDocument.Parse(input);
-			var root = doc.RootElement;
+			// Use the capability for the actual implementation; keep JSON contract the same.
+			var model = JsonSerializer.Deserialize<GetFullHierarchyCapabilityInput>(input)
+				?? throw new ArgumentException("Invalid input for GetFullHierarchy.");
 
-			ResolveWorkItemParameters(root, out var workItemId, out var depth, out var fields);
-
-			// Parents: use the client-level parent hierarchy API.
-			var parentJson = await _client.GetParentHierarchyAsync(workItemId, fields);
-			using var parentDoc = JsonDocument.Parse(parentJson);
-			var parentsElement = parentDoc.RootElement.Clone();
-
-			// Children: reuse the existing work item tree logic starting from the same work item.
-			var subtreeJson = await ExecuteGetWorkItemTreeAsync(JsonSerializer.Serialize(new { workItemId = workItemId, depth }));
-			using var subtreeDoc = JsonDocument.Parse(subtreeJson);
-			var childrenElement = subtreeDoc.RootElement.Clone();
-
-			using var mergedDoc = JsonDocument.Parse(JsonSerializer.Serialize(new
-			{
-				parents = parentsElement,
-				children = childrenElement
-			}));
-
-			return JsonSerializer.Serialize(mergedDoc.RootElement);
-		}
-
-		/// <summary>
-		/// Resolves common parameters for work-item-based operations: workItemId, optional depth, and optional fields.
-		/// </summary>
-		private void ResolveWorkItemParameters(JsonElement root, out int workItemId, out int depth, out IEnumerable<string>? fields)
-		{
-			if (!root.TryGetProperty("workItemId", out var idProp))
-			{
-				throw new ArgumentException("'workItemId' is required.");
-			}
-
-			if (idProp.ValueKind == JsonValueKind.String)
-			{
-				if (!int.TryParse(idProp.GetString(), out workItemId))
-				{
-					throw new ArgumentException("'workItemId' must be convertible to int.");
-				}
-			}
-			else if (idProp.ValueKind == JsonValueKind.Number)
-			{
-				workItemId = idProp.GetInt32();
-			}
-			else
-			{
-				throw new ArgumentException("'workItemId' must be a string or number.");
-			}
-
-			// Depth is optional; if not present, use the default.
-			depth = _defaultDepth;
-			if (root.TryGetProperty("depth", out var depthProp))
-			{
-				if (depthProp.ValueKind == JsonValueKind.Number)
-				{
-					depth = depthProp.GetInt32();
-				}
-				else if (depthProp.ValueKind == JsonValueKind.String && int.TryParse(depthProp.GetString(), out var d))
-				{
-					depth = d;
-				}
-			}
-
-			fields = null;
-			if (root.TryGetProperty("fields", out var fieldsProp) && fieldsProp.ValueKind == JsonValueKind.Array)
-			{
-				var fieldList = new List<string>();
-				foreach (var f in fieldsProp.EnumerateArray())
-				{
-					if (f.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(f.GetString()))
-					{
-						fieldList.Add(f.GetString()!);
-					}
-				}
-				fields = fieldList.Count > 0 ? fieldList : null;
-			}
+			return await _getFullHierarchyCapability.ExecuteAsync(model);
 		}
 
 		#endregion
@@ -270,20 +174,6 @@ namespace Hermes.Tools.AzureDevOps
 				?? throw new ArgumentException("Invalid input for GetWorkItemsByAreaPath.");
 
 			return await _getWorkItemsByAreaPathCapability.ExecuteAsync(model);
-		}
-
-		private static object? JsonElementToNetObject(JsonElement element)
-		{
-			return element.ValueKind switch
-			{
-				JsonValueKind.String => element.GetString(),
-				JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
-				JsonValueKind.True => true,
-				JsonValueKind.False => false,
-				JsonValueKind.Null => null,
-				JsonValueKind.Undefined => null,
-				_ => JsonSerializer.Deserialize<object>(element.GetRawText())
-			};
 		}
 
 		#endregion
