@@ -19,6 +19,11 @@ namespace Hermes.DI
 				.AsSelf()
 				.InstancePerDependency();
 
+			builder.RegisterType<GetWorkItemsByAreaPathCapability>()
+				.As<IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
 			builder.RegisterType<AzureDevOpsTool>()
 				.AsSelf()
 				.SingleInstance();
