@@ -75,7 +75,7 @@ Hermes/
     └── Instructions/          # AI agent prompts
         └── ProjectAssistant/
             ├── agentspec.json # Capability manifest
-            ├── ProjectAssistant_Common.txt
+            ├── agent.txt      # Base agent instructions
             └── Capabilities/  # Per-capability instructions
                 └── {CapabilityName}.txt
 

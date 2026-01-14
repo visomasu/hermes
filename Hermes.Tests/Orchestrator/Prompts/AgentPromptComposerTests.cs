@@ -80,7 +80,7 @@ namespace Hermes.Tests.Orchestrator.Prompts
 				var instructionFolder = Path.Combine(tempRoot, "Resources", "Instructions", "ProjectAssistant");
 				Directory.CreateDirectory(instructionFolder);
 
-				var commonPath = Path.Combine(instructionFolder, "ProjectAssistant_Common");
+				var commonPath = Path.Combine(instructionFolder, "agent.txt");
 				File.WriteAllText(commonPath, "COMMON-INSTRUCTIONS");
 
 				var capabilitiesFolder = Path.Combine(tempRoot, "Resources", "Instructions", "ProjectAssistant", "Capabilities");
