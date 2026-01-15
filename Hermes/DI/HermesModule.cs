@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Hermes.Orchestrator;
+using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.HermesInstructions;
@@ -44,6 +45,10 @@ namespace Hermes.DI
                 .As<IAgentPromptComposer>()
                 .SingleInstance();
 
+            builder.RegisterType<WaitingPhraseGenerator>()
+                .As<IWaitingPhraseGenerator>()
+                .SingleInstance();
+
             // Register HermesOrchestrator and pass only AzureDevOpsTool
             builder.Register(ctx =>
             {
@@ -66,8 +71,9 @@ namespace Hermes.DI
                 var azureDevOpsTool = ctx.Resolve<AzureDevOpsTool>();
                 var instructionsRepository = ctx.Resolve<IHermesInstructionsRepository>();
                 var conversationHistoryRepository = ctx.Resolve<IConversationHistoryRepository>();
+                var phraseGenerator = ctx.Resolve<IWaitingPhraseGenerator>();
 
-                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool }, instructionsRepository, conversationHistoryRepository, ctx.Resolve<IAgentPromptComposer>());
+                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool }, instructionsRepository, conversationHistoryRepository, ctx.Resolve<IAgentPromptComposer>(), phraseGenerator);
             }).As<IAgentOrchestrator>().SingleInstance();
         }
     }

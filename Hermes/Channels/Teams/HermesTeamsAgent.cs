@@ -3,6 +3,7 @@ using Microsoft.Agents.Builder.App;
 using Microsoft.Agents.Builder.State;
 using Microsoft.Agents.Core.Models;
 using Hermes.Orchestrator;
+using Hermes.Orchestrator.PhraseGen;
 
 namespace Hermes.Channels.Teams
 {
@@ -13,6 +14,7 @@ namespace Hermes.Channels.Teams
     public class HermesTeamsAgent : AgentApplication
     {
         private readonly IAgentOrchestrator _orchestrator;
+        private readonly IWaitingPhraseGenerator _phraseGenerator;
 
         /// <summary>
         /// Initializes a new instance of the HermesTeamsAgent class.
@@ -20,9 +22,11 @@ namespace Hermes.Channels.Teams
         /// </summary>
         /// <param name="options">Configuration options for the agent application, including authentication settings, storage configuration, and other application-level settings.</param>
         /// <param name="orchestrator">The Hermes orchestrator for processing user queries and generating AI responses.</param>
-        public HermesTeamsAgent(AgentApplicationOptions options, IAgentOrchestrator orchestrator) : base(options)
+        /// <param name="phraseGenerator">Generator for creating fun waiting phrases.</param>
+        public HermesTeamsAgent(AgentApplicationOptions options, IAgentOrchestrator orchestrator, IWaitingPhraseGenerator phraseGenerator) : base(options)
         {
             _orchestrator = orchestrator;
+            _phraseGenerator = phraseGenerator;
 
             // Register WelcomeMessageAsync delegate to handle when members are added to the conversation
             OnConversationUpdate(ConversationUpdateEvents.MembersAdded, WelcomeMessageAsync);
@@ -75,6 +79,7 @@ namespace Hermes.Channels.Teams
         /// <summary>
         /// Handles incoming message activities from Teams users.
         /// Uses the Hermes orchestrator to process the user's message and returns the AI response.
+        /// Shows typing indicators with fun phrases while processing.
         /// </summary>
         /// <param name="turnContext">The turn context containing information about the current conversation turn, including the incoming message activity.</param>
         /// <param name="turnState">The state object for the current turn, providing access to user, conversation, and temporary state information.</param>
@@ -87,7 +92,24 @@ namespace Hermes.Channels.Teams
             // Use the Teams conversation id as the session id for history and orchestration
             var sessionId = turnContext.Activity.Conversation?.Id ?? string.Empty;
 
-            var response = await _orchestrator.OrchestrateAsync(sessionId, userText);
+            string response;
+
+            // Create typing indicator with a fun phrase and start sending typing activities
+            using (var typingIndicator = new PeriodicTypingIndicator(turnContext, _phraseGenerator.GeneratePhrase()))
+            {
+                // Orchestrate with progress callback that receives waiting phrases
+                response = await _orchestrator.OrchestrateAsync(
+                    sessionId,
+                    userText,
+                    progressCallback: phrase =>
+                    {
+                        // Progress callback invoked when orchestration starts
+                        // Typing indicator is already running in the background
+                    });
+
+                // Stop typing indicator before sending final response
+                await typingIndicator.StopAsync();
+            }
 
             if (string.IsNullOrWhiteSpace(response))
             {

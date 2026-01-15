@@ -1,4 +1,5 @@
 using Hermes.Orchestrator;
+using Hermes.Orchestrator.PhraseGen;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Tools;
@@ -22,6 +23,7 @@ namespace Hermes.Tests.Orchestrator
 			};
 			var agentMock = new Mock<AIAgent>();
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
+			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
 
 			// Return a basic instruction so the orchestrator can resolve instructions if needed
 			instructionsRepoMock
@@ -39,7 +41,8 @@ namespace Hermes.Tests.Orchestrator
 				instructionsRepoMock.Object,
 				tools,
 				new Mock<IConversationHistoryRepository>().Object,
-				new Mock<IAgentPromptComposer>().Object);
+				new Mock<IAgentPromptComposer>().Object,
+				phraseGeneratorMock.Object);
 
 			// Assert
 			Assert.NotNull(orchestrator);
@@ -53,6 +56,7 @@ namespace Hermes.Tests.Orchestrator
 			var agentMock = new Mock<AIAgent>();
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 			var historyRepoMock = new Mock<IConversationHistoryRepository>();
+			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
 
 			instructionsRepoMock
 				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
@@ -93,7 +97,8 @@ namespace Hermes.Tests.Orchestrator
 				instructionsRepoMock.Object,
 				tools,
 				historyRepoMock.Object,
-				new Mock<IAgentPromptComposer>().Object);
+				new Mock<IAgentPromptComposer>().Object,
+				phraseGeneratorMock.Object);
 
 			// Act
 			var response = await orchestrator.OrchestrateAsync("session-1", "What is the status of feature123?");
@@ -121,6 +126,7 @@ namespace Hermes.Tests.Orchestrator
 			var agentMock = new Mock<AIAgent>();
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 			var historyRepoMock = new Mock<IConversationHistoryRepository>();
+			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
 
 			instructionsRepoMock
 				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
@@ -153,7 +159,8 @@ namespace Hermes.Tests.Orchestrator
 				instructionsRepoMock.Object,
 				tools,
 				historyRepoMock.Object,
-				new Mock<IAgentPromptComposer>().Object);
+				new Mock<IAgentPromptComposer>().Object,
+				phraseGeneratorMock.Object);
 
 			var sessionId = "history-session";
 			var query = "History test query";
@@ -180,6 +187,7 @@ namespace Hermes.Tests.Orchestrator
 			var agentMock = new Mock<AIAgent>();
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 			var historyRepoMock = new Mock<IConversationHistoryRepository>();
+			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
 
 			instructionsRepoMock
 				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
@@ -225,7 +233,8 @@ namespace Hermes.Tests.Orchestrator
 				instructionsRepoMock.Object,
 				tools,
 				historyRepoMock.Object,
-				new Mock<IAgentPromptComposer>().Object);
+				new Mock<IAgentPromptComposer>().Object,
+				phraseGeneratorMock.Object);
 
 			// Act
 			await orchestrator.OrchestrateAsync("session-with-history", "New question");
@@ -238,6 +247,168 @@ namespace Hermes.Tests.Orchestrator
 			Assert.Equal("Old question", msgsList[0].Text);
 			Assert.Equal("Old answer", msgsList[1].Text);
 			Assert.Equal("New question", msgsList[2].Text);
+		}
+
+		[Fact]
+		public async Task OrchestrateAsync_WithProgressCallback_InvokesCallbackWithPhrase()
+		{
+			// Arrange
+			var tools = new List<IAgentTool>();
+			var agentMock = new Mock<AIAgent>();
+			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
+			var historyRepoMock = new Mock<IConversationHistoryRepository>();
+			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+
+			phraseGeneratorMock
+				.Setup(p => p.GeneratePhrase())
+				.Returns("brilliant-dancing-thought");
+
+			instructionsRepoMock
+				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
+				.ReturnsAsync(new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions(
+					"Test instructions",
+					HermesInstructionType.ProjectAssistant,
+					1));
+
+			historyRepoMock
+				.Setup(h => h.GetConversationHistoryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync((string?)null);
+
+			var chatResponseMock = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
+			var agentResponseMock = new AgentRunResponse(chatResponseMock);
+
+			var threadMock = new Mock<AgentThread>();
+			agentMock
+				.Setup(a => a.GetNewThread())
+				.Returns(threadMock.Object);
+
+			agentMock
+				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(agentResponseMock);
+
+			var orchestrator = new HermesOrchestrator(
+				agentMock.Object,
+				"https://test.openai.azure.com/",
+				"test-api-key",
+				instructionsRepoMock.Object,
+				tools,
+				historyRepoMock.Object,
+				new Mock<IAgentPromptComposer>().Object,
+				phraseGeneratorMock.Object);
+
+			string? capturedPhrase = null;
+			Action<string> progressCallback = phrase => capturedPhrase = phrase;
+
+			// Act
+			await orchestrator.OrchestrateAsync("test-session", "Test query", progressCallback);
+
+			// Assert
+			Assert.NotNull(capturedPhrase);
+			Assert.Equal("brilliant-dancing-thought", capturedPhrase);
+			phraseGeneratorMock.Verify(p => p.GeneratePhrase(), Times.Once);
+		}
+
+		[Fact]
+		public async Task OrchestrateAsync_WithoutProgressCallback_DoesNotInvokeCallback()
+		{
+			// Arrange
+			var tools = new List<IAgentTool>();
+			var agentMock = new Mock<AIAgent>();
+			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
+			var historyRepoMock = new Mock<IConversationHistoryRepository>();
+			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+
+			instructionsRepoMock
+				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
+				.ReturnsAsync(new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions(
+					"Test instructions",
+					HermesInstructionType.ProjectAssistant,
+					1));
+
+			historyRepoMock
+				.Setup(h => h.GetConversationHistoryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync((string?)null);
+
+			var chatResponseMock = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
+			var agentResponseMock = new AgentRunResponse(chatResponseMock);
+
+			var threadMock = new Mock<AgentThread>();
+			agentMock
+				.Setup(a => a.GetNewThread())
+				.Returns(threadMock.Object);
+
+			agentMock
+				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(agentResponseMock);
+
+			var orchestrator = new HermesOrchestrator(
+				agentMock.Object,
+				"https://test.openai.azure.com/",
+				"test-api-key",
+				instructionsRepoMock.Object,
+				tools,
+				historyRepoMock.Object,
+				new Mock<IAgentPromptComposer>().Object,
+				phraseGeneratorMock.Object);
+
+			// Act - call with null callback (tests backward compatibility)
+			var response = await orchestrator.OrchestrateAsync("test-session", "Test query", null);
+
+			// Assert
+			Assert.Equal("Test response.", response);
+			phraseGeneratorMock.Verify(p => p.GeneratePhrase(), Times.Never);
+		}
+
+		[Fact]
+		public async Task OrchestrateAsync_BackwardCompatibleMethod_CallsNewOverload()
+		{
+			// Arrange
+			var tools = new List<IAgentTool>();
+			var agentMock = new Mock<AIAgent>();
+			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
+			var historyRepoMock = new Mock<IConversationHistoryRepository>();
+			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+
+			instructionsRepoMock
+				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
+				.ReturnsAsync(new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions(
+					"Test instructions",
+					HermesInstructionType.ProjectAssistant,
+					1));
+
+			historyRepoMock
+				.Setup(h => h.GetConversationHistoryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync((string?)null);
+
+			var chatResponseMock = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Backward compat response."));
+			var agentResponseMock = new AgentRunResponse(chatResponseMock);
+
+			var threadMock = new Mock<AgentThread>();
+			agentMock
+				.Setup(a => a.GetNewThread())
+				.Returns(threadMock.Object);
+
+			agentMock
+				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(agentResponseMock);
+
+			var orchestrator = new HermesOrchestrator(
+				agentMock.Object,
+				"https://test.openai.azure.com/",
+				"test-api-key",
+				instructionsRepoMock.Object,
+				tools,
+				historyRepoMock.Object,
+				new Mock<IAgentPromptComposer>().Object,
+				phraseGeneratorMock.Object);
+
+			// Act - call the old method without progress callback
+			var response = await orchestrator.OrchestrateAsync("test-session", "Test query");
+
+			// Assert - should still work and return response
+			Assert.Equal("Backward compat response.", response);
+			// Since we didn't provide a callback, phrase generator should never be called
+			phraseGeneratorMock.Verify(p => p.GeneratePhrase(), Times.Never);
 		}
 	}
 }

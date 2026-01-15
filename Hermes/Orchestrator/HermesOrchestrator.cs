@@ -1,5 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
+using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Storage.Repositories.ConversationHistory;
@@ -25,6 +26,7 @@ namespace Hermes.Orchestrator
         private readonly IHermesInstructionsRepository _instructionsRepository;
         private readonly IConversationHistoryRepository _conversationHistoryRepository;
         private readonly IAgentPromptComposer _agentPromptComposer;
+        private readonly IWaitingPhraseGenerator _phraseGenerator;
 
         private readonly List<AITool> _tools = new();
         private readonly Dictionary<string, AIAgent> _agentCache = new();
@@ -41,17 +43,20 @@ namespace Hermes.Orchestrator
         /// <param name="instructionsRepository">Repository for fetching agent instructions.</param>
         /// <param name="conversationHistoryRepository">Repository for persisting conversation history across turns.</param>
         /// <param name="agentPromptComposer">Component responsible for composing agent prompts from instruction files.</param>
+        /// <param name="phraseGenerator">Generator for creating fun waiting phrases.</param>
         public HermesOrchestrator(
             string endpoint,
             string apiKey,
             IEnumerable<IAgentTool> agentTools,
             IHermesInstructionsRepository instructionsRepository,
             IConversationHistoryRepository conversationHistoryRepository,
-            IAgentPromptComposer agentPromptComposer)
+            IAgentPromptComposer agentPromptComposer,
+            IWaitingPhraseGenerator phraseGenerator)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
             _agentPromptComposer = agentPromptComposer;
+            _phraseGenerator = phraseGenerator;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -69,11 +74,13 @@ namespace Hermes.Orchestrator
             IHermesInstructionsRepository instructionsRepository,
             IEnumerable<IAgentTool> agentTools,
             IConversationHistoryRepository conversationHistoryRepository,
-            IAgentPromptComposer agentPromptComposer)
+            IAgentPromptComposer agentPromptComposer,
+            IWaitingPhraseGenerator phraseGenerator)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
             _agentPromptComposer = agentPromptComposer;
+            _phraseGenerator = phraseGenerator;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -169,7 +176,14 @@ namespace Hermes.Orchestrator
 
         #endregion
 
+        /// <inheritdoc/>
         public async Task<string> OrchestrateAsync(string sessionId, string query)
+        {
+            return await OrchestrateAsync(sessionId, query, null).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc/>
+        public async Task<string> OrchestrateAsync(string sessionId, string query, Action<string>? progressCallback = null)
         {
             var agent = await GetAgentAsync().ConfigureAwait(false);
 
@@ -178,6 +192,9 @@ namespace Hermes.Orchestrator
 
             // Append the current user query as the last message.
             contextMessages.Add(new ChatMessage(ChatRole.User, [new TextContent(query)]));
+
+            // Invoke progress callback with a fun phrase before starting agent execution.
+            progressCallback?.Invoke(_phraseGenerator.GeneratePhrase());
 
             var response = await agent.RunAsync(contextMessages).ConfigureAwait(false);
             var responseText = response.AsChatResponse().Text;
