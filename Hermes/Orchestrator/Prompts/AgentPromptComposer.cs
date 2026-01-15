@@ -48,7 +48,7 @@ namespace Hermes.Orchestrator.Prompts
 			}
 
 			// Common instructions for this instruction type.
-			var commonPath = Path.Combine(_instructionsRootPath, "Resources", "Instructions", instructionFolderName, $"{instructionFolderName}_Common");
+			var commonPath = Path.Combine(_instructionsRootPath, "Resources", "Instructions", instructionFolderName, "agent.txt");
 			AppendInstruction(sb, commonPath);
 
 			// Append capability-specific instructions.

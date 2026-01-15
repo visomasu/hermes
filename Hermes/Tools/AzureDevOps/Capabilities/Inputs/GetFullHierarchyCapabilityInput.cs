@@ -6,6 +6,7 @@ namespace Hermes.Tools.AzureDevOps.Capabilities.Inputs
 	/// <summary>
 	/// Input model for GetFullHierarchy capability.
 	/// </summary>
+	[JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
 	public class GetFullHierarchyCapabilityInput : ToolCapabilityInputBase
 	{
 		/// <summary>

@@ -35,7 +35,7 @@
     <None Update="Resources\Instructions\ProjectAssistant\Capabilities\parent-hierarchy-validator.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Resources\Instructions\ProjectAssistant\ProjectAssistant_Common">
+    <None Update="Resources\Instructions\ProjectAssistant\agent.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
