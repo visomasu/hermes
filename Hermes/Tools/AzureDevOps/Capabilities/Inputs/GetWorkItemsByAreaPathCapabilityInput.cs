@@ -6,6 +6,7 @@ namespace Hermes.Tools.AzureDevOps.Capabilities.Inputs
 	/// <summary>
 	/// Input model for retrieving Azure DevOps work items by area path.
 	/// </summary>
+	[JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
 	public sealed class GetWorkItemsByAreaPathCapabilityInput : ToolCapabilityInputBase
 	{
 		[JsonPropertyName("areaPath")]

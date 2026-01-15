@@ -6,6 +6,7 @@ namespace Hermes.Tools.AzureDevOps.Capabilities.Inputs
 	/// <summary>
 	/// Input model for retrieving an Azure DevOps work item tree.
 	/// </summary>
+	[JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
 	public sealed class GetWorkItemTreeCapabilityInput : ToolCapabilityInputBase
 	{
 		/// <summary>
