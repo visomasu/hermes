@@ -19,5 +19,17 @@ namespace Hermes.Storage.Repositories.ConversationHistory
         /// Optional timestamp in UTC.
         /// </summary>
         public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+
+        /// <summary>
+        /// Embedding vector for semantic similarity comparison.
+        /// Nullable for backward compatibility with existing messages.
+        /// </summary>
+        public float[]? Embedding { get; set; } = null;
+
+        /// <summary>
+        /// Flag indicating whether embedding generation has been attempted.
+        /// Differentiates between "not yet generated" and "generation failed/skipped".
+        /// </summary>
+        public bool EmbeddingGenerated { get; set; } = false;
     }
 }

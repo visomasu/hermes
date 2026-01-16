@@ -1,14 +1,15 @@
 using Hermes.Orchestrator;
+using Hermes.Orchestrator.Context;
 using Hermes.Orchestrator.PhraseGen;
+using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Moq;
-using Xunit;
 using System.Text.Json;
-using Hermes.Orchestrator.Prompts;
+using Xunit;
 
 namespace Hermes.Tests.Orchestrator
 {
@@ -24,6 +25,7 @@ namespace Hermes.Tests.Orchestrator
 			var agentMock = new Mock<AIAgent>();
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+			var contextSelectorMock = new Mock<IConversationContextSelector>();
 
 			// Return a basic instruction so the orchestrator can resolve instructions if needed
 			instructionsRepoMock
@@ -42,7 +44,8 @@ namespace Hermes.Tests.Orchestrator
 				tools,
 				new Mock<IConversationHistoryRepository>().Object,
 				new Mock<IAgentPromptComposer>().Object,
-				phraseGeneratorMock.Object);
+				phraseGeneratorMock.Object,
+				contextSelectorMock.Object);
 
 			// Assert
 			Assert.NotNull(orchestrator);
@@ -90,6 +93,11 @@ namespace Hermes.Tests.Orchestrator
 				})
 				.ReturnsAsync(agentResponseMock);
 
+			var contextSelectorMock = new Mock<IConversationContextSelector>();
+			contextSelectorMock
+				.Setup(c => c.SelectRelevantContextAsync(It.IsAny<string>(), It.IsAny<List<ConversationMessage>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<ConversationMessage>());
+
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
 				"https://test.openai.azure.com/",
@@ -98,7 +106,8 @@ namespace Hermes.Tests.Orchestrator
 				tools,
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
-				phraseGeneratorMock.Object);
+				phraseGeneratorMock.Object,
+				contextSelectorMock.Object);
 
 			// Act
 			var response = await orchestrator.OrchestrateAsync("session-1", "What is the status of feature123?");
@@ -152,6 +161,11 @@ namespace Hermes.Tests.Orchestrator
 				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(agentResponseMock);
 
+			var contextSelectorMock = new Mock<IConversationContextSelector>();
+			contextSelectorMock
+				.Setup(c => c.SelectRelevantContextAsync(It.IsAny<string>(), It.IsAny<List<ConversationMessage>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<ConversationMessage>());
+
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
 				"https://test.openai.azure.com/",
@@ -160,7 +174,8 @@ namespace Hermes.Tests.Orchestrator
 				tools,
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
-				phraseGeneratorMock.Object);
+				phraseGeneratorMock.Object,
+				contextSelectorMock.Object);
 
 			var sessionId = "history-session";
 			var query = "History test query";
@@ -226,6 +241,12 @@ namespace Hermes.Tests.Orchestrator
 				})
 				.ReturnsAsync(agentResponseMock);
 
+			var contextSelectorMock = new Mock<IConversationContextSelector>();
+			// Return the existing history from context selector
+			contextSelectorMock
+				.Setup(c => c.SelectRelevantContextAsync(It.IsAny<string>(), It.IsAny<List<ConversationMessage>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(existingHistory);
+
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
 				"https://test.openai.azure.com/",
@@ -234,7 +255,8 @@ namespace Hermes.Tests.Orchestrator
 				tools,
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
-				phraseGeneratorMock.Object);
+				phraseGeneratorMock.Object,
+				contextSelectorMock.Object);
 
 			// Act
 			await orchestrator.OrchestrateAsync("session-with-history", "New question");
@@ -286,6 +308,11 @@ namespace Hermes.Tests.Orchestrator
 				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(agentResponseMock);
 
+			var contextSelectorMock = new Mock<IConversationContextSelector>();
+			contextSelectorMock
+				.Setup(c => c.SelectRelevantContextAsync(It.IsAny<string>(), It.IsAny<List<ConversationMessage>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<ConversationMessage>());
+
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
 				"https://test.openai.azure.com/",
@@ -294,7 +321,8 @@ namespace Hermes.Tests.Orchestrator
 				tools,
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
-				phraseGeneratorMock.Object);
+				phraseGeneratorMock.Object,
+				contextSelectorMock.Object);
 
 			string? capturedPhrase = null;
 			Action<string> progressCallback = phrase => capturedPhrase = phrase;
@@ -341,6 +369,11 @@ namespace Hermes.Tests.Orchestrator
 				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(agentResponseMock);
 
+			var contextSelectorMock = new Mock<IConversationContextSelector>();
+			contextSelectorMock
+				.Setup(c => c.SelectRelevantContextAsync(It.IsAny<string>(), It.IsAny<List<ConversationMessage>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<ConversationMessage>());
+
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
 				"https://test.openai.azure.com/",
@@ -349,7 +382,8 @@ namespace Hermes.Tests.Orchestrator
 				tools,
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
-				phraseGeneratorMock.Object);
+				phraseGeneratorMock.Object,
+				contextSelectorMock.Object);
 
 			// Act - call with null callback (tests backward compatibility)
 			var response = await orchestrator.OrchestrateAsync("test-session", "Test query", null);
@@ -392,6 +426,11 @@ namespace Hermes.Tests.Orchestrator
 				.Setup(a => a.RunAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<AgentThread>(), It.IsAny<AgentRunOptions>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(agentResponseMock);
 
+			var contextSelectorMock = new Mock<IConversationContextSelector>();
+			contextSelectorMock
+				.Setup(c => c.SelectRelevantContextAsync(It.IsAny<string>(), It.IsAny<List<ConversationMessage>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<ConversationMessage>());
+
 			var orchestrator = new HermesOrchestrator(
 				agentMock.Object,
 				"https://test.openai.azure.com/",
@@ -400,7 +439,8 @@ namespace Hermes.Tests.Orchestrator
 				tools,
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
-				phraseGeneratorMock.Object);
+				phraseGeneratorMock.Object,
+				contextSelectorMock.Object);
 
 			// Act - call the old method without progress callback
 			var response = await orchestrator.OrchestrateAsync("test-session", "Test query");

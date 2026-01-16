@@ -1,5 +1,7 @@
 using Autofac;
+using Hermes.Integrations.AzureOpenAI;
 using Integrations.AzureDevOps;
+using Microsoft.Extensions.Logging;
 
 namespace Hermes.DI
 {
@@ -25,28 +27,27 @@ namespace Hermes.DI
 		/// <inheritdoc/>
 		protected override void Load(ContainerBuilder builder)
 		{
-			string organization;
-			string project;
-			string pat;
-
-			if (_environment.IsDevelopment())
-			{
-				organization = "dynamicscrm";
-				project = "OneCRM";
-				pat = "";
-			}
-			else
-			{
-                organization = _configuration["AzureDevOps:Organization"] ?? string.Empty;
-                project = _configuration["AzureDevOps:Project"] ?? string.Empty;
-				pat = _configuration["AzureDevOps:PersonalAccessToken"] ?? string.Empty;
-			}
+            string organization = _configuration["AzureDevOps:Organization"] ?? string.Empty;
+            string project = _configuration["AzureDevOps:Project"] ?? string.Empty;
+			string pat = _configuration["AzureDevOps:PersonalAccessToken"] ?? string.Empty;
 
 			builder.Register(c =>
 			{
 				return new AzureDevOpsWorkItemClient(organization, project, pat);
 			})
 			.As<IAzureDevOpsWorkItemClient>()
+			.SingleInstance();
+
+			// Register Azure OpenAI Embedding Client
+			builder.Register(c =>
+			{
+				var logger = c.Resolve<ILogger<AzureOpenAIEmbeddingClient>>();
+				var endpoint = _configuration["OpenAI:Endpoint"] ?? throw new InvalidOperationException("OpenAI:Endpoint is not configured");
+				var embeddingModel = _configuration["ConversationContext:EmbeddingModel"] ?? "text-embedding-3-small";
+
+				return new AzureOpenAIEmbeddingClient(endpoint, embeddingModel, logger);
+			})
+			.As<IAzureOpenAIEmbeddingClient>()
 			.SingleInstance();
 		}
 	}

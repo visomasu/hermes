@@ -1,5 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
+using Hermes.Orchestrator.Context;
 using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.HermesInstructions;
@@ -27,6 +28,7 @@ namespace Hermes.Orchestrator
         private readonly IConversationHistoryRepository _conversationHistoryRepository;
         private readonly IAgentPromptComposer _agentPromptComposer;
         private readonly IWaitingPhraseGenerator _phraseGenerator;
+        private readonly IConversationContextSelector _contextSelector;
 
         private readonly List<AITool> _tools = new();
         private readonly Dictionary<string, AIAgent> _agentCache = new();
@@ -44,6 +46,7 @@ namespace Hermes.Orchestrator
         /// <param name="conversationHistoryRepository">Repository for persisting conversation history across turns.</param>
         /// <param name="agentPromptComposer">Component responsible for composing agent prompts from instruction files.</param>
         /// <param name="phraseGenerator">Generator for creating fun waiting phrases.</param>
+        /// <param name="contextSelector">Selector for choosing relevant conversation context based on semantic similarity.</param>
         public HermesOrchestrator(
             string endpoint,
             string apiKey,
@@ -51,12 +54,14 @@ namespace Hermes.Orchestrator
             IHermesInstructionsRepository instructionsRepository,
             IConversationHistoryRepository conversationHistoryRepository,
             IAgentPromptComposer agentPromptComposer,
-            IWaitingPhraseGenerator phraseGenerator)
+            IWaitingPhraseGenerator phraseGenerator,
+            IConversationContextSelector contextSelector)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
             _agentPromptComposer = agentPromptComposer;
             _phraseGenerator = phraseGenerator;
+            _contextSelector = contextSelector;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -75,12 +80,14 @@ namespace Hermes.Orchestrator
             IEnumerable<IAgentTool> agentTools,
             IConversationHistoryRepository conversationHistoryRepository,
             IAgentPromptComposer agentPromptComposer,
-            IWaitingPhraseGenerator phraseGenerator)
+            IWaitingPhraseGenerator phraseGenerator,
+            IConversationContextSelector contextSelector)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
             _agentPromptComposer = agentPromptComposer;
             _phraseGenerator = phraseGenerator;
+            _contextSelector = contextSelector;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -187,8 +194,8 @@ namespace Hermes.Orchestrator
         {
             var agent = await GetAgentAsync().ConfigureAwait(false);
 
-            // Build context window from recent conversation history.
-            var contextMessages = await BuildContextWindowAsync(sessionId, DefaultContextTurns).ConfigureAwait(false);
+            // Build context window from relevant conversation history using semantic filtering.
+            var contextMessages = await BuildContextWindowAsync(sessionId, query, DefaultContextTurns).ConfigureAwait(false);
 
             // Append the current user query as the last message.
             contextMessages.Add(new ChatMessage(ChatRole.User, [new TextContent(query)]));
@@ -223,16 +230,19 @@ namespace Hermes.Orchestrator
         }
 
         /// <summary>
-        /// Builds a list of chat messages representing the top N most recent dialogue turns
-        /// from the stored conversation history for the given session.
+        /// Builds a list of chat messages representing relevant dialogue turns
+        /// from the stored conversation history for the given session, filtered by semantic relevance to the current query.
         /// </summary>
-        private async Task<List<ChatMessage>> BuildContextWindowAsync(string sessionId, int topNTurns)
+        /// <param name="sessionId">The session identifier.</param>
+        /// <param name="currentQuery">The current user query to compare against for relevance.</param>
+        /// <param name="maxContextTurns">Maximum number of context turns to include (used as fallback).</param>
+        private async Task<List<ChatMessage>> BuildContextWindowAsync(string sessionId, string currentQuery, int maxContextTurns)
         {
             var historyJson = await _conversationHistoryRepository
                 .GetConversationHistoryAsync(sessionId)
                 .ConfigureAwait(false);
 
-            if (string.IsNullOrWhiteSpace(historyJson) || topNTurns <= 0)
+            if (string.IsNullOrWhiteSpace(historyJson))
             {
                 return new List<ChatMessage>();
             }
@@ -245,17 +255,12 @@ namespace Hermes.Orchestrator
                 return new List<ChatMessage>();
             }
 
-            // Sort ascending by timestamp.
-            var ordered = history
-                .OrderBy(m => m.Timestamp)
-                .ToList();
+            // Use context selector to filter relevant messages based on semantic similarity.
+            var selectedMessages = await _contextSelector
+                .SelectRelevantContextAsync(currentQuery, history)
+                .ConfigureAwait(false);
 
-            // Take the last N items (or all if fewer).
-            var lastN = ordered
-                .Skip(Math.Max(0, ordered.Count - topNTurns))
-                .ToList();
-
-            return lastN
+            return selectedMessages
                 .Select(m => new ChatMessage(
                     m.Role == "user" ? ChatRole.User : ChatRole.Assistant,
                     [new TextContent(m.Content ?? string.Empty)]))
