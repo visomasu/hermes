@@ -1,5 +1,7 @@
 ﻿using Autofac;
 using Hermes.Orchestrator;
+using Hermes.Orchestrator.Context;
+using Hermes.Orchestrator.Models;
 using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.ConversationHistory;
@@ -49,6 +51,22 @@ namespace Hermes.DI
                 .As<IWaitingPhraseGenerator>()
                 .SingleInstance();
 
+            // Register conversation context configuration
+            builder.Register(ctx =>
+            {
+                var config = ctx.Resolve<IConfiguration>();
+                var contextConfig = new ConversationContextConfig();
+                config.GetSection("ConversationContext").Bind(contextConfig);
+                return contextConfig;
+            })
+            .AsSelf()
+            .SingleInstance();
+
+            // Register semantic conversation context selector
+            builder.RegisterType<SemanticConversationContextSelector>()
+                .As<IConversationContextSelector>()
+                .SingleInstance();
+
             // Register HermesOrchestrator and pass only AzureDevOpsTool
             builder.Register(ctx =>
             {
@@ -72,8 +90,17 @@ namespace Hermes.DI
                 var instructionsRepository = ctx.Resolve<IHermesInstructionsRepository>();
                 var conversationHistoryRepository = ctx.Resolve<IConversationHistoryRepository>();
                 var phraseGenerator = ctx.Resolve<IWaitingPhraseGenerator>();
+                var contextSelector = ctx.Resolve<IConversationContextSelector>();
 
-                return new HermesOrchestrator(endpoint, apiKey, new[] { azureDevOpsTool }, instructionsRepository, conversationHistoryRepository, ctx.Resolve<IAgentPromptComposer>(), phraseGenerator);
+                return new HermesOrchestrator(
+                    endpoint,
+                    apiKey,
+                    new[] { azureDevOpsTool },
+                    instructionsRepository,
+                    conversationHistoryRepository,
+                    ctx.Resolve<IAgentPromptComposer>(),
+                    phraseGenerator,
+                    contextSelector);
             }).As<IAgentOrchestrator>().SingleInstance();
         }
     }
