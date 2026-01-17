@@ -1,0 +1,21 @@
+### Send proactive message by Teams user ID
+# @name send-proactive-message-by-teams-id
+POST {{host}}/api/proactive/send-by-teams-id
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "teamsUserId": "user-id-0",
+  "message": "🔔 This is a test proactive message from Hermes!"
+}
+
+###
+# How to get your Teams User ID:
+# 1. Start Hermes locally: dotnet run --project Hermes
+# 2. Send any message to the bot in Teams (e.g., "hello")
+# 3. Check Cosmos DB emulator or logs for the captured TeamsUserId
+#    - Cosmos: https://localhost:8081/_explorer/index.html → ConversationReference container
+#    - Logs: Look for "Captured new conversation reference for {TeamsUserId}"
+# 4. Replace the teamsUserId value above with your actual ID (format: 29:...)
+# 5. Execute this request to test proactive messaging
+# 6. Check Teams - you should receive the message!

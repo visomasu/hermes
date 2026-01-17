@@ -3,11 +3,13 @@ using System.Threading.Tasks;
 using Hermes.Channels.Teams;
 using Hermes.Orchestrator;
 using Hermes.Orchestrator.PhraseGen;
+using Hermes.Storage.Repositories.ConversationReference;
 using Microsoft.Agents.Builder;
 using Microsoft.Agents.Builder.App;
 using Microsoft.Agents.Builder.State;
 using Microsoft.Agents.Core.Models;
 using Microsoft.Agents.Storage;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -23,9 +25,11 @@ namespace Hermes.Tests.Channels.Teams
             var options = new AgentApplicationOptions(storage: storageMock.Object);
             var orchestratorMock = new Mock<IAgentOrchestrator>();
             var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
 
             // Act
-            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object);
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
 
             // Assert
             Assert.NotNull(agent);
@@ -39,13 +43,15 @@ namespace Hermes.Tests.Channels.Teams
             var options = new AgentApplicationOptions(storage: storageMock.Object);
             var orchestratorMock = new Mock<IAgentOrchestrator>();
             var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
 
             // First call returns empty, so we assert the fallback text is used
             orchestratorMock
                 .Setup(o => o.OrchestrateAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync(string.Empty);
 
-            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object);
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
 
             var botAccount = new ChannelAccount(id: "bot-id");
             var userAccount = new ChannelAccount(id: "user-id");
@@ -103,7 +109,9 @@ namespace Hermes.Tests.Channels.Teams
                 .Setup(o => o.OrchestrateAsync("conv-id", "hello from teams", It.IsAny<Action<string>?>()))
                 .ReturnsAsync("orchestrated response");
 
-            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object);
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
 
             var activity = new Activity
             {
@@ -166,7 +174,9 @@ namespace Hermes.Tests.Channels.Teams
                     return "orchestrated response";
                 });
 
-            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object);
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
 
             var activity = new Activity
             {

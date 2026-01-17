@@ -1,9 +1,11 @@
-﻿using Microsoft.Agents.Builder;
+﻿using System.Text.Json;
+using Microsoft.Agents.Builder;
 using Microsoft.Agents.Builder.App;
 using Microsoft.Agents.Builder.State;
 using Microsoft.Agents.Core.Models;
 using Hermes.Orchestrator;
 using Hermes.Orchestrator.PhraseGen;
+using Hermes.Storage.Repositories.ConversationReference;
 
 namespace Hermes.Channels.Teams
 {
@@ -15,6 +17,8 @@ namespace Hermes.Channels.Teams
     {
         private readonly IAgentOrchestrator _orchestrator;
         private readonly IWaitingPhraseGenerator _phraseGenerator;
+        private readonly IConversationReferenceRepository _conversationRefRepo;
+        private readonly ILogger<HermesTeamsAgent> _logger;
 
         /// <summary>
         /// Initializes a new instance of the HermesTeamsAgent class.
@@ -23,10 +27,19 @@ namespace Hermes.Channels.Teams
         /// <param name="options">Configuration options for the agent application, including authentication settings, storage configuration, and other application-level settings.</param>
         /// <param name="orchestrator">The Hermes orchestrator for processing user queries and generating AI responses.</param>
         /// <param name="phraseGenerator">Generator for creating fun waiting phrases.</param>
-        public HermesTeamsAgent(AgentApplicationOptions options, IAgentOrchestrator orchestrator, IWaitingPhraseGenerator phraseGenerator) : base(options)
+        /// <param name="conversationReferenceRepository">Repository for storing conversation references for proactive messaging.</param>
+        /// <param name="logger">Logger for diagnostic information.</param>
+        public HermesTeamsAgent(
+            AgentApplicationOptions options,
+            IAgentOrchestrator orchestrator,
+            IWaitingPhraseGenerator phraseGenerator,
+            IConversationReferenceRepository conversationReferenceRepository,
+            ILogger<HermesTeamsAgent> logger) : base(options)
         {
             _orchestrator = orchestrator;
             _phraseGenerator = phraseGenerator;
+            _conversationRefRepo = conversationReferenceRepository;
+            _logger = logger;
 
             // Register WelcomeMessageAsync delegate to handle when members are added to the conversation
             OnConversationUpdate(ConversationUpdateEvents.MembersAdded, WelcomeMessageAsync);
@@ -87,6 +100,9 @@ namespace Hermes.Channels.Teams
         /// <returns>A task that represents the asynchronous operation of processing and responding to the incoming message.</returns>
         private async Task OnMessageAsync(ITurnContext turnContext, ITurnState turnState, CancellationToken cancellationToken)
         {
+            // Capture conversation reference for proactive messaging (fire-and-forget - non-critical)
+            _ = _CaptureConversationReferenceAsync(turnContext, cancellationToken);
+
             var userText = turnContext.Activity.Text ?? string.Empty;
 
             // Use the Teams conversation id as the session id for history and orchestration
@@ -119,6 +135,62 @@ namespace Hermes.Channels.Teams
             await turnContext.SendActivityAsync(
                 MessageFactory.Text(response),
                 cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Captures and stores the conversation reference for proactive messaging.
+        /// Updates existing references with the latest interaction time.
+        /// </summary>
+        /// <param name="turnContext">The turn context containing the activity information.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        private async Task _CaptureConversationReferenceAsync(
+            ITurnContext turnContext,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var activity = turnContext.Activity;
+                var user = activity.From;
+
+                if (user == null || string.IsNullOrEmpty(user.Id))
+                {
+                    _logger.LogWarning("Cannot capture conversation reference: user info missing");
+                    return;
+                }
+
+                // Check if we already have this reference
+                var existing = await _conversationRefRepo.GetByTeamsUserIdAsync(
+                    user.Id, cancellationToken);
+
+                if (existing != null)
+                {
+                    // Reference already exists, no need to update
+                    _logger.LogDebug("Conversation reference already exists for {TeamsUserId}", user.Id);
+                    return;
+                }
+
+                // Create new conversation reference
+                var convRef = activity.GetConversationReference();
+                var convRefJson = JsonSerializer.Serialize(convRef);
+
+                var document = new ConversationReferenceDocument
+                {
+                    Id = user.Id,
+                    PartitionKey = user.Id,
+                    TeamsUserId = user.Id,
+                    ConversationReferenceJson = convRefJson,
+                    IsActive = true,
+                    ConsecutiveFailureCount = 0
+                };
+
+                await _conversationRefRepo.CreateAsync(document);
+                _logger.LogInformation("Captured new conversation reference for {TeamsUserId}", user.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error capturing conversation reference");
+                // Don't throw - this is non-critical for message handling
+            }
         }
     }
 }
