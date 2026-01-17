@@ -6,6 +6,7 @@ using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.HermesInstructions;
+using Hermes.Services.Notifications;
 using Hermes.Tools;
 using Hermes.Tools.AzureDevOps;
 
@@ -49,6 +50,11 @@ namespace Hermes.DI
 
             builder.RegisterType<WaitingPhraseGenerator>()
                 .As<IWaitingPhraseGenerator>()
+                .SingleInstance();
+
+            // Register ProactiveMessenger for sending proactive notifications
+            builder.RegisterType<ProactiveMessenger>()
+                .As<IProactiveMessenger>()
                 .SingleInstance();
 
             // Register conversation context configuration

@@ -100,6 +100,14 @@ Hermes.Tests/                  # xUnit + Moq tests
 | Capability Input | `{Operation}CapabilityInput` | `GetWorkItemTreeCapabilityInput` |
 | DI Module | `{Layer}Module` | `StorageModule` |
 
+### General Naming Rules
+
+- **No abbreviations:** Use full words in class names, not shorthand
+  - ✅ `LocalDevelopmentAuthentication`
+  - ❌ `LocalDevelopmentAuth`
+- **Be descriptive:** Prefer clarity over brevity in naming
+- **Consistency:** Follow established patterns in the codebase
+
 ### Methods
 
 - **Private methods:** Prefix with underscore: `_ValidateEntity()`, `_BuildWorkItemTreeAsync()`
