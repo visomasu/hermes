@@ -44,50 +44,22 @@ namespace Hermes.Services.Notifications
 		{
 			try
 			{
-				if (string.IsNullOrWhiteSpace(teamsUserId))
-				{
-					return new ProactiveMessageResult
-					{
-						Success = false,
-						ErrorMessage = "Teams user ID cannot be null or empty"
-					};
-				}
+				// Validate inputs
+				var inputValidation = _ValidateInputs(teamsUserId, message);
+				if (inputValidation != null)
+					return inputValidation;
 
-				if (string.IsNullOrWhiteSpace(message))
-				{
-					return new ProactiveMessageResult
-					{
-						Success = false,
-						ErrorMessage = "Message cannot be null or empty"
-					};
-				}
+				// Retrieve and validate conversation reference document
+				var conversationRefDoc = await _GetAndValidateConversationReferenceAsync(teamsUserId, cancellationToken);
+				if (conversationRefDoc.ErrorResult != null)
+					return conversationRefDoc.ErrorResult;
 
-				// Retrieve conversation reference
-				var conversationRef = await _conversationRefRepo.GetByTeamsUserIdAsync(teamsUserId, cancellationToken);
+				// Deserialize conversation reference
+				var convRefResult = _DeserializeConversationReference(conversationRefDoc.Document!, teamsUserId);
+				if (convRefResult.ErrorResult != null)
+					return convRefResult.ErrorResult;
 
-				if (conversationRef == null || !conversationRef.IsActive)
-				{
-					_logger.LogWarning("No active conversation reference found for Teams user {TeamsUserId}", teamsUserId);
-					return new ProactiveMessageResult
-					{
-						Success = false,
-						ErrorMessage = "No active conversation reference found"
-					};
-				}
-
-				// Deserialize ConversationReference
-				var convRef = JsonSerializer.Deserialize<ConversationReference>(
-					conversationRef.ConversationReferenceJson);
-
-				if (convRef == null)
-				{
-					_logger.LogError("Failed to deserialize conversation reference for Teams user {TeamsUserId}", teamsUserId);
-					return new ProactiveMessageResult
-					{
-						Success = false,
-						ErrorMessage = "Invalid conversation reference"
-					};
-				}
+				var convRef = convRefResult.ConversationReference!;
 
 				// Send proactive message
 				await _adapter.ContinueConversationAsync(
@@ -104,8 +76,9 @@ namespace Hermes.Services.Notifications
 				_logger.LogInformation("Sent proactive message to Teams user {TeamsUserId}", teamsUserId);
 
 				// Reset failure count on successful send
-				conversationRef.ConsecutiveFailureCount = 0;
-				await _conversationRefRepo.UpdateAsync(conversationRef.Id, conversationRef);
+				var document = conversationRefDoc.Document!;
+				document.ConsecutiveFailureCount = 0;
+				await _conversationRefRepo.UpdateAsync(document.Id, document);
 
 				return new ProactiveMessageResult
 				{
@@ -147,6 +120,98 @@ namespace Hermes.Services.Notifications
 					SentAt = DateTime.UtcNow
 				};
 			}
+		}
+
+		/// <summary>
+		/// Validates input parameters.
+		/// </summary>
+		private ProactiveMessageResult? _ValidateInputs(string teamsUserId, string message)
+		{
+			if (string.IsNullOrWhiteSpace(teamsUserId))
+			{
+				return new ProactiveMessageResult
+				{
+					Success = false,
+					ErrorMessage = "Teams user ID cannot be null or empty"
+				};
+			}
+
+			if (string.IsNullOrWhiteSpace(message))
+			{
+				return new ProactiveMessageResult
+				{
+					Success = false,
+					ErrorMessage = "Message cannot be null or empty"
+				};
+			}
+
+			return null; // Validation passed
+		}
+
+		/// <summary>
+		/// Retrieves and validates the conversation reference document from storage.
+		/// </summary>
+		private async Task<(ConversationReferenceDocument? Document, ProactiveMessageResult? ErrorResult)>
+			_GetAndValidateConversationReferenceAsync(string teamsUserId, CancellationToken cancellationToken)
+		{
+			var conversationRef = await _conversationRefRepo.GetByTeamsUserIdAsync(teamsUserId, cancellationToken);
+
+			if (conversationRef == null || !conversationRef.IsActive)
+			{
+				_logger.LogWarning("No active conversation reference found for Teams user {TeamsUserId}", teamsUserId);
+				return (null, new ProactiveMessageResult
+				{
+					Success = false,
+					ErrorMessage = "No active conversation reference found"
+				});
+			}
+
+			if (string.IsNullOrWhiteSpace(conversationRef.ConversationReferenceJson))
+			{
+				_logger.LogError("Conversation reference JSON is null or empty for Teams user {TeamsUserId}", teamsUserId);
+				return (null, new ProactiveMessageResult
+				{
+					Success = false,
+					ErrorMessage = "Conversation reference JSON is missing. User needs to send a message to the bot first."
+				});
+			}
+
+			return (conversationRef, null);
+		}
+
+		/// <summary>
+		/// Deserializes the conversation reference JSON into a ConversationReference object.
+		/// </summary>
+		private (ConversationReference? ConversationReference, ProactiveMessageResult? ErrorResult)
+			_DeserializeConversationReference(ConversationReferenceDocument document, string teamsUserId)
+		{
+			ConversationReference? convRef;
+			try
+			{
+				convRef = JsonSerializer.Deserialize<ConversationReference>(
+					document.ConversationReferenceJson);
+			}
+			catch (JsonException jsonEx)
+			{
+				_logger.LogError(jsonEx, "Failed to deserialize conversation reference JSON for Teams user {TeamsUserId}", teamsUserId);
+				return (null, new ProactiveMessageResult
+				{
+					Success = false,
+					ErrorMessage = "Conversation reference JSON is invalid or corrupted"
+				});
+			}
+
+			if (convRef == null)
+			{
+				_logger.LogError("Deserialized conversation reference is null for Teams user {TeamsUserId}", teamsUserId);
+				return (null, new ProactiveMessageResult
+				{
+					Success = false,
+					ErrorMessage = "Invalid conversation reference"
+				});
+			}
+
+			return (convRef, null);
 		}
 	}
 }

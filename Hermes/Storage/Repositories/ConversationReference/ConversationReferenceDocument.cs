@@ -10,15 +10,27 @@ namespace Hermes.Storage.Repositories.ConversationReference
 	{
 		/// <summary>
 		/// Teams user ID (e.g., "29:1qKvhECjhXYX...").
-		/// Used as PartitionKey for efficient lookups.
+		/// Used as part of PartitionKey for efficient lookups.
 		/// </summary>
 		public string TeamsUserId { get; set; } = string.Empty;
+
+		/// <summary>
+		/// Teams conversation ID (e.g., "19:meeting_xyz..." for group chats, "a:1-1_xyz..." for 1:1).
+		/// Unique identifier for the conversation context.
+		/// </summary>
+		public string ConversationId { get; set; } = string.Empty;
 
 		/// <summary>
 		/// Serialized ConversationReference object from Microsoft.Agents SDK.
 		/// Contains all routing information needed for proactive messaging (user info, tenant, service URL, etc.).
 		/// </summary>
 		public string ConversationReferenceJson { get; set; } = string.Empty;
+
+		/// <summary>
+		/// Timestamp of the last interaction in this conversation.
+		/// Used to determine the most recent/active conversation for proactive messaging.
+		/// </summary>
+		public DateTime LastInteractionAt { get; set; } = DateTime.UtcNow;
 
 		/// <summary>
 		/// Flag indicating if this reference is still valid.

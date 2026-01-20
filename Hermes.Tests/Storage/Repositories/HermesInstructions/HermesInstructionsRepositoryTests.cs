@@ -20,6 +20,7 @@ namespace Hermes.Tests.Storage.Repositories.HermesInstructions
             var primaryMock = new Mock<IStorageClient<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions, string>>();
             primaryInitial ??= new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions>();
 
+            // Mock expects prefixed partition keys from repository
             primaryMock.Setup(s => s.ReadAllByPartitionKeyAsync(It.IsAny<string>()))
                 .ReturnsAsync((string pk) => primaryInitial.FindAll(x => x.PartitionKey == pk));
             primaryMock.Setup(s => s.CreateAsync(It.IsAny<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions>()))
@@ -65,10 +66,14 @@ namespace Hermes.Tests.Storage.Repositories.HermesInstructions
 
             try
             {
-                var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> {
-                    new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst1", HermesInstructionType.ProjectAssistant,1),
-                    new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst2", HermesInstructionType.ProjectAssistant,2)
-                });
+                // Create test data with prefixed partition keys (as they would be stored)
+                var inst1 = new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst1", HermesInstructionType.ProjectAssistant, 1);
+                inst1.PartitionKey = "instructions:ProjectAssistant";
+
+                var inst2 = new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst2", HermesInstructionType.ProjectAssistant, 2);
+                inst2.PartitionKey = "instructions:ProjectAssistant";
+
+                var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> { inst1, inst2 });
 
                 var latest = await repo.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant);
                 var v1 = await repo.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant,1);
@@ -145,9 +150,11 @@ namespace Hermes.Tests.Storage.Repositories.HermesInstructions
         [Fact]
         public async Task CreateInstructionAsync_ThrowsIfExists()
         {
-            var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> {
-                new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst", HermesInstructionType.ProjectAssistant,1)
-            });
+            // Create test data with prefixed partition key (as it would be stored)
+            var inst = new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst", HermesInstructionType.ProjectAssistant, 1);
+            inst.PartitionKey = "instructions:ProjectAssistant";
+
+            var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> { inst });
 
             await Assert.ThrowsAsync<StorageException>(() => repo.CreateInstructionAsync("inst", HermesInstructionType.ProjectAssistant,1));
         }
@@ -155,9 +162,11 @@ namespace Hermes.Tests.Storage.Repositories.HermesInstructions
         [Fact]
         public async Task DeleteInstructionAsync_DeletesInstruction()
         {
-            var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> {
-                new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst", HermesInstructionType.ProjectAssistant,1)
-            });
+            // Create test data with prefixed partition key (as it would be stored)
+            var inst = new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("inst", HermesInstructionType.ProjectAssistant, 1);
+            inst.PartitionKey = "instructions:ProjectAssistant";
+
+            var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> { inst });
 
             await repo.DeleteInstructionAsync(HermesInstructionType.ProjectAssistant,1);
             var result = await repo.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant,1);
@@ -176,9 +185,11 @@ namespace Hermes.Tests.Storage.Repositories.HermesInstructions
         [Fact]
         public async Task UpdateInstructionAsync_UpdatesInstruction()
         {
-            var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> {
-                new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("old", HermesInstructionType.ProjectAssistant,1)
-            });
+            // Create test data with prefixed partition key (as it would be stored)
+            var inst = new Hermes.Storage.Repositories.HermesInstructions.HermesInstructions("old", HermesInstructionType.ProjectAssistant, 1);
+            inst.PartitionKey = "instructions:ProjectAssistant";
+
+            var repo = CreateRepository(new List<Hermes.Storage.Repositories.HermesInstructions.HermesInstructions> { inst });
 
             await repo.UpdateInstructionAsync(HermesInstructionType.ProjectAssistant, "new",1);
             var result = await repo.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant,1);

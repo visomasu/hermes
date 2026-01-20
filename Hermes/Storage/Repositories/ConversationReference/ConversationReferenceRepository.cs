@@ -10,6 +10,9 @@ namespace Hermes.Storage.Repositories.ConversationReference
 		: RepositoryBase<ConversationReferenceDocument>,
 		  IConversationReferenceRepository
 	{
+		/// <inheritdoc/>
+		protected override string ObjectTypeCode => "conv";
+
 		public ConversationReferenceRepository(
 			IStorageClient<ConversationReferenceDocument, string> storage)
 			: base(storage)
@@ -21,11 +24,55 @@ namespace Hermes.Storage.Repositories.ConversationReference
 			CancellationToken cancellationToken = default)
 		{
 			if (string.IsNullOrWhiteSpace(teamsUserId))
-				throw new ArgumentException("TeamsUserId cannot be null or empty.", nameof(teamsUserId));
+			{
+				return null;
+			}
 
-			// PartitionKey is TeamsUserId, so we can use ReadAllByPartitionKeyAsync
+			// Get all conversations for this user and return the most recent one
 			var results = await ReadAllByPartitionKeyAsync(teamsUserId);
-			return results?.FirstOrDefault();
+
+			if (results == null || results.Count == 0)
+				return null;
+
+			// Return the most recent active conversation
+			return results
+				.Where(r => r.IsActive)
+				.OrderByDescending(r => r.LastInteractionAt)
+				.FirstOrDefault();
+		}
+
+		public async Task<ConversationReferenceDocument?> GetByConversationIdAsync(
+			string conversationId,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(conversationId))
+			{
+				return null;
+			}
+
+			// ConversationId is used as the document Id
+			// We need to scan all partitions or use a different approach
+			// For now, this requires the caller to know the TeamsUserId
+			// Better approach: Use ReadAsync with conversationId as Id if we can determine partition key
+			// This is a limitation of the current design - cross-partition queries are expensive
+
+			// Placeholder: This would require cross-partition query which is expensive
+			// Alternative: Require TeamsUserId as parameter, or use conversationId as Id with synthetic partition key
+			throw new NotImplementedException("GetByConversationIdAsync requires cross-partition query. Use GetByTeamsUserIdAsync or GetAllByTeamsUserIdAsync instead.");
+		}
+
+		public async Task<List<ConversationReferenceDocument>> GetAllByTeamsUserIdAsync(
+			string teamsUserId,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(teamsUserId))
+			{
+				return new List<ConversationReferenceDocument>();
+			}
+
+			// PartitionKey will be automatically prefixed by RepositoryBase
+			var results = await ReadAllByPartitionKeyAsync(teamsUserId);
+			return results?.ToList() ?? new List<ConversationReferenceDocument>();
 		}
 
 		public async Task<List<ConversationReferenceDocument>> GetActiveReferencesAsync(

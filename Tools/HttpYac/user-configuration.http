@@ -1,0 +1,151 @@
+### Get user configuration
+# @name get-user-config
+GET {{host}}/api/user-config/user-id-0
+x-ms-correlation-id: {{$guid}}
+
+###
+### Create/Update user configuration with custom settings
+# @name update-user-config
+PUT {{host}}/api/user-config/user-id-0
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "notifications": {
+    "slaViolationNotifications": true,
+    "workItemUpdateNotifications": false,
+    "maxNotificationsPerHour": 3,
+    "maxNotificationsPerDay": 10,
+    "timeZoneId": "America/Los_Angeles",
+    "quietHours": {
+      "enabled": true,
+      "startTime": "22:00:00",
+      "endTime": "08:00:00"
+    }
+  }
+}
+
+###
+### Update user configuration with quiet hours disabled
+# @name update-user-config-no-quiet-hours
+PUT {{host}}/api/user-config/user-id-0
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "notifications": {
+    "slaViolationNotifications": true,
+    "workItemUpdateNotifications": false,
+    "maxNotificationsPerHour": 5,
+    "maxNotificationsPerDay": 20,
+    "timeZoneId": "UTC",
+    "quietHours": {
+      "enabled": false,
+      "startTime": "22:00:00",
+      "endTime": "08:00:00"
+    }
+  }
+}
+
+###
+### Update user configuration with very restrictive limits (for testing throttling)
+# @name update-user-config-restrictive
+PUT {{host}}/api/user-config/user-id-0
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "notifications": {
+    "slaViolationNotifications": true,
+    "workItemUpdateNotifications": false,
+    "maxNotificationsPerHour": 1,
+    "maxNotificationsPerDay": 2,
+    "timeZoneId": "UTC",
+    "quietHours": null
+  }
+}
+
+###
+### Update user configuration with India timezone (UTC+5:30)
+# @name update-user-config-india
+PUT {{host}}/api/user-config/user-id-0
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "notifications": {
+    "slaViolationNotifications": true,
+    "workItemUpdateNotifications": false,
+    "maxNotificationsPerHour": 5,
+    "maxNotificationsPerDay": 20,
+    "timeZoneId": "Asia/Kolkata",
+    "quietHours": {
+      "enabled": true,
+      "startTime": "22:00:00",
+      "endTime": "08:00:00"
+    }
+  }
+}
+
+###
+### Update user configuration with UK timezone (handles DST)
+# @name update-user-config-uk
+PUT {{host}}/api/user-config/user-id-0
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "notifications": {
+    "slaViolationNotifications": true,
+    "workItemUpdateNotifications": false,
+    "maxNotificationsPerHour": 5,
+    "maxNotificationsPerDay": 20,
+    "timeZoneId": "Europe/London",
+    "quietHours": {
+      "enabled": true,
+      "startTime": "23:00:00",
+      "endTime": "07:00:00"
+    }
+  }
+}
+
+###
+### Delete user configuration (resets to defaults)
+# @name delete-user-config
+DELETE {{host}}/api/user-config/user-id-0
+x-ms-correlation-id: {{$guid}}
+
+###
+# Usage Instructions:
+# 1. Start Hermes locally: dotnet run --project Hermes
+# 2. Replace "user-id-0" with your actual Teams User ID (format: 29:...)
+#    - Get it by sending a message to the bot in Teams
+#    - Check Cosmos DB emulator: https://localhost:8081/_explorer/index.html
+#    - Look in ConversationReference container for your TeamsUserId
+# 3. Execute requests in order:
+#    a) GET to check current config (or confirm it doesn't exist)
+#    b) PUT to set custom preferences
+#    c) GET again to verify the update
+#    d) DELETE to reset to defaults
+#
+# Default settings (if no configuration exists):
+# - SLA violation notifications: Enabled
+# - Work item update notifications: Disabled
+# - Max per hour: 5
+# - Max per day: 20
+# - Quiet hours: Disabled
+# - Timezone: UTC
+#
+# Timezone Notes:
+# - Use IANA timezone identifiers (e.g., "America/Los_Angeles", "Asia/Kolkata", "Europe/London")
+# - Quiet hours times are interpreted in the user's local timezone
+# - Example: If timeZoneId is "America/Los_Angeles" and quietHours are 22:00-08:00,
+#   those times are 10 PM - 8 AM Pacific Time (automatically handles PST/PDT)
+# - Invalid timezone IDs fallback to UTC
+# - Common timezones:
+#   - US Pacific: "America/Los_Angeles"
+#   - US Eastern: "America/New_York"
+#   - India: "Asia/Kolkata"
+#   - UK: "Europe/London"
+#   - Japan: "Asia/Tokyo"
+#   - Australia (Sydney): "Australia/Sydney"

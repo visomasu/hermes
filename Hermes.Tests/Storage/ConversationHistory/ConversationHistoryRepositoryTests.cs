@@ -41,8 +41,9 @@ namespace Hermes.Tests.Storage.ConversationHistory
             };
 
             var storageMock = new Mock<IStorageClient<ConversationHistoryDocument, string>>();
+            // Mock expects prefixed partition key from storage layer
             storageMock
-                .Setup(s => s.ReadAsync("conv-1", "conv-1"))
+                .Setup(s => s.ReadAsync("conv-1", "conv-hist:conv-1"))
                 .ReturnsAsync(document);
 
             var repo = new ConversationHistoryRepository(storageMock.Object);
@@ -61,8 +62,9 @@ namespace Hermes.Tests.Storage.ConversationHistory
         {
             // Arrange
             var storageMock = new Mock<IStorageClient<ConversationHistoryDocument, string>>();
+            // Mock ReadAsync expects prefixed partition key
             storageMock
-                .Setup(s => s.ReadAsync("conv-1", "conv-1"))
+                .Setup(s => s.ReadAsync("conv-1", "conv-hist:conv-1"))
                 .ReturnsAsync((ConversationHistoryDocument?)null);
 
             ConversationHistoryDocument? created = null;
@@ -85,7 +87,8 @@ namespace Hermes.Tests.Storage.ConversationHistory
             // Assert
             Assert.NotNull(created);
             Assert.Equal("conv-1", created!.Id);
-            Assert.Equal("conv-1", created.PartitionKey);
+            // PartitionKey should be prefixed after CreateAsync in RepositoryBase
+            Assert.Equal("conv-hist:conv-1", created.PartitionKey);
             Assert.Equal(2, created.History.Count);
             Assert.Equal("msg1", created.History[0].Content);
             Assert.Equal("msg2", created.History[1].Content);
@@ -106,8 +109,9 @@ namespace Hermes.Tests.Storage.ConversationHistory
             };
 
             var storageMock = new Mock<IStorageClient<ConversationHistoryDocument, string>>();
+            // Mock ReadAsync expects prefixed partition key
             storageMock
-                .Setup(s => s.ReadAsync("conv-1", "conv-1"))
+                .Setup(s => s.ReadAsync("conv-1", "conv-hist:conv-1"))
                 .ReturnsAsync(existingDocument);
 
             ConversationHistoryDocument? updated = null;

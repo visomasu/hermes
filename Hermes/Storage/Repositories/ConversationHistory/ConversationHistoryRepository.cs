@@ -9,6 +9,9 @@ namespace Hermes.Storage.Repositories.ConversationHistory
     /// </summary>
     public class ConversationHistoryRepository : RepositoryBase<ConversationHistoryDocument>, IConversationHistoryRepository
     {
+        /// <inheritdoc/>
+        protected override string ObjectTypeCode => "conv-hist";
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ConversationHistoryRepository"/> class.
         /// </summary>

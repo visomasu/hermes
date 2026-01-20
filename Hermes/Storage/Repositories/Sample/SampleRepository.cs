@@ -8,6 +8,9 @@ namespace Hermes.Storage.Repositories.Sample
 	/// </summary>
 	public class SampleRepository : RepositoryBase<SampleRepositoryModel>
 	{
+		/// <inheritdoc/>
+		protected override string ObjectTypeCode => "sample";
+
 		/// <summary>
 		/// Initializes a new instance of the <see cref="SampleRepository"/> class.
 		/// </summary>

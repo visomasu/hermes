@@ -13,6 +13,8 @@ namespace Hermes.Tests.Storage.Repositories
 	{
 		private class TestRepository : RepositoryBase<TestDocument>
 		{
+			protected override string ObjectTypeCode => "test";
+
 			public TestRepository(IStorageClient<TestDocument, string> storage) : base(storage) {}
 		}
 
@@ -54,7 +56,8 @@ namespace Hermes.Tests.Storage.Repositories
 			var mock = new Mock<IStorageClient<TestDocument, string>>();
 			var repo = new TestRepository(mock.Object);
 			await repo.ReadAsync("mykey", "mypartition");
-			mock.Verify(s => s.ReadAsync("mykey", "mypartition"), Times.Once);
+			// Repository should prefix the partition key with ObjectTypeCode
+			mock.Verify(s => s.ReadAsync("mykey", "test:mypartition"), Times.Once);
 		}
 
 		[Fact]
@@ -95,7 +98,8 @@ namespace Hermes.Tests.Storage.Repositories
 			var mock = new Mock<IStorageClient<TestDocument, string>>();
 			var repo = new TestRepository(mock.Object);
 			await repo.DeleteAsync("id", "partitionKey");
-			mock.Verify(s => s.DeleteAsync("id", "partitionKey"), Times.Once);
+			// Repository should prefix the partition key with ObjectTypeCode
+			mock.Verify(s => s.DeleteAsync("id", "test:partitionKey"), Times.Once);
 		}
 
 		[Fact]
@@ -115,7 +119,8 @@ namespace Hermes.Tests.Storage.Repositories
 			var mock = new Mock<IStorageClient<TestDocument, string>>();
 			var repo = new TestRepository(mock.Object);
 			await repo.ReadAllByPartitionKeyAsync("partkey");
-			mock.Verify(s => s.ReadAllByPartitionKeyAsync("partkey"), Times.Once);
+			// Repository should prefix the partition key with ObjectTypeCode
+			mock.Verify(s => s.ReadAllByPartitionKeyAsync("test:partkey"), Times.Once);
 		}
 
 		[Fact]

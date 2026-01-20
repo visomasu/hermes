@@ -151,6 +151,7 @@ namespace Hermes.Channels.Teams
             {
                 var activity = turnContext.Activity;
                 var user = activity.From;
+                var conversationId = activity.Conversation?.Id;
 
                 if (user == null || string.IsNullOrEmpty(user.Id))
                 {
@@ -158,14 +159,21 @@ namespace Hermes.Channels.Teams
                     return;
                 }
 
-                // Check if we already have this reference
-                var existing = await _conversationRefRepo.GetByTeamsUserIdAsync(
-                    user.Id, cancellationToken);
+                if (string.IsNullOrEmpty(conversationId))
+                {
+                    _logger.LogWarning("Cannot capture conversation reference: conversation ID missing");
+                    return;
+                }
+
+                // Check if we already have this reference for this specific conversation
+                var existing = await _conversationRefRepo.ReadAsync(conversationId, user.Id);
 
                 if (existing != null)
                 {
-                    // Reference already exists, no need to update
-                    _logger.LogDebug("Conversation reference already exists for {TeamsUserId}", user.Id);
+                    // Update last interaction timestamp
+                    existing.LastInteractionAt = DateTime.UtcNow;
+                    await _conversationRefRepo.UpdateAsync(existing.Id, existing);
+                    _logger.LogDebug("Updated LastInteractionAt for conversation {ConversationId}", conversationId);
                     return;
                 }
 
@@ -175,16 +183,18 @@ namespace Hermes.Channels.Teams
 
                 var document = new ConversationReferenceDocument
                 {
-                    Id = user.Id,
+                    Id = conversationId,
                     PartitionKey = user.Id,
                     TeamsUserId = user.Id,
+                    ConversationId = conversationId,
                     ConversationReferenceJson = convRefJson,
+                    LastInteractionAt = DateTime.UtcNow,
                     IsActive = true,
                     ConsecutiveFailureCount = 0
                 };
 
                 await _conversationRefRepo.CreateAsync(document);
-                _logger.LogInformation("Captured new conversation reference for {TeamsUserId}", user.Id);
+                _logger.LogInformation("Captured new conversation reference for {TeamsUserId} in conversation {ConversationId}", user.Id, conversationId);
             }
             catch (Exception ex)
             {

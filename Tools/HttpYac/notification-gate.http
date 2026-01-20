@@ -1,0 +1,173 @@
+### Evaluate notification gate (check if notification can be sent)
+# @name evaluate-gate
+POST {{host}}/api/notification-gate/evaluate
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "teamsUserId": "user-id-0"
+}
+
+###
+### Send gated notification (full flow: evaluate, send, record)
+# @name send-gated-notification
+POST {{host}}/api/notification-gate/send
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "teamsUserId": "user-id-0",
+  "message": "🔔 Test notification through the gate!",
+  "notificationType": "SlaViolation",
+  "context": "{\"workItemId\":12345,\"areaPath\":\"Dynamics/Sales\",\"workItemType\":\"Bug\"}",
+  "deduplicationKey": "SlaViolation_12345"
+}
+
+###
+### Send second gated notification (should succeed if within limits)
+# @name send-gated-notification-2
+POST {{host}}/api/notification-gate/send
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "teamsUserId": "user-id-0",
+  "message": "🔔 Second test notification!",
+  "notificationType": "WorkItemUpdate",
+  "context": "{\"workItemId\":67890,\"priority\":\"High\"}",
+  "deduplicationKey": "WorkItemUpdate_67890"
+}
+
+###
+### Send third gated notification (might be throttled if limits set low)
+# @name send-gated-notification-3
+POST {{host}}/api/notification-gate/send
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "teamsUserId": "user-id-0",
+  "message": "🔔 Third test notification!",
+  "notificationType": "SlaViolation",
+  "context": "{\"workItemId\":99999}",
+  "deduplicationKey": "SlaViolation_99999"
+}
+
+###
+### Get notification history (last 24 hours)
+# @name get-notification-history-24h
+GET {{host}}/api/notification-gate/history/user-id-0?hours=24
+x-ms-correlation-id: {{$guid}}
+
+###
+### Get notification history (last hour)
+# @name get-notification-history-1h
+GET {{host}}/api/notification-gate/history/user-id-0?hours=1
+x-ms-correlation-id: {{$guid}}
+
+###
+# End-to-End Testing Instructions:
+#
+# Prerequisites:
+# 1. Start Hermes locally: dotnet run --project Hermes
+# 2. Send a message to the bot in Teams to capture your conversation reference
+# 3. Replace "user-id-0" with your actual Teams User ID (format: 29:...)
+# 4. Check Cosmos DB emulator: https://localhost:8081/_explorer/index.html
+#
+# Test Scenario 1: Basic Flow (No Configuration)
+# ===============================================
+# Step 1: Evaluate gate (should return canSend: true with default limits)
+#         Execute: evaluate-gate
+#         Expected: canSend: true, notificationsSentInLastHour: 0, notificationsSentInLastDay: 0
+#
+# Step 2: Send first notification (should succeed)
+#         Execute: send-gated-notification
+#         Expected: sent: true, sentAt: <timestamp>
+#         Check Teams: You should receive the message!
+#
+# Step 3: Check history (should show 1 notification)
+#         Execute: get-notification-history-24h
+#         Expected: count: 1
+#
+# Step 4: Send second notification (should succeed)
+#         Execute: send-gated-notification-2
+#         Expected: sent: true
+#         Check Teams: You should receive the second message!
+#
+# Step 5: Send third notification (should succeed if within limits)
+#         Execute: send-gated-notification-3
+#         Expected: sent: true
+#         Check Teams: You should receive the third message!
+#
+# Step 6: Check history again (should show 3 notifications)
+#         Execute: get-notification-history-1h
+#         Expected: count: 3
+#
+# Test Scenario 2: Throttling (Requires user-configuration.http)
+# ===============================================================
+# Step 1: Set restrictive limits
+#         Open user-configuration.http
+#         Execute: update-user-config-restrictive (sets max 1/hour, 2/day)
+#
+# Step 2: Send first notification (should succeed)
+#         Execute: send-gated-notification
+#         Expected: sent: true
+#
+# Step 3: Send second notification immediately (should be throttled)
+#         Execute: send-gated-notification-2
+#         Expected: sent: false, blockedReason: "Hourly limit exceeded (1/1)"
+#
+# Step 4: Verify gate evaluation shows throttling
+#         Execute: evaluate-gate
+#         Expected: canSend: false, blockedReason: "Hourly limit exceeded..."
+#
+# Step 5: Reset to defaults
+#         Open user-configuration.http
+#         Execute: delete-user-config
+#
+# Test Scenario 3: Quiet Hours (Requires user-configuration.http)
+# ================================================================
+# Step 1: Set quiet hours (e.g., 10 PM - 8 AM)
+#         Open user-configuration.http
+#         Execute: update-user-config (with quietHours.enabled: true)
+#
+# Step 2: If current time is in quiet hours, evaluate gate
+#         Execute: evaluate-gate
+#         Expected: canSend: false, blockedReason: "User is in quiet hours"
+#
+# Step 3: Try to send notification (should be blocked)
+#         Execute: send-gated-notification
+#         Expected: sent: false, reason: "Blocked by gate", blockedReason: "User is in quiet hours"
+#
+# Step 4: Disable quiet hours
+#         Open user-configuration.http
+#         Execute: update-user-config-no-quiet-hours
+#
+# Step 5: Verify notification can now be sent
+#         Execute: send-gated-notification
+#         Expected: sent: true
+#
+# Notes:
+# - Default limits: 5 notifications/hour, 20/day
+# - Notifications will repeat for unresolved issues (subject to throttling)
+# - Notification state documents have 30-day TTL
+# - User configuration persists indefinitely (no TTL)
+#
+# Notification Types (Inheritance-based):
+# - Generic notifications: NotificationStateDocument (base class)
+# - Work item notifications: WorkItemNotificationStateDocument (inherits from base)
+#
+# Context field:
+# - The controller intelligently parses the context JSON
+# - If context contains "workItemId", it creates a WorkItemNotificationStateDocument
+#   with typed properties (WorkItemId, AreaPath, WorkItemType)
+# - Otherwise, it creates a generic NotificationStateDocument
+#
+# Context examples:
+#   - Work item: {"workItemId":12345,"areaPath":"Dynamics/Sales","workItemType":"Bug"}
+#   - Generic/other: null, empty, or any other JSON structure
+#
+# Benefits of this approach:
+# - Type-safe work item queries (e.g., get all notifications for work item 12345)
+# - Future extensibility (can add PullRequestNotificationStateDocument, etc.)
+# - NotificationOrchestrator can use strongly-typed handlers per notification type
