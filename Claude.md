@@ -107,6 +107,11 @@ Hermes.Tests/                  # xUnit + Moq tests
   - ❌ `LocalDevelopmentAuth`
 - **Be descriptive:** Prefer clarity over brevity in naming
 - **Consistency:** Follow established patterns in the codebase
+- **One class per file:** Each class, interface, or enum must be in its own file
+  - File name must match the class/interface name exactly
+  - ✅ `SchedulingConfiguration.cs` contains only `SchedulingConfiguration` class
+  - ✅ `JobConfiguration.cs` contains only `JobConfiguration` class
+  - ❌ Multiple classes in a single file (except for nested classes within their parent)
 
 ### Methods
 

@@ -44,6 +44,9 @@ namespace Hermes.DI
             // Register TeamsModule for Teams channel-related dependencies
             builder.RegisterModule(new TeamsModule(_configuration, _environment));
 
+            // Register SchedulingModule for scheduling infrastructure
+            builder.RegisterModule(new SchedulingModule(_configuration));
+
             builder.RegisterType<AgentPromptComposer>()
                 .As<IAgentPromptComposer>()
                 .SingleInstance();
