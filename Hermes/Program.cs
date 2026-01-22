@@ -1,11 +1,13 @@
 using Autofac;
 using Hermes.Channels.Teams;
 using Hermes.DI;
+using Hermes.Scheduling;
 using Microsoft.Agents.Authentication;
 using Microsoft.Agents.Builder;
 using Microsoft.Agents.Hosting.AspNetCore;
 using Microsoft.Agents.Storage;
 using Microsoft.Extensions.Http;
+using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +46,15 @@ if (builder.Environment.IsDevelopment())
     });
 }
 
+// Add Quartz.NET scheduler
+builder.Services.AddQuartz(q =>
+{
+    q.UseSimpleTypeLoader();
+    q.UseInMemoryStore();
+});
+
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+
 // Use Autofac as the service provider
 builder.Host.UseServiceProviderFactory(new Autofac.Extensions.DependencyInjection.AutofacServiceProviderFactory());
 
@@ -51,6 +62,14 @@ builder.Host.UseServiceProviderFactory(new Autofac.Extensions.DependencyInjectio
 builder.Host.ConfigureContainer<Autofac.ContainerBuilder>(containerBuilder =>
 {
     containerBuilder.RegisterModule(new HermesModule(builder.Configuration, builder.Environment));
+});
+
+// Register SchedulerSetup as hosted service (resolved from Autofac container)
+builder.Services.AddHostedService(sp =>
+{
+    var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();
+    var autofacContainer = sp.GetRequiredService<ILifetimeScope>();
+    return autofacContainer.Resolve<SchedulerSetup>();
 });
 
 // Add AgentApplicationOptions from appsettings section "AgentApplication".
