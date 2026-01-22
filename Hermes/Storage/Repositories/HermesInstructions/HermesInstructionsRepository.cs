@@ -12,6 +12,9 @@ namespace Hermes.Storage.Repositories.HermesInstructions
     /// </summary>
     public class HermesInstructionsRepository : RepositoryBase<HermesInstructions>, IHermesInstructionsRepository
     {
+        /// <inheritdoc/>
+        protected override string ObjectTypeCode => "instructions";
+
         // File-backed client returns raw instruction text keyed by partition/id.
         private readonly IStorageClient<FileDocument, string>? _fileClient;
 

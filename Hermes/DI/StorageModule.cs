@@ -8,6 +8,8 @@ using Hermes.Storage.Repositories.Sample;
 using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.ConversationReference;
+using Hermes.Storage.Repositories.UserConfiguration;
+using Hermes.Storage.Repositories.UserNotificationState;
 using Hermes.Storage.Core.Models;
 
 namespace Hermes.DI
@@ -107,6 +109,16 @@ namespace Hermes.DI
             // Register ConversationReferenceRepository as IConversationReferenceRepository
             builder.RegisterType<ConversationReferenceRepository>()
                 .As<IConversationReferenceRepository>()
+                .SingleInstance();
+
+            // Register UserConfigurationRepository as IUserConfigurationRepository
+            builder.RegisterType<UserConfigurationRepository>()
+                .As<IUserConfigurationRepository>()
+                .SingleInstance();
+
+            // Register UserNotificationStateRepository
+            builder.RegisterType<UserNotificationStateRepository>()
+                .As<IUserNotificationStateRepository>()
                 .SingleInstance();
         }
     }

@@ -1,4 +1,5 @@
 using Hermes.Controllers;
+using Hermes.Controllers.Models.ProactiveMessaging;
 using Hermes.Services.Notifications;
 using Hermes.Services.Notifications.Models;
 using Microsoft.AspNetCore.Mvc;

@@ -57,6 +57,11 @@ namespace Hermes.DI
                 .As<IProactiveMessenger>()
                 .SingleInstance();
 
+            // Register NotificationGate for notification throttling and deduplication
+            builder.RegisterType<NotificationGate>()
+                .As<INotificationGate>()
+                .SingleInstance();
+
             // Register conversation context configuration
             builder.Register(ctx =>
             {

@@ -48,3 +48,5 @@ TestResults/
 *.vspscc
 *.vssscc
 _ReSharper*/
+.claude/
+*.pptx

@@ -16,6 +16,14 @@ namespace Hermes.Storage.Repositories
 		protected readonly IStorageClient<T, string> _storage;
 
 		/// <summary>
+		/// Object type code for this repository's documents.
+		/// Used to prevent partition key collisions between different document types.
+		/// Must be implemented by derived classes.
+		/// Examples: "conv", "notif-generic", "notif-workitem", "user-config"
+		/// </summary>
+		protected abstract string ObjectTypeCode { get; }
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="RepositoryBase{T}"/> class.
 		/// </summary>
 		/// <param name="storage">The storage client to use.</param>
@@ -24,10 +32,30 @@ namespace Hermes.Storage.Repositories
 			_storage = storage;
 		}
 
+		/// <summary>
+		/// Applies the object type code prefix to a partition key value.
+		/// Format: "{objectTypeCode}:{partitionKey}" (e.g., "conv:user-123")
+		/// </summary>
+		/// <param name="partitionKey">The raw partition key value.</param>
+		/// <returns>Prefixed partition key for storage.</returns>
+		private string _ApplyPartitionKeyPrefix(string partitionKey)
+		{
+			// Check if already prefixed to avoid double-prefixing (e.g., when updating documents from storage)
+		var prefix = $"{ObjectTypeCode}:";
+		if (partitionKey.StartsWith(prefix, StringComparison.Ordinal))
+		{
+			return partitionKey;
+		}
+		return $"{ObjectTypeCode}:{partitionKey}";
+		}
+
 		/// <inheritdoc/>
 		public virtual Task CreateAsync(T entity)
 		{
 			_ValidateEntity(entity);
+
+			// Apply partition key prefix before storing
+			entity.PartitionKey = _ApplyPartitionKeyPrefix(entity.PartitionKey);
 
 			return _storage.CreateAsync(entity);
 		}
@@ -36,14 +64,16 @@ namespace Hermes.Storage.Repositories
 		/// Reads an entity from the repository by key and partition key.
 		/// </summary>
 		/// <param name="key">The string key of the entity to read.</param>
-		/// <param name="partitionKey">The partition key of the entity to read.</param>
+		/// <param name="partitionKey">The raw partition key value (without prefix).</param>
 		/// <returns>The entity if found, otherwise null.</returns>
 		public virtual Task<T?> ReadAsync(string key, string partitionKey)
 		{
 			_ValidateKey(key);
 			_ValidateKey(partitionKey);
 
-			return _storage.ReadAsync(key, partitionKey);
+			// Apply partition key prefix before reading
+			var prefixedPartitionKey = _ApplyPartitionKeyPrefix(partitionKey);
+			return _storage.ReadAsync(key, prefixedPartitionKey);
 		}
 
 		/// <inheritdoc/>
@@ -52,6 +82,9 @@ namespace Hermes.Storage.Repositories
 			_ValidateKey(key);
 			_ValidateEntity(entity);
 
+			// Apply partition key prefix before updating
+			entity.PartitionKey = _ApplyPartitionKeyPrefix(entity.PartitionKey);
+
 			return _storage.UpdateAsync(key, entity);
 		}
 
@@ -59,13 +92,15 @@ namespace Hermes.Storage.Repositories
 		/// Deletes an entity from the repository by key and partition key.
 		/// </summary>
 		/// <param name="key">The string key of the entity to delete.</param>
-		/// <param name="partitionKey">The partition key of the entity to delete.</param>
+		/// <param name="partitionKey">The raw partition key value (without prefix).</param>
 		public virtual Task DeleteAsync(string key, string partitionKey)
 		{
 			_ValidateKey(key);
 			_ValidateKey(partitionKey);
 
-			return _storage.DeleteAsync(key, partitionKey);
+			// Apply partition key prefix before deleting
+			var prefixedPartitionKey = _ApplyPartitionKeyPrefix(partitionKey);
+			return _storage.DeleteAsync(key, prefixedPartitionKey);
 		}
 
         /// <inheritdoc/>
@@ -74,7 +109,9 @@ namespace Hermes.Storage.Repositories
 			if (string.IsNullOrWhiteSpace(partitionKey))
 				throw new StorageException("Partition key cannot be null or empty.", StorageExceptionTypes.ErrorCode.InvalidInput);
 
-			return _storage.ReadAllByPartitionKeyAsync(partitionKey);
+			// Apply partition key prefix before reading all
+			var prefixedPartitionKey = _ApplyPartitionKeyPrefix(partitionKey);
+			return _storage.ReadAllByPartitionKeyAsync(prefixedPartitionKey);
 		}
 
 		/// <summary>
