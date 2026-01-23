@@ -1,4 +1,4 @@
-namespace Hermes.Services.Notifications.Models
+namespace Hermes.Notifications.Infra.Models
 {
 	/// <summary>
 	/// Result of attempting to send a proactive notification.

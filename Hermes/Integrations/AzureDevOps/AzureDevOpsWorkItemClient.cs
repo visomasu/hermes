@@ -365,5 +365,116 @@ namespace Integrations.AzureDevOps
 					" ORDER BY [System.ChangedDate] DESC"
 			};
 		}
+
+		/// <inheritdoc/>
+		public async Task<string> GetWorkItemsByAssignedUserAsync(
+			string userEmail,
+			IEnumerable<string>? states = null,
+			IEnumerable<string>? fields = null,
+			string? iterationPath = null,
+			IEnumerable<string>? workItemTypes = null,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(userEmail))
+			{
+				throw new IntegrationException("userEmail must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
+			}
+
+			try
+			{
+				var allFields = (fields ?? Enumerable.Empty<string>())
+					.Concat(MandatoryFields)
+					.Distinct()
+					.ToList();
+
+				var wiql = BuildAssignedUserWiql(userEmail, states, iterationPath, workItemTypes);
+
+				var client = GetClient();
+				var queryResult = await client.QueryByWiqlAsync(wiql, _project);
+
+				if (queryResult.WorkItems == null || !queryResult.WorkItems.Any())
+				{
+					return JsonSerializer.Serialize(new { count = 0, value = Array.Empty<object>() }, LowercaseJsonOptions);
+				}
+
+				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
+				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All);
+
+				var filteredResults = workItems.Select(workItem => new
+				{
+					id = workItem.Id,
+					rev = workItem.Rev,
+					fields = allFields.ToDictionary(
+						field => field,
+						field => workItem.Fields.TryGetValue(field, out var value) ? value : null
+					)
+				});
+
+				return JsonSerializer.Serialize(new { count = filteredResults.Count(), value = filteredResults }, LowercaseJsonOptions);
+			}
+			catch (Exception ex)
+			{
+				throw new IntegrationException(
+					$"Error querying work items for user '{userEmail}': {ex.Message}",
+					IntegrationException.ErrorCode.UnexpectedError,
+					ex);
+			}
+		}
+
+		private static Wiql BuildAssignedUserWiql(
+			string userEmail,
+			IEnumerable<string>? states,
+			string? iterationPath,
+			IEnumerable<string>? workItemTypes)
+		{
+			var wiqlClauses = new List<string>
+			{
+				"[System.TeamProject] = @project",
+				$"[System.AssignedTo] = '{userEmail.Replace("'", "''")}'"
+			};
+
+			// Filter by states
+			var statesList = states?
+				.Where(s => !string.IsNullOrWhiteSpace(s))
+				.Select(s => s.Trim())
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			if (statesList != null && statesList.Count > 0)
+			{
+				var stateConditions = statesList
+					.Select(s => $"'{s.Replace("'", "''")}'");
+				wiqlClauses.Add($"[System.State] IN ({string.Join(",", stateConditions)})");
+			}
+
+			// Filter by iteration path
+			if (!string.IsNullOrWhiteSpace(iterationPath))
+			{
+				wiqlClauses.Add($"[System.IterationPath] UNDER '{iterationPath.Replace("'", "''")}'");
+			}
+
+			// Filter by work item types
+			var typesList = workItemTypes?
+				.Where(t => !string.IsNullOrWhiteSpace(t))
+				.Select(t => t.Trim())
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			if (typesList != null && typesList.Count > 0)
+			{
+				var typeConditions = typesList
+					.Select(t => $"[System.WorkItemType] = '{t.Replace("'", "''")}'");
+				wiqlClauses.Add($"({string.Join(" OR ", typeConditions)})");
+			}
+
+			return new Wiql
+			{
+				Query =
+					"SELECT [System.Id] " +
+					"FROM WorkItems " +
+					"WHERE " + string.Join(" AND ", wiqlClauses) +
+					" ORDER BY [System.ChangedDate] DESC"
+			};
+		}
 	}
 }

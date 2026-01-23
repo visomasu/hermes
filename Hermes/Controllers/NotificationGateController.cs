@@ -1,5 +1,5 @@
 using Hermes.Controllers.Models.NotificationGate;
-using Hermes.Services.Notifications;
+using Hermes.Notifications.Infra;
 using Hermes.Storage.Repositories.UserNotificationState;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;

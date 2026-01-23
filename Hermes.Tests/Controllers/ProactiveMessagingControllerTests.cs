@@ -1,7 +1,7 @@
 using Hermes.Controllers;
 using Hermes.Controllers.Models.ProactiveMessaging;
-using Hermes.Services.Notifications;
-using Hermes.Services.Notifications.Models;
+using Hermes.Notifications.Infra;
+using Hermes.Notifications.Infra.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;

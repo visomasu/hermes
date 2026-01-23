@@ -6,7 +6,7 @@ using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.HermesInstructions;
-using Hermes.Services.Notifications;
+using Hermes.Notifications.Infra;
 using Hermes.Tools;
 using Hermes.Tools.AzureDevOps;
 

@@ -1,5 +1,5 @@
-using Hermes.Services.Notifications;
-using Hermes.Services.Notifications.Models;
+using Hermes.Notifications.Infra;
+using Hermes.Notifications.Infra.Models;
 using Hermes.Storage.Repositories.UserNotificationState;
 using Hermes.Storage.Repositories.UserConfiguration;
 using Hermes.Storage.Repositories.UserConfiguration.Models;
@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace Hermes.Tests.Services.Notifications
+namespace Hermes.Tests.Notifications.Infra
 {
 	public class NotificationGateTests
 	{

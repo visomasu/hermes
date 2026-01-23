@@ -1,8 +1,8 @@
-using Hermes.Services.Notifications.Models;
+using Hermes.Notifications.Infra.Models;
 using Hermes.Storage.Repositories.UserConfiguration;
 using Hermes.Storage.Repositories.UserConfiguration.Models;
 
-namespace Hermes.Services.Notifications
+namespace Hermes.Notifications.Infra
 {
 	/// <summary>
 	/// Gates notification delivery based on throttling, deduplication, and user preferences.

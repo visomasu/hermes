@@ -106,9 +106,11 @@ namespace Hermes.Scheduling
 			}
 
 			// Create trigger with cron expression
+			// Start 1 minute after boot to allow services (Teams client, etc.) to fully initialize
 			var trigger = TriggerBuilder.Create()
 				.WithIdentity($"{jobConfig.JobName}Trigger", "HermesJobs")
 				.WithDescription($"Cron: {jobConfig.CronExpression} ({timeZone.Id})")
+				.StartAt(DateTimeOffset.Now.AddMinutes(1))
 				.WithCronSchedule(jobConfig.CronExpression, builder =>
 				{
 					builder.InTimeZone(timeZone);
