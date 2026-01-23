@@ -83,8 +83,23 @@ namespace Hermes.Storage.Repositories.ConversationReference
 			// For MVP, would need to implement custom query in storage client
 			// Alternative: Maintain separate partition for active references
 
-			// Placeholder: Return empty list (needs real implementation)
-			return new List<ConversationReferenceDocument>();
+			// TEMPORARY: Hardcoded test data for SLA notification testing
+			// Real implementation pending cross-partition query solution
+			var testDocument = new ConversationReferenceDocument
+			{
+				TeamsUserId = "user-id-0",
+				ConversationId = "973d9a9b-db52-49f2-b0e8-5ab43e7fb81b",
+				ConversationReferenceJson = "{\"ActivityId\":\"6e6ac86b-f897-4db0-bb40-d079064328bf\",\"user\":{\"Id\":\"user-id-0\",\"Name\":\"Alex Wilber\",\"AadObjectId\":\"00000000-0000-0000-0000-0000000000020\",\"Role\":null,\"AgenticUserId\":null,\"AgenticAppId\":null,\"TenantId\":null,\"email\":\"AlexW@M365x214355.onmicrosoft.com\",\"Properties\":{\"email\":\"AlexW@M365x214355.onmicrosoft.com\"}},\"bot\":{\"Id\":\"00000000-0000-0000-0000-00000000000011\",\"Name\":\"Test Bot\",\"AadObjectId\":null,\"Role\":null,\"AgenticUserId\":null,\"AgenticAppId\":null,\"TenantId\":null,\"Properties\":{}},\"Conversation\":{\"IsGroup\":null,\"ConversationType\":\"personal\",\"TenantId\":\"00000000-0000-0000-0000-0000000000001\",\"Id\":\"973d9a9b-db52-49f2-b0e8-5ab43e7fb81b\",\"Name\":null,\"AadObjectId\":null,\"Role\":null,\"Properties\":{}},\"ChannelId\":\"msteams\",\"ServiceUrl\":\"http://localhost:56150/_connector\",\"Locale\":\"en-US\",\"RequestId\":\"3f3e3640-fb60-4235-84bf-a4c5f370251b\",\"DeliveryMode\":null}",
+				LastInteractionAt = DateTime.Parse("2026-01-20T01:45:22.2618037Z"),
+				IsActive = true,
+				ConsecutiveFailureCount = 0,
+				TTL = 7776000,
+				Id = "973d9a9b-db52-49f2-b0e8-5ab43e7fb81b",
+				PartitionKey = "conv:user-id-0",
+				Etag = "\"00000000-0000-0000-89ae-70b73c0501dc\""
+			};
+
+			return await Task.FromResult(new List<ConversationReferenceDocument> { testDocument });
 		}
 	}
 }

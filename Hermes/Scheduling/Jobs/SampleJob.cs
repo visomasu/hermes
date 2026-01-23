@@ -6,6 +6,7 @@ namespace Hermes.Scheduling.Jobs
 	/// Sample job for testing the Quartz.NET scheduling infrastructure.
 	/// Logs a simple message and exits.
 	/// </summary>
+	[DisallowConcurrentExecution]
 	public class SampleJob : IJob
 	{
 		private readonly ILogger<SampleJob> _logger;

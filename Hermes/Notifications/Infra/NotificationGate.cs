@@ -1,10 +1,10 @@
-using Hermes.Services.Notifications.Models;
+using Hermes.Notifications.Infra.Models;
 using Hermes.Storage.Repositories.UserConfiguration;
 using Hermes.Storage.Repositories.UserConfiguration.Models;
 using Hermes.Storage.Repositories.UserNotificationState;
 using Microsoft.Extensions.Logging;
 
-namespace Hermes.Services.Notifications
+namespace Hermes.Notifications.Infra
 {
 	/// <summary>
 	/// Implementation of notification gating logic.

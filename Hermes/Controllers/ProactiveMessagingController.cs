@@ -1,5 +1,5 @@
 using Hermes.Controllers.Models.ProactiveMessaging;
-using Hermes.Services.Notifications;
+using Hermes.Notifications.Infra;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Controllers

@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace Hermes.Tests.Services.Notifications
+namespace Hermes.Tests.Notifications.Infra
 {
 	/// <summary>
 	/// Tests for ProactiveMessenger.

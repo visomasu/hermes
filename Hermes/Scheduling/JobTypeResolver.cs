@@ -14,9 +14,8 @@ namespace Hermes.Scheduling
 		{
 			_jobTypes = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
 			{
-				{ "Sample", typeof(SampleJob) }
-				// Future jobs will be added here
-				// Example: { "SlaNotification", typeof(SlaNotificationJob) }
+				{ "Sample", typeof(SampleJob) },
+				{ "WorkItemUpdateSla", typeof(WorkItemUpdateSlaJob) }
 			};
 		}
 

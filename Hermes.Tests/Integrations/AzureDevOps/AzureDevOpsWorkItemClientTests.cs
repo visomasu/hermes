@@ -297,6 +297,227 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 			Assert.True(parentIndex < childIndex);
 		}
 
+		[Fact]
+		public async Task GetWorkItemsByAssignedUserAsync_ThrowsIntegrationException_OnNullOrWhitespaceEmail()
+		{
+			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject", "invalidPat");
+
+			// Null or empty/whitespace email should result in an IntegrationException from validation.
+			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemsByAssignedUserAsync(null!));
+			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemsByAssignedUserAsync(string.Empty));
+			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemsByAssignedUserAsync("   "));
+		}
+
+		[Fact]
+		public async Task GetWorkItemsByAssignedUserAsync_BuildsExpectedWiqlWithAllFilters()
+		{
+			// Arrange
+			var organization = "org";
+			var project = "proj";
+			var pat = "token";
+
+			var queryResult = new WorkItemQueryResult
+			{
+				WorkItems = new List<WorkItemReference>
+				{
+					new WorkItemReference { Id = 1 },
+					new WorkItemReference { Id = 2 }
+				}
+			};
+
+			Wiql? capturedWiql = null;
+
+			var returnedItems = new List<WorkItem>
+			{
+				new WorkItem { Id = 1, Rev = 1, Fields = new Dictionary<string, object?> { { "System.Id", 1 }, { "System.Title", "Bug 1" }, { "System.WorkItemType", "Bug" } } },
+				new WorkItem { Id = 2, Rev = 1, Fields = new Dictionary<string, object?> { { "System.Id", 2 }, { "System.Title", "Task 1" }, { "System.WorkItemType", "Task" } } },
+			};
+
+			var connection = new VssConnection(
+				new Uri($"https://dev.azure.com/{organization}"),
+				new VssBasicCredential(string.Empty, pat));
+
+			var testClient = new TestableAzureDevOpsWorkItemClient(connection, project);
+
+			var witClientMock = new Mock<WorkItemTrackingHttpClient>(MockBehavior.Strict, new Uri("https://dev.azure.com/org"), new VssCredentials());
+
+			witClientMock
+				.Setup(c => c.QueryByWiqlAsync(
+					It.IsAny<Wiql>(),
+					It.IsAny<string>(),
+					It.IsAny<bool?>(),
+					It.IsAny<int?>(),
+					It.IsAny<object>(),
+					It.IsAny<CancellationToken>()))
+				.Callback<Wiql, string, bool?, int?, object, CancellationToken>(
+					(wiql, projArg, _, _, _, _) =>
+					{
+						capturedWiql = wiql;
+					})
+				.ReturnsAsync(queryResult);
+
+			witClientMock
+				.Setup(c => c.GetWorkItemsAsync(
+					It.IsAny<IEnumerable<int>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<DateTime?>(),
+					It.IsAny<WorkItemExpand?>(),
+					It.IsAny<WorkItemErrorPolicy?>(),
+					It.IsAny<object>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync(returnedItems);
+
+			var clientType = typeof(AzureDevOpsWorkItemClient);
+			var workItemClientField = clientType.GetField("_workItemClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			workItemClientField!.SetValue(testClient, witClientMock.Object);
+
+			// Act
+			var json = await testClient.GetWorkItemsByAssignedUserAsync(
+				"test@example.com",
+				new[] { "Active", "New" },
+				new[] { "System.Id", "System.Title" },
+				"@CurrentIteration",
+				new[] { "Bug", "Task" });
+
+			// Assert: WIQL contains all expected filters
+			Assert.NotNull(capturedWiql);
+			Assert.Contains("[System.TeamProject] = @project", capturedWiql!.Query);
+			Assert.Contains("[System.AssignedTo] = 'test@example.com'", capturedWiql.Query);
+			Assert.Contains("[System.State] IN ('Active','New')", capturedWiql.Query);
+			Assert.Contains("[System.IterationPath] UNDER '@CurrentIteration'", capturedWiql.Query);
+			Assert.Contains("[System.WorkItemType] = 'Bug'", capturedWiql.Query);
+			Assert.Contains("[System.WorkItemType] = 'Task'", capturedWiql.Query);
+
+			// Verify JSON contains both work items
+			Assert.Contains("\"id\":1", json);
+			Assert.Contains("\"id\":2", json);
+		}
+
+		[Fact]
+		public async Task GetWorkItemsByAssignedUserAsync_WorksWithoutOptionalFilters()
+		{
+			// Arrange
+			var organization = "org";
+			var project = "proj";
+			var pat = "token";
+
+			var queryResult = new WorkItemQueryResult
+			{
+				WorkItems = new List<WorkItemReference>
+				{
+					new WorkItemReference { Id = 1 }
+				}
+			};
+
+			Wiql? capturedWiql = null;
+
+			var returnedItems = new List<WorkItem>
+			{
+				new WorkItem { Id = 1, Rev = 1, Fields = new Dictionary<string, object?> { { "System.Id", 1 }, { "System.Title", "Work Item 1" } } }
+			};
+
+			var connection = new VssConnection(
+				new Uri($"https://dev.azure.com/{organization}"),
+				new VssBasicCredential(string.Empty, pat));
+
+			var testClient = new TestableAzureDevOpsWorkItemClient(connection, project);
+
+			var witClientMock = new Mock<WorkItemTrackingHttpClient>(MockBehavior.Strict, new Uri("https://dev.azure.com/org"), new VssCredentials());
+
+			witClientMock
+				.Setup(c => c.QueryByWiqlAsync(
+					It.IsAny<Wiql>(),
+					It.IsAny<string>(),
+					It.IsAny<bool?>(),
+					It.IsAny<int?>(),
+					It.IsAny<object>(),
+					It.IsAny<CancellationToken>()))
+				.Callback<Wiql, string, bool?, int?, object, CancellationToken>(
+					(wiql, projArg, _, _, _, _) =>
+					{
+						capturedWiql = wiql;
+					})
+				.ReturnsAsync(queryResult);
+
+			witClientMock
+				.Setup(c => c.GetWorkItemsAsync(
+					It.IsAny<IEnumerable<int>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<DateTime?>(),
+					It.IsAny<WorkItemExpand?>(),
+					It.IsAny<WorkItemErrorPolicy?>(),
+					It.IsAny<object>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync(returnedItems);
+
+			var clientType = typeof(AzureDevOpsWorkItemClient);
+			var workItemClientField = clientType.GetField("_workItemClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			workItemClientField!.SetValue(testClient, witClientMock.Object);
+
+			// Act - call with only required parameters
+			var json = await testClient.GetWorkItemsByAssignedUserAsync("test@example.com");
+
+			// Assert: WIQL contains only required filters
+			Assert.NotNull(capturedWiql);
+			Assert.Contains("[System.TeamProject] = @project", capturedWiql!.Query);
+			Assert.Contains("[System.AssignedTo] = 'test@example.com'", capturedWiql.Query);
+			Assert.DoesNotContain("[System.State]", capturedWiql.Query);
+			Assert.DoesNotContain("[System.IterationPath]", capturedWiql.Query);
+			Assert.DoesNotContain("[System.WorkItemType]", capturedWiql.Query);
+
+			Assert.Contains("\"id\":1", json);
+		}
+
+		[Fact]
+		public async Task GetWorkItemsByAssignedUserAsync_EscapesSingleQuotesInEmail()
+		{
+			// Arrange
+			var organization = "org";
+			var project = "proj";
+			var pat = "token";
+
+			var queryResult = new WorkItemQueryResult
+			{
+				WorkItems = new List<WorkItemReference>()
+			};
+
+			Wiql? capturedWiql = null;
+
+			var connection = new VssConnection(
+				new Uri($"https://dev.azure.com/{organization}"),
+				new VssBasicCredential(string.Empty, pat));
+
+			var testClient = new TestableAzureDevOpsWorkItemClient(connection, project);
+
+			var witClientMock = new Mock<WorkItemTrackingHttpClient>(MockBehavior.Strict, new Uri("https://dev.azure.com/org"), new VssCredentials());
+
+			witClientMock
+				.Setup(c => c.QueryByWiqlAsync(
+					It.IsAny<Wiql>(),
+					It.IsAny<string>(),
+					It.IsAny<bool?>(),
+					It.IsAny<int?>(),
+					It.IsAny<object>(),
+					It.IsAny<CancellationToken>()))
+				.Callback<Wiql, string, bool?, int?, object, CancellationToken>(
+					(wiql, projArg, _, _, _, _) =>
+					{
+						capturedWiql = wiql;
+					})
+				.ReturnsAsync(queryResult);
+
+			var clientType = typeof(AzureDevOpsWorkItemClient);
+			var workItemClientField = clientType.GetField("_workItemClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			workItemClientField!.SetValue(testClient, witClientMock.Object);
+
+			// Act - call with email containing single quote
+			var json = await testClient.GetWorkItemsByAssignedUserAsync("test'user@example.com");
+
+			// Assert: single quote should be escaped
+			Assert.NotNull(capturedWiql);
+			Assert.Contains("test''user@example.com", capturedWiql!.Query); // Single quote escaped as ''
+		}
+
 		// Test-only subclass to allow injecting a mocked VssConnection
 		private sealed class TestableAzureDevOpsWorkItemClient : AzureDevOpsWorkItemClient
 		{

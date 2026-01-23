@@ -2,6 +2,7 @@ using Autofac;
 using Hermes.Configuration;
 using Hermes.Scheduling;
 using Hermes.Scheduling.Jobs;
+using Hermes.Notifications.WorkItemSla;
 
 namespace Hermes.DI
 {
@@ -46,11 +47,28 @@ namespace Hermes.DI
 				.AsSelf()
 				.InstancePerDependency();
 
-			// Future job registrations will be added here
-			// Example:
-			// builder.RegisterType<SlaNotificationJob>()
-			//     .AsSelf()
-			//     .InstancePerDependency();
+			builder.RegisterType<WorkItemUpdateSlaJob>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			// Register WorkItemUpdateSla configuration
+			builder.Register(ctx =>
+			{
+				var config = new WorkItemUpdateSlaConfiguration();
+				_configuration.GetSection("WorkItemUpdateSla").Bind(config);
+				return config;
+			})
+			.AsSelf()
+			.SingleInstance();
+
+			// Register WorkItemUpdateSla services
+			builder.RegisterType<WorkItemUpdateSlaMessageComposer>()
+				.AsSelf()
+				.SingleInstance();
+
+			builder.RegisterType<WorkItemUpdateSlaEvaluator>()
+				.As<IWorkItemUpdateSlaEvaluator>()
+				.SingleInstance();
 		}
 	}
 }

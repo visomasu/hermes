@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
-using Hermes.Services.Notifications.Models;
+using Hermes.Notifications.Infra.Models;
 using Hermes.Storage.Repositories.ConversationReference;
 using Microsoft.Agents.Builder;
 using Microsoft.Agents.Core;
@@ -9,7 +9,7 @@ using Microsoft.Agents.Hosting.AspNetCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace Hermes.Services.Notifications
+namespace Hermes.Notifications.Infra
 {
 	/// <summary>
 	/// Sends proactive notifications via Teams using stored conversation references.

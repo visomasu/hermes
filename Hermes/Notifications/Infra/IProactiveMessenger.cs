@@ -1,6 +1,6 @@
-using Hermes.Services.Notifications.Models;
+using Hermes.Notifications.Infra.Models;
 
-namespace Hermes.Services.Notifications
+namespace Hermes.Notifications.Infra
 {
 	/// <summary>
 	/// Service for sending proactive messages to Teams users.

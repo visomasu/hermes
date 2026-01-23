@@ -51,5 +51,23 @@ namespace Integrations.AzureDevOps
 		/// A JSON string representing the ordered hierarchy from the topmost parent down to the specified work item.
 		/// </returns>
 		Task<string> GetParentHierarchyAsync(int id, IEnumerable<string>? fields = null);
+
+		/// <summary>
+		/// Gets work items assigned to a specific user.
+		/// </summary>
+		/// <param name="userEmail">The email address of the assigned user.</param>
+		/// <param name="states">Optional collection of work item states to filter on (e.g., 'Active', 'New'). If null, all states are included.</param>
+		/// <param name="fields">The list of field reference names to include in the response.</param>
+		/// <param name="iterationPath">Optional iteration path to filter work items (e.g., 'Project\\Sprint 1'). If null, all iterations are included.</param>
+		/// <param name="workItemTypes">Optional collection of work item types to filter on (e.g., 'Bug', 'Task'). If null, all types are included.</param>
+		/// <param name="cancellationToken">Cancellation token.</param>
+		/// <returns>A JSON string representing a list of WorkItem objects assigned to the user.</returns>
+		Task<string> GetWorkItemsByAssignedUserAsync(
+			string userEmail,
+			IEnumerable<string>? states = null,
+			IEnumerable<string>? fields = null,
+			string? iterationPath = null,
+			IEnumerable<string>? workItemTypes = null,
+			CancellationToken cancellationToken = default);
 	}
 }

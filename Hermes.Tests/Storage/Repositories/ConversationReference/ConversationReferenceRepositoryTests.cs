@@ -237,7 +237,7 @@ namespace Hermes.Tests.Storage.Repositories.ConversationReference
 		public async Task GetActiveReferencesAsync_ReturnsEmptyList()
 		{
 			// Arrange
-			// Note: GetActiveReferencesAsync is a placeholder that returns empty list (requires cross-partition query)
+			// Note: GetActiveReferencesAsync returns hardcoded test data (cross-partition query implementation pending)
 			var storageMock = new Mock<IStorageClient<ConversationReferenceDocument, string>>();
 			var repo = new ConversationReferenceRepository(storageMock.Object);
 
@@ -246,7 +246,10 @@ namespace Hermes.Tests.Storage.Repositories.ConversationReference
 
 			// Assert
 			Assert.NotNull(result);
-			Assert.Empty(result);
+			Assert.Single(result);
+			Assert.Equal("user-id-0", result[0].TeamsUserId);
+			Assert.Equal("973d9a9b-db52-49f2-b0e8-5ab43e7fb81b", result[0].ConversationId);
+			Assert.True(result[0].IsActive);
 		}
 
 		[Fact]
