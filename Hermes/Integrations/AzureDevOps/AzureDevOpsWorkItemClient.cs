@@ -476,5 +476,209 @@ namespace Integrations.AzureDevOps
 					" ORDER BY [System.ChangedDate] DESC"
 			};
 		}
+
+		/// <inheritdoc/>
+		public async Task<string> GetWorkItemsChangedByUserAsync(
+			string userEmail,
+			int daysBack,
+			IEnumerable<string>? states = null,
+			IEnumerable<string>? fields = null,
+			IEnumerable<string>? workItemTypes = null,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(userEmail))
+			{
+				throw new IntegrationException("userEmail must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
+			}
+
+			if (daysBack < 0)
+			{
+				throw new IntegrationException("daysBack must be a non-negative integer", IntegrationException.ErrorCode.UnexpectedError);
+			}
+
+			try
+			{
+				var allFields = (fields ?? Enumerable.Empty<string>())
+					.Concat(MandatoryFields)
+					.Distinct()
+					.ToList();
+
+				var wiql = _BuildChangedByUserWiql(userEmail, daysBack, states, workItemTypes);
+
+				var client = GetClient();
+				var queryResult = await client.QueryByWiqlAsync(wiql, _project, cancellationToken: cancellationToken);
+
+				if (queryResult.WorkItems == null || !queryResult.WorkItems.Any())
+				{
+					return JsonSerializer.Serialize(new { count = 0, value = Array.Empty<object>() }, LowercaseJsonOptions);
+				}
+
+				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
+				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All, cancellationToken: cancellationToken);
+
+				var filteredResults = workItems.Select(workItem => new
+				{
+					id = workItem.Id,
+					rev = workItem.Rev,
+					fields = allFields.ToDictionary(
+						field => field,
+						field => workItem.Fields.TryGetValue(field, out var value) ? value : null
+					)
+				});
+
+				return JsonSerializer.Serialize(new { count = filteredResults.Count(), value = filteredResults }, LowercaseJsonOptions);
+			}
+			catch (Exception ex)
+			{
+				throw new IntegrationException(
+					$"Error querying work items changed by user '{userEmail}': {ex.Message}",
+					IntegrationException.ErrorCode.UnexpectedError,
+					ex);
+			}
+		}
+
+		/// <inheritdoc/>
+		public async Task<string> GetWorkItemsCreatedByUserAsync(
+			string userEmail,
+			int daysBack,
+			IEnumerable<string>? states = null,
+			IEnumerable<string>? fields = null,
+			IEnumerable<string>? workItemTypes = null,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(userEmail))
+			{
+				throw new IntegrationException("userEmail must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
+			}
+
+			if (daysBack < 0)
+			{
+				throw new IntegrationException("daysBack must be a non-negative integer", IntegrationException.ErrorCode.UnexpectedError);
+			}
+
+			try
+			{
+				var allFields = (fields ?? Enumerable.Empty<string>())
+					.Concat(MandatoryFields)
+					.Distinct()
+					.ToList();
+
+				var wiql = _BuildCreatedByUserWiql(userEmail, daysBack, states, workItemTypes);
+
+				var client = GetClient();
+				var queryResult = await client.QueryByWiqlAsync(wiql, _project, cancellationToken: cancellationToken);
+
+				if (queryResult.WorkItems == null || !queryResult.WorkItems.Any())
+				{
+					return JsonSerializer.Serialize(new { count = 0, value = Array.Empty<object>() }, LowercaseJsonOptions);
+				}
+
+				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
+				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All, cancellationToken: cancellationToken);
+
+				var filteredResults = workItems.Select(workItem => new
+				{
+					id = workItem.Id,
+					rev = workItem.Rev,
+					fields = allFields.ToDictionary(
+						field => field,
+						field => workItem.Fields.TryGetValue(field, out var value) ? value : null
+					)
+				});
+
+				return JsonSerializer.Serialize(new { count = filteredResults.Count(), value = filteredResults }, LowercaseJsonOptions);
+			}
+			catch (Exception ex)
+			{
+				throw new IntegrationException(
+					$"Error querying work items created by user '{userEmail}': {ex.Message}",
+					IntegrationException.ErrorCode.UnexpectedError,
+					ex);
+			}
+		}
+
+		private static Wiql _BuildChangedByUserWiql(
+			string userEmail,
+			int daysBack,
+			IEnumerable<string>? states,
+			IEnumerable<string>? workItemTypes)
+		{
+			var wiqlClauses = new List<string>
+			{
+				"[System.TeamProject] = @project",
+				$"[System.ChangedBy] = '{userEmail.Replace("'", "''")}'",
+				$"[System.ChangedDate] >= @today - {daysBack}"
+			};
+
+			_AddStateAndTypeFilters(wiqlClauses, states, workItemTypes);
+
+			return new Wiql
+			{
+				Query =
+					"SELECT [System.Id] " +
+					"FROM WorkItems " +
+					"WHERE " + string.Join(" AND ", wiqlClauses) +
+					" ORDER BY [System.ChangedDate] DESC"
+			};
+		}
+
+		private static Wiql _BuildCreatedByUserWiql(
+			string userEmail,
+			int daysBack,
+			IEnumerable<string>? states,
+			IEnumerable<string>? workItemTypes)
+		{
+			var wiqlClauses = new List<string>
+			{
+				"[System.TeamProject] = @project",
+				$"[System.CreatedBy] = '{userEmail.Replace("'", "''")}'",
+				$"[System.CreatedDate] >= @today - {daysBack}"
+			};
+
+			_AddStateAndTypeFilters(wiqlClauses, states, workItemTypes);
+
+			return new Wiql
+			{
+				Query =
+					"SELECT [System.Id] " +
+					"FROM WorkItems " +
+					"WHERE " + string.Join(" AND ", wiqlClauses) +
+					" ORDER BY [System.CreatedDate] DESC"
+			};
+		}
+
+		private static void _AddStateAndTypeFilters(
+			List<string> wiqlClauses,
+			IEnumerable<string>? states,
+			IEnumerable<string>? workItemTypes)
+		{
+			// Filter by states
+			var statesList = states?
+				.Where(s => !string.IsNullOrWhiteSpace(s))
+				.Select(s => s.Trim())
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			if (statesList != null && statesList.Count > 0)
+			{
+				var stateConditions = statesList
+					.Select(s => $"'{s.Replace("'", "''")}'");
+				wiqlClauses.Add($"[System.State] IN ({string.Join(",", stateConditions)})");
+			}
+
+			// Filter by work item types
+			var typesList = workItemTypes?
+				.Where(t => !string.IsNullOrWhiteSpace(t))
+				.Select(t => t.Trim())
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			if (typesList != null && typesList.Count > 0)
+			{
+				var typeConditions = typesList
+					.Select(t => $"[System.WorkItemType] = '{t.Replace("'", "''")}'");
+				wiqlClauses.Add($"({string.Join(" OR ", typeConditions)})");
+			}
+		}
 	}
 }

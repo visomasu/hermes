@@ -11,6 +11,11 @@
       "id": "parent-hierarchy-validator",
       "name": "Parent Hierarchy Validator",
       "description": "Validate and analyze hierarchical relationships (for example, parent/child links in storage documents or Azure DevOps work items), detect broken or cyclic hierarchies, and suggest or apply corrections according to Hermes business rules."
+    },
+    {
+      "id": "discover-user-activity",
+      "name": "Discover User Activity",
+      "description": "Discover and summarize user activity across Azure DevOps and integrated services, retrieving work items assigned to, changed by, and created by a specific user within a configurable time period. Supports filtering by work item types, states, and activity categories."
     }
   ]
 }

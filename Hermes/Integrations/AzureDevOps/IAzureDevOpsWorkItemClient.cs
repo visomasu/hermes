@@ -69,5 +69,41 @@ namespace Integrations.AzureDevOps
 			string? iterationPath = null,
 			IEnumerable<string>? workItemTypes = null,
 			CancellationToken cancellationToken = default);
+
+		/// <summary>
+		/// Gets work items changed by a specific user within a date range.
+		/// </summary>
+		/// <param name="userEmail">The email address of the user who changed the work items.</param>
+		/// <param name="daysBack">Number of days to look back from today.</param>
+		/// <param name="states">Optional collection of work item states to filter on (e.g., 'Active', 'New'). If null, all states are included.</param>
+		/// <param name="fields">The list of field reference names to include in the response.</param>
+		/// <param name="workItemTypes">Optional collection of work item types to filter on (e.g., 'Bug', 'Task'). If null, all types are included.</param>
+		/// <param name="cancellationToken">Cancellation token.</param>
+		/// <returns>A JSON string representing a list of WorkItem objects changed by the user.</returns>
+		Task<string> GetWorkItemsChangedByUserAsync(
+			string userEmail,
+			int daysBack,
+			IEnumerable<string>? states = null,
+			IEnumerable<string>? fields = null,
+			IEnumerable<string>? workItemTypes = null,
+			CancellationToken cancellationToken = default);
+
+		/// <summary>
+		/// Gets work items created by a specific user within a date range.
+		/// </summary>
+		/// <param name="userEmail">The email address of the user who created the work items.</param>
+		/// <param name="daysBack">Number of days to look back from today.</param>
+		/// <param name="states">Optional collection of work item states to filter on (e.g., 'Active', 'New'). If null, all states are included.</param>
+		/// <param name="fields">The list of field reference names to include in the response.</param>
+		/// <param name="workItemTypes">Optional collection of work item types to filter on (e.g., 'Bug', 'Task'). If null, all types are included.</param>
+		/// <param name="cancellationToken">Cancellation token.</param>
+		/// <returns>A JSON string representing a list of WorkItem objects created by the user.</returns>
+		Task<string> GetWorkItemsCreatedByUserAsync(
+			string userEmail,
+			int daysBack,
+			IEnumerable<string>? states = null,
+			IEnumerable<string>? fields = null,
+			IEnumerable<string>? workItemTypes = null,
+			CancellationToken cancellationToken = default);
 	}
 }

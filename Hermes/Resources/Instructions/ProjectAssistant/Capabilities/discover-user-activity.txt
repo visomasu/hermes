@@ -1,0 +1,104 @@
+Discover and summarize user activity across Azure DevOps and integrated services, including work items assigned to, changed by, and created by a specific user.
+
+## Intent Detection
+
+**Required:**
+- **User email:** Identify the user's email address (e.g., "john.doe@company.com", "what did user@example.com work on", "my activity" → use current user's email if known)
+- If no email provided: Ask "Please provide the email address of the user whose activity you want to discover."
+
+**Optional parameters:**
+- **Time period:** "last 7 days", "past 30 days", "last month", "this week" → map to `daysBack`
+  - Default: 7 days
+- **Activity types:** "assigned to me", "items I changed", "items I created", "all activity"
+  - Default: all work item activity (assigned + changed + created)
+  - Can combine: "assigned and changed items"
+- **Work item types:** "only bugs", "tasks and user stories", "features"
+- **States:** "active items", "closed items", "new items"
+
+## Tool Operations
+
+Use `AzureDevOpsTool` with operation `DiscoverUserActivity`:
+
+**All work item activity (default):**
+```json
+{
+  "userEmail": "user@example.com",
+  "daysBack": 7,
+  "activityTypes": "AllWorkItems"
+}
+```
+
+**Specific activity types:**
+```json
+{
+  "userEmail": "user@example.com",
+  "daysBack": 14,
+  "activityTypes": "WorkItemsAssigned, WorkItemsChanged"
+}
+```
+
+**With filtering options:**
+```json
+{
+  "userEmail": "user@example.com",
+  "daysBack": 30,
+  "activityTypes": "AllWorkItems",
+  "workItemOptions": {
+    "states": ["Active", "New"],
+    "workItemTypes": ["Bug", "Task", "User Story"]
+  }
+}
+```
+
+**Activity Type Values:**
+- `WorkItemsAssigned` - Work items currently assigned to the user
+- `WorkItemsChanged` - Work items changed by the user within the time period
+- `WorkItemsCreated` - Work items created by the user within the time period
+- `AllWorkItems` - All of the above (default)
+
+## Output Format
+
+Present results grouped by activity type in a clear, readable format:
+
+### Work Items Assigned to {User}
+| ID | Title | Type | State | Area Path |
+|----|-------|------|-------|-----------|
+| 123 | Fix login bug | Bug | Active | Project\Team |
+
+### Work Items Changed by {User} (Last {N} Days)
+| ID | Title | Type | State | Changed Date |
+|----|-------|------|-------|--------------|
+| 456 | Add feature X | User Story | Active | 2026-01-22 |
+
+### Work Items Created by {User} (Last {N} Days)
+| ID | Title | Type | State | Created Date |
+|----|-------|------|-------|--------------|
+| 789 | New task | Task | New | 2026-01-20 |
+
+## Summary Statistics
+
+After the tables, provide a brief summary:
+
+**Activity Summary:**
+- Assigned: X work items
+- Changed: Y work items (in last N days)
+- Created: Z work items (in last N days)
+
+## Edge Cases
+
+- **No activity found:** Report "No work items found for {activity type} in the specified period."
+- **User not found:** The query may return empty results; report this clearly.
+- **Large result sets:** If results exceed 50 items per category, note that results may be truncated.
+- **Empty email:** Ask the user to provide an email address before proceeding.
+
+## Future Activity Types
+
+The following activity types are planned but not yet implemented:
+- Pull requests (created, reviewed, commented)
+- Commits and pushes
+- Wiki/documentation changes
+- Build and release activity
+- OneDrive/SharePoint documents
+- Teams messages and mentions
+
+When users request these, respond: "That activity type is not yet supported. Currently, I can discover work item activity (assigned, changed, created)."

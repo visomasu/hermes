@@ -34,6 +34,11 @@ namespace Hermes.DI
 				.AsSelf()
 				.InstancePerDependency();
 
+			builder.RegisterType<DiscoverUserActivityCapability>()
+				.As<IAgentToolCapability<DiscoverUserActivityCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
 			builder.RegisterType<AzureDevOpsTool>()
 				.AsSelf()
 				.SingleInstance();
