@@ -1,5 +1,5 @@
+using Hermes.Domain.WorkItemSla.Models;
 using Hermes.Notifications.WorkItemSla;
-using Hermes.Notifications.WorkItemSla.Models;
 using Xunit;
 
 namespace Hermes.Tests.Notifications.WorkItemSla

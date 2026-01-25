@@ -1,3 +1,5 @@
+using Hermes.Domain.WorkItemSla.Models;
+
 namespace Hermes.Notifications.WorkItemSla.Models
 {
 	/// <summary>

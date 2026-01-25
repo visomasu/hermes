@@ -1,4 +1,6 @@
+using Hermes.Domain.WorkItemSla.Models;
 using Hermes.Notifications.Infra;
+using Hermes.Notifications.WorkItemSla;
 using Hermes.Notifications.WorkItemSla.Models;
 using Hermes.Storage.Repositories.ConversationReference;
 using Integrations.AzureDevOps;
@@ -6,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text.Json;
 
-namespace Hermes.Notifications.WorkItemSla
+namespace Hermes.Domain.WorkItemSla
 {
 	/// <summary>
 	/// Evaluates work items against update frequency SLA thresholds and sends notifications.
@@ -98,6 +100,45 @@ namespace Hermes.Notifications.WorkItemSla
 			return summary;
 		}
 
+		/// <inheritdoc/>
+		public async Task<List<WorkItemUpdateSlaViolation>> CheckViolationsForEmailAsync(
+			string email,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(email))
+			{
+				_logger.LogWarning("CheckViolationsForEmailAsync called with empty email");
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			_logger.LogDebug("Checking SLA violations for email {Email}", email);
+
+			// Get work item types we care about from SLA rules
+			var workItemTypes = _configuration.SlaRules.Keys.ToList();
+
+			// Query Azure DevOps for assigned work items
+			var workItemsJson = await _azureDevOpsClient.GetWorkItemsByAssignedUserAsync(
+				email,
+				new[] { "Active", "New" },
+				new[] { "System.Id", "System.Title", "System.WorkItemType", "System.ChangedDate" },
+				_configuration.IterationPath,
+				workItemTypes,
+				cancellationToken);
+
+			if (string.IsNullOrWhiteSpace(workItemsJson))
+			{
+				_logger.LogDebug("No work items found for email {Email}", email);
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			// Parse work items and calculate violations
+			var violations = _CalculateViolations(workItemsJson);
+
+			_logger.LogDebug("Found {Count} SLA violations for email {Email}", violations.Count, email);
+
+			return violations;
+		}
+
 		/// <summary>
 		/// Processes a single user for SLA violations.
 		/// </summary>
@@ -117,26 +158,8 @@ namespace Hermes.Notifications.WorkItemSla
 
 			_logger.LogDebug("Processing user {Email} (Teams user {TeamsUserId})", email, conversationRefDoc.TeamsUserId);
 
-			// Get work item types we care about from SLA rules
-			var workItemTypes = _configuration.SlaRules.Keys.ToList();
-
-			// Query Azure DevOps for assigned work items
-			var workItemsJson = await _azureDevOpsClient.GetWorkItemsByAssignedUserAsync(
-				email,
-				new[] { "Active", "New" },
-				new[] { "System.Id", "System.Title", "System.WorkItemType", "System.ChangedDate" },
-				_configuration.IterationPath,
-				workItemTypes,
-				cancellationToken);
-
-			if (string.IsNullOrWhiteSpace(workItemsJson))
-			{
-				_logger.LogDebug("No work items found for user {Email}", email);
-				return;
-			}
-
-			// Parse work items and calculate violations
-			var violations = _CalculateViolations(workItemsJson);
+			// Use shared method to check violations
+			var violations = await CheckViolationsForEmailAsync(email, cancellationToken);
 
 			if (violations.Count == 0)
 			{

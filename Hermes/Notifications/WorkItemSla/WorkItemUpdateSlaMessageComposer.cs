@@ -1,4 +1,4 @@
-using Hermes.Notifications.WorkItemSla.Models;
+using Hermes.Domain.WorkItemSla.Models;
 using System.Text;
 
 namespace Hermes.Notifications.WorkItemSla

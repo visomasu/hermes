@@ -1,3 +1,5 @@
+using Hermes.Domain.WorkItemSla;
+using Hermes.Domain.WorkItemSla.Models;
 using Hermes.Notifications.Infra;
 using Hermes.Notifications.Infra.Models;
 using Hermes.Notifications.WorkItemSla;
