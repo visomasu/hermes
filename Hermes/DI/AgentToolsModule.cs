@@ -3,6 +3,9 @@ using Hermes.Tools;
 using Hermes.Tools.AzureDevOps;
 using Hermes.Tools.AzureDevOps.Capabilities;
 using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
+using Hermes.Tools.UserManagement;
+using Hermes.Tools.UserManagement.Capabilities;
+using Hermes.Tools.UserManagement.Capabilities.Inputs;
 
 namespace Hermes.DI
 {
@@ -35,6 +38,21 @@ namespace Hermes.DI
 				.InstancePerDependency();
 
 			builder.RegisterType<AzureDevOpsTool>()
+				.AsSelf()
+				.SingleInstance();
+
+			// User Management
+			builder.RegisterType<RegisterSlaNotificationsCapability>()
+				.As<IAgentToolCapability<RegisterSlaNotificationsCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			builder.RegisterType<UnregisterSlaNotificationsCapability>()
+				.As<IAgentToolCapability<UnregisterSlaNotificationsCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			builder.RegisterType<UserManagementTool>()
 				.AsSelf()
 				.SingleInstance();
 		}
