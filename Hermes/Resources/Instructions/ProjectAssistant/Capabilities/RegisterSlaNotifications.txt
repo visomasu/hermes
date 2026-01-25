@@ -1,0 +1,59 @@
+Register users to receive daily SLA violation notifications for their work items and direct reports.
+
+## Trigger
+User requests: "register for SLA", "sign me up for SLA", "enable SLA notifications", "start tracking SLAs", "register for work item notifications"
+
+## Process
+
+**1. Identify User Intent**
+Parse user input for registration keywords. Confirm intent if ambiguous.
+
+**2. Execute Registration**
+Call: `UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<user_id>"})`
+
+This automatically:
+- Fetches user's Azure AD email via Microsoft Graph
+- Determines if user is a manager (has direct reports)
+- Retrieves direct report emails for managers
+- Stores registration in UserConfiguration
+- Enables SLA violation notifications
+
+**3. Communicate Result**
+For managers:
+"✅ Registered successfully! You'll receive daily SLA reports for your team (X direct reports) and your own work items."
+
+For individual contributors:
+"✅ Registered successfully! You'll receive daily SLA reports for your work items."
+
+## Manager vs IC Behavior
+
+**Manager (has direct reports):**
+- Receives ONE daily digest with violations from entire team
+- Digest grouped by owner email
+- Shows manager's own violations separately from team violations
+- Detailed view for teams ≤5 people, aggregated view for larger teams
+
+**Individual Contributor (no direct reports):**
+- Receives daily digest with only their own violations
+- Focused on their assigned work items
+
+## Important Notes
+
+- Registration is automatic via Microsoft Graph API (no manual email entry)
+- Manager status derived from direct reports in Azure AD
+- Notifications respect quiet hours and throttling rules (NotificationGate)
+- Users can check SLA violations on-demand anytime (without registration)
+- Silent registration: direct reports are not notified when manager registers
+
+## Related Capabilities
+
+- **CheckSlaViolations:** Perform immediate on-demand SLA check
+- **UnregisterSlaNotifications:** Remove user from daily notification list
+
+## Error Handling
+
+If email cannot be retrieved:
+"Could not retrieve your email from Azure AD. Please contact support."
+
+If registration fails:
+"An error occurred during registration. Please try again later."

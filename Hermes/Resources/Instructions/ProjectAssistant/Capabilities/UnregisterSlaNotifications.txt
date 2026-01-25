@@ -1,0 +1,61 @@
+Remove user from daily SLA violation notification list.
+
+## Trigger
+User requests: "unregister from SLA", "stop SLA notifications", "disable SLA alerts", "I don't want SLA reports", "turn off SLA notifications"
+
+## Process
+
+**1. Identify User Intent**
+Parse user input for unregistration keywords. Confirm intent if ambiguous to avoid accidental unregistration.
+
+**2. Execute Unregistration**
+Call: `UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "<user_id>"})`
+
+This automatically:
+- Checks if user is currently registered
+- Sets IsRegistered flag to false in UserConfiguration
+- Disables SlaViolationNotifications preference
+- Preserves historical registration data (for re-registration)
+
+**3. Communicate Result**
+
+Success:
+"✅ Unregistered successfully. You will no longer receive SLA violation notifications."
+
+Not currently registered:
+"You are not currently registered for SLA notifications."
+
+## Important Notes
+
+**What Stops:**
+- Daily scheduled SLA violation digest emails
+- Automatic team aggregation (for managers)
+
+**What Still Works:**
+- On-demand SLA checks via "check my SLA violations" command
+- User can re-register at any time with no data loss
+- Manager's direct reports are unaffected (they still receive their own notifications if registered)
+
+**Silent Operation:**
+- Direct reports are not notified when manager unregisters
+- No audit trail or notification to team members
+
+## Re-registration
+
+Users can re-register at any time using the RegisterSlaNotifications capability. The system will:
+- Re-fetch current direct reports from Microsoft Graph
+- Update stored profile with latest organizational data
+- Resume daily notifications immediately
+
+## Related Capabilities
+
+- **RegisterSlaNotifications:** Re-enable daily SLA notifications
+- **CheckSlaViolations:** Perform immediate one-time SLA check (works without registration)
+
+## Error Handling
+
+If unregistration fails:
+"An error occurred during unregistration. Please try again later."
+
+If user data cannot be accessed:
+"Could not access your registration data. Please contact support."
