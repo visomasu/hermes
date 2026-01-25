@@ -1,0 +1,152 @@
+### Microsoft Graph API Testing
+# Test endpoints for Microsoft Graph integration
+# Requires: az login to authenticate with Azure AD
+#
+# Setup Instructions:
+# 1. Run: az login
+# 2. Start Hermes locally: dotnet run --project Hermes
+# 3. Get your Azure AD Object ID:
+#    - Option A: Run: az ad signed-in-user show --query id -o tsv
+#    - Option B: Visit https://portal.azure.com → Azure Active Directory → Users → Find yourself
+# 4. Replace {{userId}} below with your actual Azure AD Object ID
+# 5. Execute requests to test Microsoft Graph integration
+
+###
+### Status Check - Verify Microsoft Graph client is initialized
+# @name graph-status
+GET {{host}}/api/microsoftgraph/status
+x-ms-correlation-id: {{$guid}}
+
+###
+### Test az CLI Integration - Verify az login fallback for local dev
+# @name test-az-cli
+GET {{host}}/api/microsoftgraph/test-az-cli
+x-ms-correlation-id: {{$guid}}
+
+###
+### Get User Email - Fetch email address for a user
+# @name get-user-email
+# Replace with your Azure AD Object ID (get from: az ad signed-in-user show --query id -o tsv)
+GET {{host}}/api/microsoftgraph/user/YOUR-AZURE-AD-OBJECT-ID-HERE/email
+x-ms-correlation-id: {{$guid}}
+
+###
+### Get Direct Reports - Check if user is a manager
+# @name get-direct-reports
+# This will return empty array if you're an IC (Individual Contributor)
+# Will return list of email addresses if you're a manager
+GET {{host}}/api/microsoftgraph/user/YOUR-AZURE-AD-OBJECT-ID-HERE/direct-reports
+x-ms-correlation-id: {{$guid}}
+
+###
+### Get Complete User Profile - Optimized parallel fetch
+# @name get-user-profile
+# Returns email, isManager flag, and direct report list in one call
+GET {{host}}/api/microsoftgraph/user/YOUR-AZURE-AD-OBJECT-ID-HERE/profile
+x-ms-correlation-id: {{$guid}}
+
+###
+### Test with Different User - Manager Example
+# @name get-manager-profile
+# Replace with a manager's Azure AD Object ID to see direct reports
+# GET {{host}}/api/microsoftgraph/user/MANAGER-AZURE-AD-OBJECT-ID/profile
+# x-ms-correlation-id: {{$guid}}
+
+###
+### Test with Different User - IC Example
+# @name get-ic-profile
+# Replace with an IC's Azure AD Object ID (will show isManager: false, empty directReports)
+# GET {{host}}/api/microsoftgraph/user/IC-AZURE-AD-OBJECT-ID/profile
+# x-ms-correlation-id: {{$guid}}
+
+###
+# Usage Notes:
+#
+# Authentication:
+# - Local Dev: Uses DefaultAzureCredential → az login
+# - Production: Uses DefaultAzureCredential → Managed Identity
+# - No configuration needed in appsettings.json!
+#
+# Required Permissions:
+# - User.Read.All or User.ReadBasic.All
+# - If using az login, your account needs these permissions in Azure AD
+#
+# How to Get Azure AD Object IDs:
+# 1. Your own ID:
+#    az ad signed-in-user show --query id -o tsv
+#
+# 2. Find another user by email:
+#    az ad user show --id user@example.com --query id -o tsv
+#
+# 3. Find all users in your organization:
+#    az ad user list --query "[].{displayName:displayName, id:id, mail:mail}" -o table
+#
+# 4. From Azure Portal:
+#    https://portal.azure.com → Azure Active Directory → Users
+#
+# Expected Responses:
+#
+# Status Check:
+# {
+#   "status": "healthy",
+#   "message": "Microsoft Graph client is initialized and ready",
+#   "authMethod": "DefaultAzureCredential (az login or Managed Identity)",
+#   "timestamp": "2026-01-24T12:34:56Z"
+# }
+#
+# Get User Email (IC):
+# {
+#   "userId": "00000000-0000-0000-0000-000000000001",
+#   "email": "john.doe@example.com"
+# }
+#
+# Get Direct Reports (IC):
+# {
+#   "userId": "00000000-0000-0000-0000-000000000001",
+#   "directReportCount": 0,
+#   "directReports": [],
+#   "isManager": false
+# }
+#
+# Get Direct Reports (Manager):
+# {
+#   "userId": "00000000-0000-0000-0000-000000000002",
+#   "directReportCount": 3,
+#   "directReports": [
+#     "direct1@example.com",
+#     "direct2@example.com",
+#     "direct3@example.com"
+#   ],
+#   "isManager": true
+# }
+#
+# Get Complete Profile (Manager):
+# {
+#   "userId": "00000000-0000-0000-0000-000000000002",
+#   "email": "manager@example.com",
+#   "isManager": true,
+#   "directReportCount": 3,
+#   "directReports": [
+#     "direct1@example.com",
+#     "direct2@example.com",
+#     "direct3@example.com"
+#   ]
+# }
+#
+# Troubleshooting:
+#
+# Error: "User not found or has no email"
+# - Verify the Azure AD Object ID is correct
+# - User might not have mail attribute set in Azure AD
+#
+# Error: "Authorization_RequestDenied"
+# - Your account lacks User.Read.All permission
+# - Contact Azure AD admin to grant permissions
+#
+# Error: "DefaultAzureCredential failed to retrieve token"
+# - Run: az login
+# - Verify you're logged in: az account show
+#
+# Error 500: "Error retrieving user profile"
+# - Check application logs for detailed error
+# - Verify Microsoft Graph client is properly initialized

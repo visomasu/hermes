@@ -172,6 +172,18 @@ namespace Hermes.Channels.Teams
                 {
                     // Update last interaction timestamp
                     existing.LastInteractionAt = DateTime.UtcNow;
+
+                    // Update AadObjectId if it wasn't previously captured (backward compatibility)
+                    if (string.IsNullOrEmpty(existing.AadObjectId))
+                    {
+                        existing.AadObjectId = await _ExtractAadObjectIdAsync(user);
+                        if (!string.IsNullOrEmpty(existing.AadObjectId))
+                        {
+                            _logger.LogInformation("Captured AadObjectId {AadObjectId} for existing conversation {ConversationId}",
+                                existing.AadObjectId, conversationId);
+                        }
+                    }
+
                     await _conversationRefRepo.UpdateAsync(existing.Id, existing);
                     _logger.LogDebug("Updated LastInteractionAt for conversation {ConversationId}", conversationId);
                     return;
@@ -181,11 +193,16 @@ namespace Hermes.Channels.Teams
                 var convRef = activity.GetConversationReference();
                 var convRefJson = JsonSerializer.Serialize(convRef);
 
+                // Extract Azure AD Object ID from user Properties (Teams-specific)
+                // This is needed for Microsoft Graph API calls
+                var aadObjectId = await _ExtractAadObjectIdAsync(user);
+
                 var document = new ConversationReferenceDocument
                 {
                     Id = conversationId,
                     PartitionKey = user.Id,
                     TeamsUserId = user.Id,
+                    AadObjectId = aadObjectId,
                     ConversationId = conversationId,
                     ConversationReferenceJson = convRefJson,
                     LastInteractionAt = DateTime.UtcNow,
@@ -200,6 +217,86 @@ namespace Hermes.Channels.Teams
             {
                 _logger.LogError(ex, "Error capturing conversation reference");
                 // Don't throw - this is non-critical for message handling
+            }
+        }
+
+        /// <summary>
+        /// Extracts Azure AD Object ID from user's Properties.
+        /// In production Teams: Reads from activity.From.Properties["aadObjectId"]
+        /// In local dev (agentsplayground): Falls back to currently logged-in user from az CLI
+        /// </summary>
+        /// <param name="user">Channel account from Teams activity</param>
+        /// <returns>Azure AD Object ID (GUID), or null if not available</returns>
+        private async Task<string?> _ExtractAadObjectIdAsync(ChannelAccount user)
+        {
+            try
+            {
+                // Try to get AAD Object ID from user Properties (production Teams scenario)
+                if (user.Properties != null && user.Properties.TryGetValue("aadObjectId", out var aadObjIdValue))
+                {
+                    var jsonElement = (JsonElement)aadObjIdValue;
+                    var aadObjectId = jsonElement.GetString();
+
+                    // Check if it's a real GUID or a mock value
+                    if (!string.IsNullOrEmpty(aadObjectId) && Guid.TryParse(aadObjectId, out _))
+                    {
+                        _logger.LogDebug("Extracted AadObjectId {AadObjectId} from user Properties for {TeamsUserId}",
+                            aadObjectId, user.Id);
+                        return aadObjectId;
+                    }
+
+                    _logger.LogWarning("AadObjectId '{AadObjectId}' from Properties is not a valid GUID for {TeamsUserId}",
+                        aadObjectId, user.Id);
+                }
+
+                // Fallback: Local development with agentsplayground - use az login user
+                _logger.LogInformation("AadObjectId not found in user Properties for {TeamsUserId}. Attempting fallback to az CLI logged-in user (local dev scenario).",
+                    user.Id);
+
+                // On Windows, we need to use cmd.exe to execute az CLI
+                // On Linux/Mac, we can execute az directly
+                var isWindows = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+                var fileName = isWindows ? "cmd.exe" : "az";
+                var arguments = isWindows ? "/c az ad signed-in-user show --query id -o tsv" : "ad signed-in-user show --query id -o tsv";
+
+                var azProcess = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = fileName,
+                        Arguments = arguments,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                azProcess.Start();
+                var output = await azProcess.StandardOutput.ReadToEndAsync();
+                var error = await azProcess.StandardError.ReadToEndAsync();
+                await azProcess.WaitForExitAsync();
+
+                if (azProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    var fallbackAadObjectId = output.Trim();
+                    if (Guid.TryParse(fallbackAadObjectId, out _))
+                    {
+                        _logger.LogInformation("Using fallback AadObjectId {AadObjectId} from az CLI for {TeamsUserId} (local dev)",
+                            fallbackAadObjectId, user.Id);
+                        return fallbackAadObjectId;
+                    }
+                }
+
+                _logger.LogWarning("Failed to get AadObjectId from az CLI. Error: {Error}. Exit code: {ExitCode}",
+                    error, azProcess.ExitCode);
+                _logger.LogWarning("AadObjectId not available for {TeamsUserId}. Microsoft Graph features may not work.", user.Id);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting AadObjectId for user {TeamsUserId}", user.Id);
+                return null;
             }
         }
     }
