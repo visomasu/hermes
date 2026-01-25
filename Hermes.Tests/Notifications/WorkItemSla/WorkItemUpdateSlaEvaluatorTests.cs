@@ -4,7 +4,8 @@ using Hermes.Notifications.Infra;
 using Hermes.Notifications.Infra.Models;
 using Hermes.Notifications.WorkItemSla;
 using Hermes.Notifications.WorkItemSla.Models;
-using Hermes.Storage.Repositories.ConversationReference;
+using Hermes.Storage.Repositories.UserConfiguration;
+using Hermes.Storage.Repositories.UserConfiguration.Models;
 using Integrations.AzureDevOps;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,7 +15,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 {
 	public class WorkItemUpdateSlaEvaluatorTests
 	{
-		private readonly Mock<IConversationReferenceRepository> _conversationRefRepoMock;
+		private readonly Mock<IUserConfigurationRepository> _userConfigRepoMock;
 		private readonly Mock<IAzureDevOpsWorkItemClient> _azureDevOpsClientMock;
 		private readonly Mock<INotificationGate> _notificationGateMock;
 		private readonly Mock<IProactiveMessenger> _proactiveMessengerMock;
@@ -24,7 +25,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 
 		public WorkItemUpdateSlaEvaluatorTests()
 		{
-			_conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+			_userConfigRepoMock = new Mock<IUserConfigurationRepository>();
 			_azureDevOpsClientMock = new Mock<IAzureDevOpsWorkItemClient>();
 			_notificationGateMock = new Mock<INotificationGate>();
 			_proactiveMessengerMock = new Mock<IProactiveMessenger>();
@@ -49,13 +50,28 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		private WorkItemUpdateSlaEvaluator CreateEvaluator()
 		{
 			return new WorkItemUpdateSlaEvaluator(
-				_conversationRefRepoMock.Object,
+				_userConfigRepoMock.Object,
 				_azureDevOpsClientMock.Object,
 				_notificationGateMock.Object,
 				_proactiveMessengerMock.Object,
 				_configuration,
 				_messageComposer,
 				_loggerMock.Object);
+		}
+
+		private UserConfigurationDocument CreateUserConfig(string teamsUserId, string email, List<string>? directReports = null)
+		{
+			return new UserConfigurationDocument
+			{
+				Id = Guid.NewGuid().ToString(),
+				TeamsUserId = teamsUserId,
+				SlaRegistration = new WorkItemUpdateSlaRegistrationProfile
+				{
+					IsRegistered = true,
+					AzureDevOpsEmail = email,
+					DirectReportEmails = directReports ?? new List<string>()
+				}
+			};
 		}
 
 		[Fact]
@@ -75,12 +91,12 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		}
 
 		[Fact]
-		public async Task EvaluateAndNotifyAsync_NoActiveUsers_ReturnsEmptySummary()
+		public async Task EvaluateAndNotifyAsync_NoRegisteredUsers_ReturnsEmptySummary()
 		{
 			// Arrange
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(new List<ConversationReferenceDocument>());
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument>());
 
 			var evaluator = CreateEvaluator();
 
@@ -97,18 +113,21 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		public async Task EvaluateAndNotifyAsync_UserWithNoEmail_SkipsUser()
 		{
 			// Arrange
-			var conversationRefs = new List<ConversationReferenceDocument>
+			var userConfig = new UserConfigurationDocument
 			{
-				new ConversationReferenceDocument
+				Id = "user-123",
+				TeamsUserId = "user-123",
+				SlaRegistration = new WorkItemUpdateSlaRegistrationProfile
 				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"name\":\"Test User\"}}" // No email
+					IsRegistered = true,
+					AzureDevOpsEmail = string.Empty, // No email
+					DirectReportEmails = new List<string>()
 				}
 			};
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			var evaluator = CreateEvaluator();
 
@@ -130,21 +149,14 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		}
 
 		[Fact]
-		public async Task EvaluateAndNotifyAsync_UserWithNoWorkItems_SkipsNotification()
+		public async Task EvaluateAndNotifyAsync_ICWithNoWorkItems_SkipsNotification()
 		{
 			// Arrange
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test@example.com\"}}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -168,17 +180,10 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		}
 
 		[Fact]
-		public async Task EvaluateAndNotifyAsync_WorkItemWithinSla_NoViolation()
+		public async Task EvaluateAndNotifyAsync_ICWorkItemWithinSla_NoViolation()
 		{
 			// Arrange
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test@example.com\"}}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
 			var workItemsJson = $@"{{
 				""count"": 1,
@@ -195,9 +200,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -221,17 +226,10 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		}
 
 		[Fact]
-		public async Task EvaluateAndNotifyAsync_WorkItemViolatesSla_SendsNotification()
+		public async Task EvaluateAndNotifyAsync_ICWorkItemViolatesSla_SendsNotification()
 		{
 			// Arrange
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test@example.com\"}}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
 			var workItemsJson = $@"{{
 				""count"": 1,
@@ -248,9 +246,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -301,17 +299,124 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		}
 
 		[Fact]
+		public async Task EvaluateAndNotifyAsync_ManagerWithTeamViolations_SendsManagerDigest()
+		{
+			// Arrange
+			var userConfig = CreateUserConfig("manager-123", "manager@example.com",
+				new List<string> { "report1@example.com", "report2@example.com" });
+
+			var managerWorkItemsJson = $@"{{
+				""count"": 1,
+				""value"": [
+					{{
+						""id"": 1,
+						""fields"": {{
+							""System.Id"": 1,
+							""System.Title"": ""Manager bug"",
+							""System.WorkItemType"": ""Bug"",
+							""System.ChangedDate"": ""{DateTime.UtcNow.AddDays(-5):yyyy-MM-ddTHH:mm:ssZ}""
+						}}
+					}}
+				]
+			}}";
+
+			var report1WorkItemsJson = $@"{{
+				""count"": 1,
+				""value"": [
+					{{
+						""id"": 2,
+						""fields"": {{
+							""System.Id"": 2,
+							""System.Title"": ""Report1 task"",
+							""System.WorkItemType"": ""Task"",
+							""System.ChangedDate"": ""{DateTime.UtcNow.AddDays(-10):yyyy-MM-ddTHH:mm:ssZ}""
+						}}
+					}}
+				]
+			}}";
+
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
+
+			_azureDevOpsClientMock
+				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
+					"manager@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync(managerWorkItemsJson);
+
+			_azureDevOpsClientMock
+				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
+					"report1@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync(report1WorkItemsJson);
+
+			_azureDevOpsClientMock
+				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
+					"report2@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync("{\"count\":0,\"value\":[]}");
+
+			_notificationGateMock
+				.Setup(g => g.EvaluateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new GateResult { CanSend = true });
+
+			_proactiveMessengerMock
+				.Setup(m => m.SendMessageByTeamsUserIdAsync(
+					It.IsAny<string>(),
+					It.IsAny<string>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new ProactiveMessageResult { Success = true });
+
+			var evaluator = CreateEvaluator();
+
+			// Act
+			var result = await evaluator.EvaluateAndNotifyAsync();
+
+			// Assert
+			Assert.Equal(1, result.UsersProcessed);
+			Assert.Equal(2, result.ViolationsDetected); // Manager + Report1
+			Assert.Equal(1, result.NotificationsSent);
+
+			// Verify manager digest sent
+			_proactiveMessengerMock.Verify(
+				m => m.SendMessageByTeamsUserIdAsync(
+					"manager-123",
+					It.Is<string>(msg => msg.Contains("Manager SLA Violation Report") &&
+					                      msg.Contains("Manager bug") &&
+					                      msg.Contains("Report1 task")),
+					It.IsAny<CancellationToken>()),
+				Times.Once);
+
+			// Verify all 3 emails were checked (manager + 2 directs)
+			_azureDevOpsClientMock.Verify(
+				c => c.GetWorkItemsByAssignedUserAsync(
+					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()),
+				Times.Exactly(3));
+		}
+
+		[Fact]
 		public async Task EvaluateAndNotifyAsync_NotificationGateBlocks_DoesNotSendNotification()
 		{
 			// Arrange
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test@example.com\"}}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
 			var workItemsJson = $@"{{
 				""count"": 1,
@@ -328,9 +433,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -366,17 +471,10 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		}
 
 		[Fact]
-		public async Task EvaluateAndNotifyAsync_MultipleViolations_SendsDigestMessage()
+		public async Task EvaluateAndNotifyAsync_ICMultipleViolations_SendsDigestMessage()
 		{
 			// Arrange
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test@example.com\"}}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
 			var workItemsJson = $@"{{
 				""count"": 2,
@@ -402,9 +500,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -449,14 +547,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		public async Task EvaluateAndNotifyAsync_ProactiveMessengerFails_IncrementsErrorCount()
 		{
 			// Arrange
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test@example.com\"}}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
 			var workItemsJson = $@"{{
 				""count"": 1,
@@ -473,9 +564,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -516,18 +607,10 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 			// Arrange
 			_configuration.MaxNotificationsPerRun = 1;
 
-			var conversationRefs = new List<ConversationReferenceDocument>
+			var userConfigs = new List<UserConfigurationDocument>
 			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-1",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test1@example.com\"}}}"
-				},
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-2",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test2@example.com\"}}}"
-				}
+				CreateUserConfig("user-1", "test1@example.com"),
+				CreateUserConfig("user-2", "test2@example.com")
 			};
 
 			var workItemsJson = $@"{{
@@ -545,9 +628,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(userConfigs);
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -586,18 +669,11 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 			// Arrange
 			_configuration.IterationPath = "@CurrentIteration";
 
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"from\":{\"properties\":{\"email\":\"test@example.com\"}}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -632,14 +708,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 			// Arrange
 			_configuration.BypassGates = true;
 
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"user\":{\"email\":\"test@example.com\"}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
 			var workItemsJson = $@"{{
 				""count"": 1,
@@ -655,9 +724,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
@@ -697,14 +766,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 			// Arrange
 			_configuration.BypassGates = true;
 
-			var conversationRefs = new List<ConversationReferenceDocument>
-			{
-				new ConversationReferenceDocument
-				{
-					TeamsUserId = "user-123",
-					ConversationReferenceJson = "{\"user\":{\"email\":\"test@example.com\"}}"
-				}
-			};
+			var userConfig = CreateUserConfig("user-123", "test@example.com");
 
 			var workItemsJson = $@"{{
 				""count"": 1,
@@ -720,9 +782,9 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				]
 			}}";
 
-			_conversationRefRepoMock
-				.Setup(r => r.GetActiveReferencesAsync(It.IsAny<CancellationToken>()))
-				.ReturnsAsync(conversationRefs);
+			_userConfigRepoMock
+				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(

@@ -2,7 +2,7 @@ using Hermes.Domain.WorkItemSla.Models;
 using Hermes.Notifications.Infra;
 using Hermes.Notifications.WorkItemSla;
 using Hermes.Notifications.WorkItemSla.Models;
-using Hermes.Storage.Repositories.ConversationReference;
+using Hermes.Storage.Repositories.UserConfiguration;
 using Integrations.AzureDevOps;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -15,7 +15,7 @@ namespace Hermes.Domain.WorkItemSla
 	/// </summary>
 	public class WorkItemUpdateSlaEvaluator : IWorkItemUpdateSlaEvaluator
 	{
-		private readonly IConversationReferenceRepository _conversationRefRepo;
+		private readonly IUserConfigurationRepository _userConfigRepo;
 		private readonly IAzureDevOpsWorkItemClient _azureDevOpsClient;
 		private readonly INotificationGate _notificationGate;
 		private readonly IProactiveMessenger _proactiveMessenger;
@@ -24,7 +24,7 @@ namespace Hermes.Domain.WorkItemSla
 		private readonly ILogger<WorkItemUpdateSlaEvaluator> _logger;
 
 		public WorkItemUpdateSlaEvaluator(
-			IConversationReferenceRepository conversationRefRepo,
+			IUserConfigurationRepository userConfigRepo,
 			IAzureDevOpsWorkItemClient azureDevOpsClient,
 			INotificationGate notificationGate,
 			IProactiveMessenger proactiveMessenger,
@@ -32,7 +32,7 @@ namespace Hermes.Domain.WorkItemSla
 			WorkItemUpdateSlaMessageComposer messageComposer,
 			ILogger<WorkItemUpdateSlaEvaluator> logger)
 		{
-			_conversationRefRepo = conversationRefRepo;
+			_userConfigRepo = userConfigRepo;
 			_azureDevOpsClient = azureDevOpsClient;
 			_notificationGate = notificationGate;
 			_proactiveMessenger = proactiveMessenger;
@@ -57,19 +57,19 @@ namespace Hermes.Domain.WorkItemSla
 					return summary;
 				}
 
-				// Get all active conversation references
-				var conversationRefs = await _conversationRefRepo.GetActiveReferencesAsync(cancellationToken);
+				// Get all registered users from UserConfiguration
+				var registeredUsers = await _userConfigRepo.GetAllWithSlaRegistrationAsync(cancellationToken);
 
-				if (conversationRefs == null || conversationRefs.Count == 0)
+				if (registeredUsers == null || registeredUsers.Count == 0)
 				{
-					_logger.LogInformation("No active conversation references found");
+					_logger.LogInformation("No registered users found for SLA notifications");
 					return summary;
 				}
 
-				_logger.LogInformation("Processing {Count} active users for SLA violations", conversationRefs.Count);
+				_logger.LogInformation("Processing {Count} registered users for SLA violations", registeredUsers.Count);
 
 				// Process each user
-				foreach (var conversationRefDoc in conversationRefs)
+				foreach (var userConfig in registeredUsers)
 				{
 					// Check if we've hit the max notifications limit
 					if (summary.NotificationsSent >= _configuration.MaxNotificationsPerRun)
@@ -82,12 +82,12 @@ namespace Hermes.Domain.WorkItemSla
 
 					try
 					{
-						await _ProcessUserAsync(conversationRefDoc, summary, cancellationToken);
+						await _ProcessUserAsync(userConfig, summary, cancellationToken);
 					}
 					catch (Exception ex)
 					{
 						summary.Errors++;
-						_logger.LogError(ex, "Error processing user {TeamsUserId}", conversationRefDoc.TeamsUserId);
+						_logger.LogError(ex, "Error processing user {TeamsUserId}", userConfig.TeamsUserId);
 					}
 				}
 			}
@@ -143,138 +143,122 @@ namespace Hermes.Domain.WorkItemSla
 		/// Processes a single user for SLA violations.
 		/// </summary>
 		private async Task _ProcessUserAsync(
-			ConversationReferenceDocument conversationRefDoc,
+			UserConfigurationDocument userConfig,
 			SlaNotificationRunSummary summary,
 			CancellationToken cancellationToken)
 		{
-			// Extract email from conversation reference
-			var email = _ExtractEmailFromConversationReference(conversationRefDoc.ConversationReferenceJson);
-
-			if (string.IsNullOrWhiteSpace(email))
+			// Validate user configuration
+			if (userConfig.SlaRegistration == null || !userConfig.SlaRegistration.IsRegistered)
 			{
-				_logger.LogWarning("Could not extract email from conversation reference for Teams user {TeamsUserId}", conversationRefDoc.TeamsUserId);
+				_logger.LogWarning("User {TeamsUserId} has null or unregistered SlaRegistration, skipping", userConfig.TeamsUserId);
 				return;
 			}
 
-			_logger.LogDebug("Processing user {Email} (Teams user {TeamsUserId})", email, conversationRefDoc.TeamsUserId);
+			var profile = userConfig.SlaRegistration;
 
-			// Use shared method to check violations
-			var violations = await CheckViolationsForEmailAsync(email, cancellationToken);
-
-			if (violations.Count == 0)
+			if (string.IsNullOrWhiteSpace(profile.AzureDevOpsEmail))
 			{
-				_logger.LogDebug("No SLA violations found for user {Email}", email);
+				_logger.LogWarning("User {TeamsUserId} has empty AzureDevOpsEmail, skipping", userConfig.TeamsUserId);
 				return;
 			}
 
-			summary.ViolationsDetected += violations.Count;
-			_logger.LogInformation("Found {Count} SLA violations for user {Email}", violations.Count, email);
+			_logger.LogDebug("Processing user {Email} (Teams user {TeamsUserId}, IsManager: {IsManager})",
+				profile.AzureDevOpsEmail, userConfig.TeamsUserId, profile.IsManager);
 
-			// TODO: Phase 3 - Check deduplication with SlaViolationHistoryRepository
-			// For now, we rely on NotificationGate's general deduplication
+			// Determine emails to check (user + directs if manager)
+			var emailsToCheck = new List<string> { profile.AzureDevOpsEmail };
+			if (profile.IsManager)
+			{
+				emailsToCheck.AddRange(profile.DirectReportEmails);
+			}
+
+			_logger.LogInformation("Checking SLA violations for {Count} email(s) (user: {Email}, IsManager: {IsManager})",
+				emailsToCheck.Count, profile.AzureDevOpsEmail, profile.IsManager);
+
+			// Check violations for all emails in parallel
+			var violationTasks = emailsToCheck.Select(async email =>
+			{
+				var violations = await CheckViolationsForEmailAsync(email, cancellationToken);
+				return new { Email = email, Violations = violations };
+			}).ToArray();
+
+			var results = await Task.WhenAll(violationTasks);
+
+			// Aggregate results
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>();
+			foreach (var result in results)
+			{
+				if (result.Violations.Count > 0)
+				{
+					violationsByOwner[result.Email] = result.Violations;
+				}
+			}
+
+			if (violationsByOwner.Count == 0)
+			{
+				_logger.LogDebug("No SLA violations found for user {Email}", profile.AzureDevOpsEmail);
+				return;
+			}
+
+			var totalViolations = violationsByOwner.Sum(kvp => kvp.Value.Count);
+			summary.ViolationsDetected += totalViolations;
+			_logger.LogInformation("Found {TotalCount} SLA violations for user {Email} ({OwnerCount} owners)",
+				totalViolations, profile.AzureDevOpsEmail, violationsByOwner.Count);
 
 			// Evaluate NotificationGate (unless bypassed for testing)
 			if (!_configuration.BypassGates)
 			{
-				var gateResult = await _notificationGate.EvaluateAsync(conversationRefDoc.TeamsUserId, cancellationToken);
+				var gateResult = await _notificationGate.EvaluateAsync(userConfig.TeamsUserId, cancellationToken);
 
 				if (!gateResult.CanSend)
 				{
 					summary.NotificationsBlocked++;
-					_logger.LogInformation("Notification blocked for user {Email}: {Reason}", email, gateResult.BlockedReason);
+					_logger.LogInformation("Notification blocked for user {Email}: {Reason}",
+						profile.AzureDevOpsEmail, gateResult.BlockedReason);
 					return;
 				}
 			}
 			else
 			{
-				_logger.LogInformation("Bypassing notification gates for user {Email} (BypassGates=true)", email);
+				_logger.LogInformation("Bypassing notification gates for user {Email} (BypassGates=true)",
+					profile.AzureDevOpsEmail);
 			}
 
-			// Compose digest message
-			var message = _messageComposer.ComposeDigestMessage(violations);
+			// Compose message (manager vs IC)
+			var message = profile.IsManager
+				? _messageComposer.ComposeManagerDigestMessage(violationsByOwner, profile.AzureDevOpsEmail)
+				: _messageComposer.ComposeDigestMessage(violationsByOwner[profile.AzureDevOpsEmail]);
 
 			// Send notification
 			var sendResult = await _proactiveMessenger.SendMessageByTeamsUserIdAsync(
-				conversationRefDoc.TeamsUserId,
+				userConfig.TeamsUserId,
 				message,
 				cancellationToken);
 
 			if (!sendResult.Success)
 			{
 				summary.Errors++;
-				_logger.LogError("Failed to send notification to user {Email}: {Error}", email, sendResult.ErrorMessage);
+				_logger.LogError("Failed to send notification to user {Email}: {Error}",
+					profile.AzureDevOpsEmail, sendResult.ErrorMessage);
 				return;
 			}
 
 			summary.NotificationsSent++;
-			_logger.LogInformation("Sent SLA digest notification to user {Email} ({Count} violations)", email, violations.Count);
+			_logger.LogInformation("Sent SLA notification to user {Email} ({Type}): {Count} total violations",
+				profile.AzureDevOpsEmail,
+				profile.IsManager ? "Manager" : "IC",
+				totalViolations);
 
 			// Record notification in NotificationGate (unless bypassed)
 			if (!_configuration.BypassGates)
 			{
-				var deduplicationKey = $"WorkItemUpdateSla_{conversationRefDoc.TeamsUserId}_{DateTime.UtcNow:yyyyMMdd}";
+				var deduplicationKey = $"WorkItemUpdateSla_{userConfig.TeamsUserId}_{DateTime.UtcNow:yyyyMMdd}";
 				await _notificationGate.RecordNotificationAsync(
-					conversationRefDoc.TeamsUserId,
+					userConfig.TeamsUserId,
 					"WorkItemUpdateSla",
 					message,
 					deduplicationKey,
 					cancellationToken);
-			}
-
-			// TODO: Phase 3 - Record individual violations in SlaViolationHistoryRepository
-		}
-
-		/// <summary>
-		/// Extracts email address from conversation reference JSON.
-		/// TODO: Implement proper email extraction from conversation reference.
-		/// For now, this is a placeholder that needs to be completed when the
-		/// ConversationReference type structure is better understood.
-		/// </summary>
-		private string? _ExtractEmailFromConversationReference(string conversationRefJson)
-		{
-			try
-			{
-				// TODO: Parse the conversation reference JSON to extract the user's email
-				// The structure may vary depending on the Teams SDK version
-				// For now, we'll parse it as a generic JSON document and look for email fields
-				using var doc = JsonDocument.Parse(conversationRefJson);
-				var root = doc.RootElement;
-
-				// Try common paths where email might be stored
-				// Path 1: from.properties.email
-				if (root.TryGetProperty("from", out var from) &&
-					from.TryGetProperty("properties", out var properties) &&
-					properties.TryGetProperty("email", out var email))
-				{
-					var emailStr = email.GetString();
-					if (!string.IsNullOrWhiteSpace(emailStr))
-						return emailStr;
-				}
-
-				// Path 2: from.name (if it contains @)
-				if (root.TryGetProperty("from", out from) &&
-					from.TryGetProperty("name", out var name))
-				{
-					var nameStr = name.GetString();
-					if (!string.IsNullOrWhiteSpace(nameStr) && nameStr.Contains("@"))
-						return nameStr;
-				}
-
-				// Path 3: user.email
-				if (root.TryGetProperty("user", out var user) &&
-					user.TryGetProperty("email", out email))
-				{
-					var emailStr = email.GetString();
-					if (!string.IsNullOrWhiteSpace(emailStr))
-						return emailStr;
-				}
-
-				return null;
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error extracting email from conversation reference JSON");
-				return null;
 			}
 		}
 

@@ -79,16 +79,22 @@ namespace Hermes.Tools.WorkItemSla.Capabilities
 					emailsToCheck.Count,
 					userProfile.IsManager);
 
-				// 3. Check violations for all emails
-				var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>();
-
-				foreach (var email in emailsToCheck)
+				// 3. Check violations for all emails in parallel
+				var violationTasks = emailsToCheck.Select(async email =>
 				{
 					var violations = await _slaEvaluator.CheckViolationsForEmailAsync(email);
+					return new { Email = email, Violations = violations };
+				}).ToArray();
 
-					if (violations.Count > 0)
+				var results = await Task.WhenAll(violationTasks);
+
+				// Aggregate results
+				var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>();
+				foreach (var result in results)
+				{
+					if (result.Violations.Count > 0)
 					{
-						violationsByOwner[email] = violations;
+						violationsByOwner[result.Email] = result.Violations;
 					}
 				}
 
