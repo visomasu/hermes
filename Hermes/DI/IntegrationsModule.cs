@@ -30,11 +30,11 @@ namespace Hermes.DI
 		{
             string organization = _configuration["AzureDevOps:Organization"] ?? string.Empty;
             string project = _configuration["AzureDevOps:Project"] ?? string.Empty;
-			string pat = _configuration["AzureDevOps:PersonalAccessToken"] ?? string.Empty;
 
 			builder.Register(c =>
 			{
-				return new AzureDevOpsWorkItemClient(organization, project, pat);
+				// Uses DefaultAzureCredential (az login for local dev, Managed Identity for production)
+				return new AzureDevOpsWorkItemClient(organization, project);
 			})
 			.As<IAzureDevOpsWorkItemClient>()
 			.SingleInstance();

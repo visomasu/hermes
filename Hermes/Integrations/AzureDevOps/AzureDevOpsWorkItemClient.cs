@@ -1,3 +1,5 @@
+using Azure.Core;
+using Azure.Identity;
 using Exceptions;
 using Microsoft.TeamFoundation.Core.WebApi.Types;
 using Microsoft.TeamFoundation.Work.WebApi;
@@ -40,17 +42,38 @@ namespace Integrations.AzureDevOps
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the AzureDevOpsWorkItemClient class using the Azure DevOps .NET SDK.
+		/// Initializes a new instance of the AzureDevOpsWorkItemClient class using Azure CLI authentication.
+		/// Uses DefaultAzureCredential which supports:
+		/// - Azure CLI (az login) for local development
+		/// - Managed Identity for production (Azure App Service, Container Apps, etc.)
+		/// - Environment variables
 		/// </summary>
 		/// <param name="organization">Azure DevOps organization name.</param>
 		/// <param name="project">Azure DevOps project name.</param>
-		/// <param name="personalAccessToken">Personal Access Token for authentication.</param>
-		public AzureDevOpsWorkItemClient(string organization, string project, string personalAccessToken)
+		public AzureDevOpsWorkItemClient(string organization, string project)
 		{
 			_project = project;
+
+			// Use DefaultAzureCredential for authentication (supports az login, Managed Identity, etc.)
+			var tokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+			{
+				// Exclude interactive browser credential to avoid prompts in production
+				ExcludeInteractiveBrowserCredential = true,
+				// Exclude Visual Studio Code credential for cleaner auth flow
+				ExcludeVisualStudioCodeCredential = true
+			});
+
+			// Get access token for Azure DevOps
+			var tokenRequestContext = new TokenRequestContext(new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" });
+			var accessToken = tokenCredential.GetToken(tokenRequestContext, default);
+
+			// Create VssConnection with OAuth access token as PAT
+			// VssBasicCredential accepts Bearer tokens as the password parameter
+			var vssCredential = new VssBasicCredential(string.Empty, accessToken.Token);
+
 			_connection = new VssConnection(
 				new Uri($"https://dev.azure.com/{organization}"),
-				new VssBasicCredential(string.Empty, personalAccessToken)
+				vssCredential
 			);
 		}
 
