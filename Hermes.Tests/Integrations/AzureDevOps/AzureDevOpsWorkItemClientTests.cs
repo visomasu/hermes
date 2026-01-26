@@ -16,28 +16,28 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 		[Fact]
 		public async Task GetWorkItemAsync_ThrowsIntegrationException_OnError()
 		{
-			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject", "invalidPat");
+			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject");
 			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemAsync(-1));
 		}
 
 		[Fact]
 		public async Task GetWorkItemsAsync_ThrowsIntegrationException_OnNullIds()
 		{
-			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject", "invalidPat");
+			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject");
 			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemsAsync(null!, null));
 		}
 
 		[Fact]
 		public async Task GetWorkItemsAsync_ThrowsIntegrationException_OnEmptyIds()
 		{
-			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject", "invalidPat");
+			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject");
 			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemsAsync(Array.Empty<int>(), null));
 		}
 
 		[Fact]
 		public async Task GetWorkItemsByAreaPathAsync_ThrowsIntegrationException_OnNullOrWhitespaceAreaPath()
 		{
-			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject", "invalidPat");
+			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject");
 
 			// Null or empty/whitespace areaPath should result in an IntegrationException from validation.
 			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemsByAreaPathAsync(null!));
@@ -300,7 +300,7 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 		[Fact]
 		public async Task GetWorkItemsByAssignedUserAsync_ThrowsIntegrationException_OnNullOrWhitespaceEmail()
 		{
-			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject", "invalidPat");
+			var client = new AzureDevOpsWorkItemClient("invalidOrg", "invalidProject");
 
 			// Null or empty/whitespace email should result in an IntegrationException from validation.
 			await Assert.ThrowsAsync<IntegrationException>(() => client.GetWorkItemsByAssignedUserAsync(null!));
@@ -523,7 +523,7 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 		private sealed class TestableAzureDevOpsWorkItemClient : AzureDevOpsWorkItemClient
 		{
 			public TestableAzureDevOpsWorkItemClient(VssConnection connection, string project)
-				: base("org", project, "token")
+				: base("org", project)
 			{
 				// Overwrite the internal connection and project fields via reflection for testing.
 				var type = typeof(AzureDevOpsWorkItemClient);
