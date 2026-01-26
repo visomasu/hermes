@@ -9,6 +9,16 @@ namespace Integrations.AzureDevOps
 	public interface IAzureDevOpsWorkItemClient
 	{
 		/// <summary>
+		/// Gets the current iteration path for a given team based on current date.
+		/// Queries Azure DevOps classification nodes and finds the iteration where
+		/// StartDate <= DateTime.UtcNow <= FinishDate.
+		/// </summary>
+		/// <param name="teamName">The name of the team to query iterations for.</param>
+		/// <param name="cancellationToken">Cancellation token.</param>
+		/// <returns>The iteration path (e.g., "OneCRM\\FY26\\Q3\\Month\\01 Jan (Dec 28 - Jan 31)"), or null if no current iteration is found.</returns>
+		Task<string?> GetCurrentIterationPathAsync(string teamName, CancellationToken cancellationToken = default);
+
+		/// <summary>
 		/// Gets a work item by its ID.
 		/// </summary>
 		/// <param name="id">The work item ID.</param>
@@ -59,6 +69,7 @@ namespace Integrations.AzureDevOps
 		/// <param name="states">Optional collection of work item states to filter on (e.g., 'Active', 'New'). If null, all states are included.</param>
 		/// <param name="fields">The list of field reference names to include in the response.</param>
 		/// <param name="iterationPath">Optional iteration path to filter work items (e.g., 'Project\\Sprint 1'). If null, all iterations are included.</param>
+		/// <param name="areaPaths">Optional collection of area paths to filter work items (e.g., 'Project\\Team1', 'Project\\Team2'). If null or empty, all area paths are included.</param>
 		/// <param name="workItemTypes">Optional collection of work item types to filter on (e.g., 'Bug', 'Task'). If null, all types are included.</param>
 		/// <param name="cancellationToken">Cancellation token.</param>
 		/// <returns>A JSON string representing a list of WorkItem objects assigned to the user.</returns>
@@ -67,6 +78,7 @@ namespace Integrations.AzureDevOps
 			IEnumerable<string>? states = null,
 			IEnumerable<string>? fields = null,
 			string? iterationPath = null,
+			IEnumerable<string>? areaPaths = null,
 			IEnumerable<string>? workItemTypes = null,
 			CancellationToken cancellationToken = default);
 	}

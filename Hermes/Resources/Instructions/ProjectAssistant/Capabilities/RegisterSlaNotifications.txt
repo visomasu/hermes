@@ -3,22 +3,31 @@ Register users to receive daily SLA violation notifications for their work items
 ## Trigger
 User requests: "register for SLA", "sign me up for SLA", "enable SLA notifications", "start tracking SLAs", "register for work item notifications"
 
+Users may also specify area paths: "register me for SLA in Project\\Team1" or "register for SLA notifications for Project\\Team1 and Project\\Team2"
+
 ## Process
 
 **1. Identify User Intent**
-Parse user input for registration keywords. Confirm intent if ambiguous.
+Parse user input for registration keywords and extract any area path specifications. Confirm intent if ambiguous.
 
-**2. Execute Registration**
-Call: `UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<user_id>"})`
+**2. Extract Area Paths (Optional)**
+If user mentions area paths in their request, extract them from the natural language:
+- "in Project\\Team" → areaPaths: ["Project\\Team"]
+- "for Team1 and Team2" → areaPaths: ["Project\\Team1", "Project\\Team2"]
+- No area path mentioned → areaPaths: null (checks all areas)
+
+**3. Execute Registration**
+Call: `UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<user_id>", "areaPaths": ["Project\\Team1", "Project\\Team2"]})`
 
 This automatically:
 - Fetches user's Azure AD email via Microsoft Graph
 - Determines if user is a manager (has direct reports)
 - Retrieves direct report emails for managers
+- Stores area paths for filtering (optional)
 - Stores registration in UserConfiguration
 - Enables SLA violation notifications
 
-**3. Communicate Result**
+**4. Communicate Result**
 For managers:
 "✅ Registered successfully! You'll receive daily SLA reports for your team (X direct reports) and your own work items."
 
@@ -41,6 +50,8 @@ For individual contributors:
 
 - Registration is automatic via Microsoft Graph API (no manual email entry)
 - Manager status derived from direct reports in Azure AD
+- Area paths are optional: if not specified, all area paths are monitored
+- Area paths apply to user and all direct reports (if manager)
 - Notifications respect quiet hours and throttling rules (NotificationGate)
 - Users can check SLA violations on-demand anytime (without registration)
 - Silent registration: direct reports are not notified when manager registers

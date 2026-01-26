@@ -78,6 +78,7 @@ namespace Hermes.Tools.UserManagement.Capabilities
 					IsRegistered = true,
 					AzureDevOpsEmail = profile.Email,
 					DirectReportEmails = profile.DirectReportEmails,
+					AreaPaths = input.AreaPaths?.Where(a => !string.IsNullOrWhiteSpace(a)).ToList() ?? new List<string>(),
 					RegisteredAt = DateTime.UtcNow,
 					DirectReportsLastRefreshedAt = DateTime.UtcNow
 				};
@@ -99,15 +100,22 @@ namespace Hermes.Tools.UserManagement.Capabilities
 				}
 
 				// 6. Return success response
+				var areaPathMessage = userConfig.SlaRegistration.AreaPaths.Count > 0
+					? $" Monitoring area paths: {string.Join(", ", userConfig.SlaRegistration.AreaPaths)}."
+					: "";
+
+				var baseMessage = profile.IsManager
+					? $"✅ Registered successfully! You'll receive daily SLA reports for your team ({profile.DirectReportEmails.Count} direct reports) and your own work items."
+					: "✅ Registered successfully! You'll receive daily SLA reports for your work items.";
+
 				var response = new
 				{
 					success = true,
-					message = profile.IsManager
-						? $"✅ Registered successfully! You'll receive daily SLA reports for your team ({profile.DirectReportEmails.Count} direct reports) and your own work items."
-						: "✅ Registered successfully! You'll receive daily SLA reports for your work items.",
+					message = baseMessage + areaPathMessage,
 					email = profile.Email,
 					isManager = profile.IsManager,
-					directReportCount = profile.DirectReportEmails.Count
+					directReportCount = profile.DirectReportEmails.Count,
+					areaPaths = userConfig.SlaRegistration.AreaPaths
 				};
 
 				_logger.LogInformation(

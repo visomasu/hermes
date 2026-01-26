@@ -39,14 +39,14 @@ namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 				.ReturnsAsync(userConfig);
 
 			// Manager has violations
-			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("manager@example.com", It.IsAny<CancellationToken>()))
+			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("manager@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>
 				{
 					new() { WorkItemId = 1, Title = "Manager task", WorkItemType = "Task", DaysSinceUpdate = 10, SlaThresholdDays = 5 }
 				});
 
 			// Direct report has violations
-			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("report1@example.com", It.IsAny<CancellationToken>()))
+			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("report1@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>
 				{
 					new() { WorkItemId = 2, Title = "Report task", WorkItemType = "Task", DaysSinceUpdate = 8, SlaThresholdDays = 5 }
@@ -71,8 +71,8 @@ namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 			                   violations.GetProperty("report1@example.com").GetArrayLength());
 
 			// Verify both emails were checked
-			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync("manager@example.com", It.IsAny<CancellationToken>()), Times.Once);
-			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync("report1@example.com", It.IsAny<CancellationToken>()), Times.Once);
+			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync("manager@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync("report1@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
 		}
 
 		[Fact]
@@ -99,7 +99,7 @@ namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(userConfig);
 
-			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("ic@example.com", It.IsAny<CancellationToken>()))
+			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("ic@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>
 				{
 					new() { WorkItemId = 3, Title = "IC task", WorkItemType = "Bug", DaysSinceUpdate = 7, SlaThresholdDays = 3 }
@@ -120,8 +120,8 @@ namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 			Assert.Equal(0, response.GetProperty("directReportCount").GetInt32());
 
 			// Verify only user's email was checked
-			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync("ic@example.com", It.IsAny<CancellationToken>()), Times.Once);
-			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync("ic@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
 		}
 
 		[Fact]
@@ -146,7 +146,7 @@ namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 			graphMock.Setup(x => x.GetUserProfileWithDirectReportsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(userProfile);
 
-			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("unregistered@example.com", It.IsAny<CancellationToken>()))
+			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("unregistered@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>());
 
 			var capability = new CheckSlaViolationsCapability(evaluatorMock.Object, graphMock.Object, repoMock.Object, loggerMock.Object);
@@ -188,7 +188,7 @@ namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(userConfig);
 
-			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("clean@example.com", It.IsAny<CancellationToken>()))
+			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("clean@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>());
 
 			var capability = new CheckSlaViolationsCapability(evaluatorMock.Object, graphMock.Object, repoMock.Object, loggerMock.Object);

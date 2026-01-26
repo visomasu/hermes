@@ -1,4 +1,6 @@
 using Exceptions;
+using Microsoft.TeamFoundation.Core.WebApi.Types;
+using Microsoft.TeamFoundation.Work.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.Common;
@@ -372,6 +374,7 @@ namespace Integrations.AzureDevOps
 			IEnumerable<string>? states = null,
 			IEnumerable<string>? fields = null,
 			string? iterationPath = null,
+			IEnumerable<string>? areaPaths = null,
 			IEnumerable<string>? workItemTypes = null,
 			CancellationToken cancellationToken = default)
 		{
@@ -387,7 +390,7 @@ namespace Integrations.AzureDevOps
 					.Distinct()
 					.ToList();
 
-				var wiql = BuildAssignedUserWiql(userEmail, states, iterationPath, workItemTypes);
+				var wiql = BuildAssignedUserWiql(userEmail, states, iterationPath, areaPaths, workItemTypes);
 
 				var client = GetClient();
 				var queryResult = await client.QueryByWiqlAsync(wiql, _project);
@@ -425,6 +428,7 @@ namespace Integrations.AzureDevOps
 			string userEmail,
 			IEnumerable<string>? states,
 			string? iterationPath,
+			IEnumerable<string>? areaPaths,
 			IEnumerable<string>? workItemTypes)
 		{
 			var wiqlClauses = new List<string>
@@ -453,6 +457,20 @@ namespace Integrations.AzureDevOps
 				wiqlClauses.Add($"[System.IterationPath] UNDER '{iterationPath.Replace("'", "''")}'");
 			}
 
+			// Filter by area paths
+			var areaPathsList = areaPaths?
+				.Where(a => !string.IsNullOrWhiteSpace(a))
+				.Select(a => a.Trim())
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			if (areaPathsList != null && areaPathsList.Count > 0)
+			{
+				var areaPathConditions = areaPathsList
+					.Select(a => $"[System.AreaPath] UNDER '{a.Replace("'", "''")}'");
+				wiqlClauses.Add($"({string.Join(" OR ", areaPathConditions)})");
+			}
+
 			// Filter by work item types
 			var typesList = workItemTypes?
 				.Where(t => !string.IsNullOrWhiteSpace(t))
@@ -475,6 +493,53 @@ namespace Integrations.AzureDevOps
 					"WHERE " + string.Join(" AND ", wiqlClauses) +
 					" ORDER BY [System.ChangedDate] DESC"
 			};
+		}
+
+		/// <inheritdoc/>
+		public async Task<string?> GetCurrentIterationPathAsync(
+			string teamName,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(teamName))
+			{
+				throw new IntegrationException("teamName must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
+			}
+
+			try
+			{
+				// Get Work HTTP client for querying team iterations
+				var workClient = _connection.GetClient<WorkHttpClient>();
+
+				// Get team context
+				var teamContext = new TeamContext(_project, teamName);
+
+				// Query team iterations
+				var iterations = await workClient.GetTeamIterationsAsync(teamContext, cancellationToken: cancellationToken);
+
+				if (iterations == null || !iterations.Any())
+				{
+					return null;
+				}
+
+				// Find the iteration where current date falls within start and finish dates
+				var now = DateTime.UtcNow;
+				var currentIteration = iterations.FirstOrDefault(iteration =>
+					iteration.Attributes != null &&
+					iteration.Attributes.StartDate.HasValue &&
+					iteration.Attributes.FinishDate.HasValue &&
+					iteration.Attributes.StartDate.Value <= now &&
+					iteration.Attributes.FinishDate.Value >= now);
+
+				// Return the iteration path if found
+				return currentIteration?.Path;
+			}
+			catch (Exception ex)
+			{
+				throw new IntegrationException(
+					$"Error querying current iteration for team '{teamName}': {ex.Message}",
+					IntegrationException.ErrorCode.UnexpectedError,
+					ex);
+			}
 		}
 	}
 }

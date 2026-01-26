@@ -22,10 +22,12 @@ namespace Hermes.Domain.WorkItemSla
 		/// Shared method used by both scheduled job and on-demand capability.
 		/// </summary>
 		/// <param name="email">Email address to check work items for.</param>
+		/// <param name="areaPaths">Optional area paths to filter work items. If null or empty, all area paths are checked.</param>
 		/// <param name="cancellationToken">Cancellation token.</param>
 		/// <returns>List of SLA violations for the specified email.</returns>
 		Task<List<WorkItemUpdateSlaViolation>> CheckViolationsForEmailAsync(
 			string email,
+			IEnumerable<string>? areaPaths = null,
 			CancellationToken cancellationToken = default);
 	}
 }

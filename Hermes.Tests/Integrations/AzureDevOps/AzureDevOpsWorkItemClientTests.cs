@@ -377,6 +377,7 @@ namespace Hermes.Tests.Integrations.AzureDevOps
 				new[] { "Active", "New" },
 				new[] { "System.Id", "System.Title" },
 				"@CurrentIteration",
+				null, // areaPaths
 				new[] { "Bug", "Task" });
 
 			// Assert: WIQL contains all expected filters

@@ -52,7 +52,10 @@ Managers see violations for themselves AND all direct reports, grouped by owner 
 Violation checks for multiple team members execute in parallel (~10-20x faster for large teams).
 
 **Storage-First Fallback:**
-Registered users get instant cached results. Unregistered users fetch fresh data from Microsoft Graph.
+Registered users get instant cached results including their configured area paths. Unregistered users fetch fresh data from Microsoft Graph (checks all area paths).
+
+**Area Path Filtering:**
+For registered users, uses the area paths specified during registration. If no area paths were specified, checks all areas. Unregistered users always check all area paths.
 
 ## SLA Rules
 

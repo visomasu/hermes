@@ -34,6 +34,14 @@ namespace Hermes.Storage.Repositories.UserConfiguration.Models
 		public bool IsManager => DirectReportEmails.Count > 0;
 
 		/// <summary>
+		/// Area paths to filter work items for SLA violation checks.
+		/// Optional: If empty, all area paths are checked.
+		/// Supports multiple area paths for users working across multiple teams/projects.
+		/// Example: ["Project\\Team1", "Project\\Team2"]
+		/// </summary>
+		public List<string> AreaPaths { get; set; } = new();
+
+		/// <summary>
 		/// When user registered for work item update SLA notifications (UTC).
 		/// </summary>
 		public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;

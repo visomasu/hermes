@@ -52,6 +52,12 @@ public class UserProfileResult
 	public List<string> DirectReportEmails { get; set; } = new();
 
 	/// <summary>
+	/// Optional area paths to filter work items for SLA violation checks.
+	/// If empty, all area paths are checked.
+	/// </summary>
+	public List<string> AreaPaths { get; set; } = new();
+
+	/// <summary>
 	/// Indicates whether the user is a manager (has direct reports).
 	/// </summary>
 	public bool IsManager => DirectReportEmails.Count > 0;

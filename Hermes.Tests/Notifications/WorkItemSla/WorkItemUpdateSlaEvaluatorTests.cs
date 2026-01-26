@@ -143,6 +143,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()),
 				Times.Never);
@@ -164,6 +165,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync("{\"count\":0,\"value\":[]}");
@@ -210,6 +212,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);
@@ -256,6 +259,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);
@@ -345,6 +349,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(managerWorkItemsJson);
@@ -355,6 +360,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(report1WorkItemsJson);
@@ -365,6 +371,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync("{\"count\":0,\"value\":[]}");
@@ -407,6 +414,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()),
 				Times.Exactly(3));
@@ -443,6 +451,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);
@@ -510,6 +519,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);
@@ -574,6 +584,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);
@@ -638,6 +649,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);
@@ -681,6 +693,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync("{\"count\":0,\"value\":[]}");
@@ -697,6 +710,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.Is<IEnumerable<string>>(states => states.Contains("Active") && states.Contains("New")),
 					It.IsAny<IEnumerable<string>>(),
 					"@CurrentIteration",
+					It.IsAny<IEnumerable<string>?>(),
 					It.Is<IEnumerable<string>>(types => types.Contains("Bug") && types.Contains("Task")),
 					It.IsAny<CancellationToken>()),
 				Times.Once);
@@ -734,6 +748,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);
@@ -792,6 +807,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<string>(),
+					It.IsAny<IEnumerable<string>?>(),
 					It.IsAny<IEnumerable<string>>(),
 					It.IsAny<CancellationToken>()))
 				.ReturnsAsync(workItemsJson);

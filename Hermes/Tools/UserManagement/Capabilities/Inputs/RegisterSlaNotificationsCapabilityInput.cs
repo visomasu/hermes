@@ -13,5 +13,14 @@ namespace Hermes.Tools.UserManagement.Capabilities.Inputs
 		/// </summary>
 		[JsonPropertyName("teamsUserId")]
 		public string TeamsUserId { get; init; } = string.Empty;
+
+		/// <summary>
+		/// Optional area paths to filter work items for SLA violation checks.
+		/// If null or empty, all area paths are checked.
+		/// Supports multiple area paths for users working across multiple teams/projects.
+		/// Example: ["Project\\Team1", "Project\\Team2"]
+		/// </summary>
+		[JsonPropertyName("areaPaths")]
+		public List<string>? AreaPaths { get; init; }
 	}
 }

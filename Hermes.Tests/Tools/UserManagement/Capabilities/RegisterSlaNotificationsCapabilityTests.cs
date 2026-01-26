@@ -276,5 +276,102 @@ namespace Hermes.Tests.Tools.UserManagement.Capabilities
 			Assert.Contains("Register", description);
 			Assert.Contains("SLA", description);
 		}
+
+		[Fact]
+		public async Task ExecuteAsync_WithAreaPaths_StoresAreaPathsInProfile()
+		{
+			// Arrange
+			var graphMock = new Mock<IMicrosoftGraphClient>();
+			var repoMock = new Mock<IUserConfigurationRepository>();
+			var loggerMock = new Mock<ILogger<RegisterSlaNotificationsCapability>>();
+
+			var userProfile = new UserProfileResult
+			{
+				Email = "user@example.com",
+				DirectReportEmails = new List<string>()
+			};
+
+			graphMock.Setup(x => x.GetUserProfileWithDirectReportsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(userProfile);
+
+			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync((UserConfigurationDocument?)null);
+
+			UserConfigurationDocument? capturedConfig = null;
+			repoMock.Setup(x => x.CreateAsync(It.IsAny<UserConfigurationDocument>()))
+				.Callback<UserConfigurationDocument>(config => capturedConfig = config)
+				.Returns(Task.CompletedTask);
+
+			var capability = new RegisterSlaNotificationsCapability(graphMock.Object, repoMock.Object, loggerMock.Object);
+			var input = new RegisterSlaNotificationsCapabilityInput
+			{
+				TeamsUserId = "user-123",
+				AreaPaths = new List<string> { "Project\\Team1", "Project\\Team2" }
+			};
+
+			// Act
+			var result = await capability.ExecuteAsync(input);
+
+			// Assert
+			Assert.NotNull(result);
+			var response = JsonSerializer.Deserialize<JsonElement>(result);
+			Assert.True(response.GetProperty("success").GetBoolean());
+			Assert.Contains("Project\\Team1", response.GetProperty("message").GetString()!);
+
+			Assert.NotNull(capturedConfig);
+			Assert.NotNull(capturedConfig!.SlaRegistration);
+			Assert.Equal(2, capturedConfig.SlaRegistration.AreaPaths.Count);
+			Assert.Contains("Project\\Team1", capturedConfig.SlaRegistration.AreaPaths);
+			Assert.Contains("Project\\Team2", capturedConfig.SlaRegistration.AreaPaths);
+
+			repoMock.Verify(x => x.CreateAsync(It.IsAny<UserConfigurationDocument>()), Times.Once);
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_WithoutAreaPaths_StoresEmptyAreaPathsList()
+		{
+			// Arrange
+			var graphMock = new Mock<IMicrosoftGraphClient>();
+			var repoMock = new Mock<IUserConfigurationRepository>();
+			var loggerMock = new Mock<ILogger<RegisterSlaNotificationsCapability>>();
+
+			var userProfile = new UserProfileResult
+			{
+				Email = "user@example.com",
+				DirectReportEmails = new List<string>()
+			};
+
+			graphMock.Setup(x => x.GetUserProfileWithDirectReportsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(userProfile);
+
+			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync((UserConfigurationDocument?)null);
+
+			UserConfigurationDocument? capturedConfig = null;
+			repoMock.Setup(x => x.CreateAsync(It.IsAny<UserConfigurationDocument>()))
+				.Callback<UserConfigurationDocument>(config => capturedConfig = config)
+				.Returns(Task.CompletedTask);
+
+			var capability = new RegisterSlaNotificationsCapability(graphMock.Object, repoMock.Object, loggerMock.Object);
+			var input = new RegisterSlaNotificationsCapabilityInput
+			{
+				TeamsUserId = "user-123",
+				AreaPaths = null // No area paths specified
+			};
+
+			// Act
+			var result = await capability.ExecuteAsync(input);
+
+			// Assert
+			Assert.NotNull(result);
+			var response = JsonSerializer.Deserialize<JsonElement>(result);
+			Assert.True(response.GetProperty("success").GetBoolean());
+
+			Assert.NotNull(capturedConfig);
+			Assert.NotNull(capturedConfig!.SlaRegistration);
+			Assert.Empty(capturedConfig.SlaRegistration.AreaPaths);
+
+			repoMock.Verify(x => x.CreateAsync(It.IsAny<UserConfigurationDocument>()), Times.Once);
+		}
 	}
 }

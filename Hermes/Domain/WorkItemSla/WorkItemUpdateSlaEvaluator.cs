@@ -103,6 +103,7 @@ namespace Hermes.Domain.WorkItemSla
 		/// <inheritdoc/>
 		public async Task<List<WorkItemUpdateSlaViolation>> CheckViolationsForEmailAsync(
 			string email,
+			IEnumerable<string>? areaPaths = null,
 			CancellationToken cancellationToken = default)
 		{
 			if (string.IsNullOrWhiteSpace(email))
@@ -111,17 +112,37 @@ namespace Hermes.Domain.WorkItemSla
 				return new List<WorkItemUpdateSlaViolation>();
 			}
 
-			_logger.LogDebug("Checking SLA violations for email {Email}", email);
+			_logger.LogDebug("Checking SLA violations for email {Email} with area paths {AreaPaths}",
+				email,
+				areaPaths != null && areaPaths.Any() ? string.Join(", ", areaPaths) : "all");
 
 			// Get work item types we care about from SLA rules
 			var workItemTypes = _configuration.SlaRules.Keys.ToList();
+
+			// Determine iteration path (dynamic current iteration or static path)
+			string? iterationPath = _configuration.IterationPath;
+			if (!string.IsNullOrWhiteSpace(_configuration.TeamName))
+			{
+				try
+				{
+					iterationPath = await _azureDevOpsClient.GetCurrentIterationPathAsync(_configuration.TeamName, cancellationToken);
+					_logger.LogDebug("Dynamically determined current iteration: {IterationPath}", iterationPath ?? "none");
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Failed to get current iteration for team {TeamName}, using configured path: {IterationPath}",
+						_configuration.TeamName, _configuration.IterationPath);
+					// Fall back to configured iteration path
+				}
+			}
 
 			// Query Azure DevOps for assigned work items
 			var workItemsJson = await _azureDevOpsClient.GetWorkItemsByAssignedUserAsync(
 				email,
 				new[] { "Active", "New" },
 				new[] { "System.Id", "System.Title", "System.WorkItemType", "System.ChangedDate" },
-				_configuration.IterationPath,
+				iterationPath,
+				areaPaths,
 				workItemTypes,
 				cancellationToken);
 
@@ -178,7 +199,7 @@ namespace Hermes.Domain.WorkItemSla
 			// Check violations for all emails in parallel
 			var violationTasks = emailsToCheck.Select(async email =>
 			{
-				var violations = await CheckViolationsForEmailAsync(email, cancellationToken);
+				var violations = await CheckViolationsForEmailAsync(email, profile.AreaPaths, cancellationToken);
 				return new { Email = email, Violations = violations };
 			}).ToArray();
 

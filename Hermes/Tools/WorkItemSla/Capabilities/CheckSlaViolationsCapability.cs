@@ -82,7 +82,7 @@ namespace Hermes.Tools.WorkItemSla.Capabilities
 				// 3. Check violations for all emails in parallel
 				var violationTasks = emailsToCheck.Select(async email =>
 				{
-					var violations = await _slaEvaluator.CheckViolationsForEmailAsync(email);
+					var violations = await _slaEvaluator.CheckViolationsForEmailAsync(email, userProfile.AreaPaths);
 					return new { Email = email, Violations = violations };
 				}).ToArray();
 
@@ -159,7 +159,8 @@ namespace Hermes.Tools.WorkItemSla.Capabilities
 				return new UserProfileResult
 				{
 					Email = userConfig.SlaRegistration.AzureDevOpsEmail,
-					DirectReportEmails = userConfig.SlaRegistration.DirectReportEmails
+					DirectReportEmails = userConfig.SlaRegistration.DirectReportEmails,
+					AreaPaths = userConfig.SlaRegistration.AreaPaths
 				};
 			}
 
