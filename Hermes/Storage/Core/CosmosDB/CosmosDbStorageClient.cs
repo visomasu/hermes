@@ -167,6 +167,50 @@ namespace Hermes.Storage.Core.CosmosDB
 			return results;
 		}
 
+	/// <summary>
+	/// Executes a cross-partition query with the specified query definition.
+	/// WARNING: Cross-partition queries are expensive in CosmosDB and consume significant RUs.
+	/// Use sparingly and only when necessary.
+	/// </summary>
+	/// <param name="queryDefinition">The query definition to execute.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>List of documents matching the query.</returns>
+	public async Task<List<T>> QueryAsync(
+		QueryDefinition queryDefinition,
+		CancellationToken cancellationToken = default)
+	{
+		await EnsureInitializedAsync();
+		if (queryDefinition == null)
+			throw new StorageException("QueryDefinition cannot be null.", StorageExceptionTypes.ErrorCode.InvalidInput);
+
+		var results = new List<T>();
+		try
+		{
+			// Enable cross-partition query
+			var queryRequestOptions = new QueryRequestOptions
+			{
+				MaxItemCount = -1 // Retrieve all items
+			};
+
+			using (FeedIterator<T> resultSet = _container.GetItemQueryIterator<T>(
+				queryDefinition,
+				requestOptions: queryRequestOptions))
+			{
+				while (resultSet.HasMoreResults)
+				{
+					FeedResponse<T> response = await resultSet.ReadNextAsync(cancellationToken);
+					results.AddRange(response);
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			_HandleCosmosException(ex, "query");
+		}
+
+		return results;
+	}
+
 		/// <summary>
 		/// Handles and wraps common CosmosDB exceptions with StorageException.
 		/// </summary>

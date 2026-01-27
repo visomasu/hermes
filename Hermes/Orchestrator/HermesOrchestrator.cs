@@ -192,10 +192,30 @@ namespace Hermes.Orchestrator
         /// <inheritdoc/>
         public async Task<string> OrchestrateAsync(string sessionId, string query, Action<string>? progressCallback = null)
         {
+            // Extract userId from sessionId if present (format: "userId|actualSessionId")
+            string? userId = null;
+            string actualSessionId = sessionId;
+
+            if (sessionId.Contains('|'))
+            {
+                var parts = sessionId.Split('|', 2);
+                userId = parts[0];
+                actualSessionId = parts[1];
+            }
+
             var agent = await GetAgentAsync().ConfigureAwait(false);
 
             // Build context window from relevant conversation history using semantic filtering.
-            var contextMessages = await BuildContextWindowAsync(sessionId, query, DefaultContextTurns).ConfigureAwait(false);
+            var contextMessages = await BuildContextWindowAsync(actualSessionId, query, DefaultContextTurns).ConfigureAwait(false);
+
+            // If userId is provided, prepend a system message with user context override
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var userContextMessage = new ChatMessage(
+                    ChatRole.System,
+                    [new TextContent($"## User Context Override\nCurrent user: {userId} (Teams User ID for tool calls)")]);
+                contextMessages.Insert(0, userContextMessage);
+            }
 
             // Append the current user query as the last message.
             contextMessages.Add(new ChatMessage(ChatRole.User, [new TextContent(query)]));
@@ -223,7 +243,7 @@ namespace Hermes.Orchestrator
             };
 
             await _conversationHistoryRepository
-                .WriteConversationHistoryAsync(sessionId, historyEntries)
+                .WriteConversationHistoryAsync(actualSessionId, historyEntries)
                 .ConfigureAwait(false);
 
             return responseText;

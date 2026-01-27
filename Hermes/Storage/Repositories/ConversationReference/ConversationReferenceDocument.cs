@@ -15,6 +15,13 @@ namespace Hermes.Storage.Repositories.ConversationReference
 		public string TeamsUserId { get; set; } = string.Empty;
 
 		/// <summary>
+		/// Azure AD Object ID of the user (GUID format).
+		/// Used for Microsoft Graph API calls to fetch user profile, direct reports, etc.
+		/// This is different from TeamsUserId - it's the user's identifier in Azure Active Directory.
+		/// </summary>
+		public string? AadObjectId { get; set; }
+
+		/// <summary>
 		/// Teams conversation ID (e.g., "19:meeting_xyz..." for group chats, "a:1-1_xyz..." for 1:1).
 		/// Unique identifier for the conversation context.
 		/// </summary>

@@ -14,6 +14,13 @@ namespace Hermes.Controllers.Models
         public string Text { get; set; } = string.Empty;
 
         /// <summary>
+        /// Optional user identifier (Teams user ID or email) for the user sending the message.
+        /// Used to provide user context for tool calls and personalized responses.
+        /// </summary>
+        [JsonPropertyName("userId")]
+        public string? UserId { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of the ChatInput class with the specified text content.
         /// </summary>
         /// <param name="text">The text to be used as the input message. Cannot be null.</param>
@@ -24,7 +31,7 @@ namespace Hermes.Controllers.Models
                 throw new ArgumentException("Text cannot be null or empty.", nameof(text));
             }
 
-            this.Text = text; 
+            this.Text = text;
         }
     }
 }

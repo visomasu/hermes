@@ -1,4 +1,4 @@
-namespace Hermes.Notifications.WorkItemSla.Models
+namespace Hermes.Domain.WorkItemSla.Models
 {
 	/// <summary>
 	/// Represents a single work item that violates its update frequency SLA.

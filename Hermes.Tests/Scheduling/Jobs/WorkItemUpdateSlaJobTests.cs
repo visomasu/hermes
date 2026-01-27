@@ -1,4 +1,4 @@
-using Hermes.Notifications.WorkItemSla;
+using Hermes.Domain.WorkItemSla;
 using Hermes.Notifications.WorkItemSla.Models;
 using Hermes.Scheduling.Jobs;
 using Microsoft.Extensions.Logging;

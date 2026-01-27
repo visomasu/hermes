@@ -11,6 +11,21 @@
       "id": "parent-hierarchy-validator",
       "name": "Parent Hierarchy Validator",
       "description": "Validate and analyze hierarchical relationships (for example, parent/child links in storage documents or Azure DevOps work items), detect broken or cyclic hierarchies, and suggest or apply corrections according to Hermes business rules."
+    },
+    {
+      "id": "register-sla-notifications",
+      "name": "RegisterSlaNotifications",
+      "description": "Register users to receive daily SLA violation notifications for their work items and direct reports. Automatically discovers manager status and direct reports via Microsoft Graph."
+    },
+    {
+      "id": "check-sla-violations",
+      "name": "CheckSlaViolations",
+      "description": "Perform immediate on-demand check for SLA violations. Works for both registered and unregistered users. Managers see team-wide violations grouped by owner."
+    },
+    {
+      "id": "unregister-sla-notifications",
+      "name": "UnregisterSlaNotifications",
+      "description": "Remove user from daily SLA notification list. User will no longer receive scheduled SLA reports but can still use on-demand checks."
     }
   ]
 }

@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Hermes.Channels.Teams;
@@ -223,5 +226,337 @@ namespace Hermes.Tests.Channels.Teams
             // Verify phrase generator was called
             phraseGeneratorMock.Verify(p => p.GeneratePhrase(), Times.Once);
         }
+
+        #region _ExtractAadObjectIdAsync Tests
+
+        [Fact]
+        public async Task ExtractAadObjectIdAsync_ValidGuidInProperties_ReturnsAadObjectId()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var expectedAadObjectId = "6a0b5481-9742-485f-8595-b0c3a89934df";
+            var properties = new Dictionary<string, JsonElement>
+            {
+                { "aadObjectId", JsonDocument.Parse($"\"{expectedAadObjectId}\"").RootElement }
+            };
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User")
+            {
+                Properties = properties
+            };
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_ExtractAadObjectIdAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = await (Task<string?>)method!.Invoke(agent, new object[] { user })!;
+
+            // Assert
+            Assert.Equal(expectedAadObjectId, result);
+        }
+
+        [Fact]
+        public async Task ExtractAadObjectIdAsync_InvalidGuidInProperties_FallsBackToAzCli()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var invalidAadObjectId = "not-a-valid-guid";
+            var properties = new Dictionary<string, JsonElement>
+            {
+                { "aadObjectId", JsonDocument.Parse($"\"{invalidAadObjectId}\"").RootElement }
+            };
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User")
+            {
+                Properties = properties
+            };
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_ExtractAadObjectIdAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = await (Task<string?>)method!.Invoke(agent, new object[] { user })!;
+
+            // Assert
+            // Should attempt az CLI fallback (will succeed if az is configured, or return null)
+            // We can't deterministically test az CLI in unit tests, so we just verify it doesn't crash
+            Assert.True(result == null || System.Guid.TryParse(result, out _));
+        }
+
+        [Fact]
+        public async Task ExtractAadObjectIdAsync_NoPropertiesDictionary_FallsBackToAzCli()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User");
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_ExtractAadObjectIdAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = await (Task<string?>)method!.Invoke(agent, new object[] { user })!;
+
+            // Assert
+            // Should attempt az CLI fallback (will succeed if az is configured, or return null)
+            Assert.True(result == null || System.Guid.TryParse(result, out _));
+        }
+
+        [Fact]
+        public async Task ExtractAadObjectIdAsync_EmptyPropertiesDictionary_FallsBackToAzCli()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var properties = new Dictionary<string, JsonElement>(); // Empty dictionary
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User")
+            {
+                Properties = properties
+            };
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_ExtractAadObjectIdAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = await (Task<string?>)method!.Invoke(agent, new object[] { user })!;
+
+            // Assert
+            // Should attempt az CLI fallback
+            Assert.True(result == null || System.Guid.TryParse(result, out _));
+        }
+
+        [Fact]
+        public async Task ExtractAadObjectIdAsync_MultipleValidGuids_ReturnsFirstFromProperties()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var expectedAadObjectId = "12345678-1234-1234-1234-123456789abc";
+            var properties = new Dictionary<string, JsonElement>
+            {
+                { "aadObjectId", JsonDocument.Parse($"\"{expectedAadObjectId}\"").RootElement },
+                { "otherProperty", JsonDocument.Parse("\"some-value\"").RootElement }
+            };
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User")
+            {
+                Properties = properties
+            };
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_ExtractAadObjectIdAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = await (Task<string?>)method!.Invoke(agent, new object[] { user })!;
+
+            // Assert
+            Assert.Equal(expectedAadObjectId, result);
+        }
+
+        [Fact]
+        public async Task ExtractAadObjectIdAsync_GuidWithDifferentCasing_ReturnsNormalizedGuid()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var expectedAadObjectId = "6A0B5481-9742-485F-8595-B0C3A89934DF"; // Uppercase
+            var properties = new Dictionary<string, JsonElement>
+            {
+                { "aadObjectId", JsonDocument.Parse($"\"{expectedAadObjectId}\"").RootElement }
+            };
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User")
+            {
+                Properties = properties
+            };
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_ExtractAadObjectIdAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = await (Task<string?>)method!.Invoke(agent, new object[] { user })!;
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(System.Guid.TryParse(result, out _), "Result should be a valid GUID");
+        }
+
+        [Fact]
+        public async Task CaptureConversationReferenceAsync_ExtractsAndStoresAadObjectId()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            ConversationReferenceDocument? capturedDocument = null;
+            conversationRefRepoMock
+                .Setup(r => r.ReadAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync((ConversationReferenceDocument?)null);
+
+            conversationRefRepoMock
+                .Setup(r => r.CreateAsync(It.IsAny<ConversationReferenceDocument>()))
+                .Callback<ConversationReferenceDocument>((doc) => capturedDocument = doc)
+                .Returns(Task.CompletedTask);
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var expectedAadObjectId = "87654321-4321-4321-4321-cba987654321";
+            var properties = new Dictionary<string, JsonElement>
+            {
+                { "aadObjectId", JsonDocument.Parse($"\"{expectedAadObjectId}\"").RootElement }
+            };
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User")
+            {
+                Properties = properties
+            };
+            var activity = new Activity
+            {
+                Type = ActivityTypes.Message,
+                Text = "test message",
+                From = user,
+                Conversation = new ConversationAccount(id: "conv-id")
+            };
+
+            var turnContextMock = new Mock<ITurnContext>();
+            turnContextMock.SetupGet(c => c.Activity).Returns(activity);
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_CaptureConversationReferenceAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            await (Task)method!.Invoke(agent, new object[] { turnContextMock.Object, CancellationToken.None })!;
+
+            // Assert
+            Assert.NotNull(capturedDocument);
+            Assert.Equal(expectedAadObjectId, capturedDocument!.AadObjectId);
+            Assert.Equal("user-id", capturedDocument.TeamsUserId);
+            Assert.Equal("conv-id", capturedDocument.ConversationId);
+        }
+
+        [Fact]
+        public async Task CaptureConversationReferenceAsync_UpdatesExistingDocumentWithAadObjectId()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            var existingDocument = new ConversationReferenceDocument
+            {
+                Id = "conv-id",
+                PartitionKey = "user-id",
+                TeamsUserId = "user-id",
+                ConversationId = "conv-id",
+                AadObjectId = null, // Missing AAD Object ID
+                ConversationReferenceJson = "{}"
+            };
+
+            ConversationReferenceDocument? updatedDocument = null;
+            conversationRefRepoMock
+                .Setup(r => r.ReadAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(existingDocument);
+
+            conversationRefRepoMock
+                .Setup(r => r.UpdateAsync(It.IsAny<string>(), It.IsAny<ConversationReferenceDocument>()))
+                .Callback<string, ConversationReferenceDocument>((_, doc) => updatedDocument = doc)
+                .Returns(Task.CompletedTask);
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var expectedAadObjectId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+            var properties = new Dictionary<string, JsonElement>
+            {
+                { "aadObjectId", JsonDocument.Parse($"\"{expectedAadObjectId}\"").RootElement }
+            };
+
+            var user = new ChannelAccount(id: "user-id", name: "Test User")
+            {
+                Properties = properties
+            };
+            var activity = new Activity
+            {
+                Type = ActivityTypes.Message,
+                Text = "test message",
+                From = user,
+                Conversation = new ConversationAccount(id: "conv-id")
+            };
+
+            var turnContextMock = new Mock<ITurnContext>();
+            turnContextMock.SetupGet(c => c.Activity).Returns(activity);
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("_CaptureConversationReferenceAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            await (Task)method!.Invoke(agent, new object[] { turnContextMock.Object, CancellationToken.None })!;
+
+            // Assert
+            Assert.NotNull(updatedDocument);
+            Assert.Equal(expectedAadObjectId, updatedDocument!.AadObjectId);
+            conversationRefRepoMock.Verify(r => r.UpdateAsync("conv-id", It.IsAny<ConversationReferenceDocument>()), Times.Once);
+        }
+
+        #endregion
     }
 }

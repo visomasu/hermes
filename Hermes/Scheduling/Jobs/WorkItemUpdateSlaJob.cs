@@ -1,4 +1,4 @@
-using Hermes.Notifications.WorkItemSla;
+using Hermes.Domain.WorkItemSla;
 using Microsoft.Extensions.Logging;
 using Quartz;
 using System.Diagnostics;

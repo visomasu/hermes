@@ -1,0 +1,85 @@
+Perform immediate on-demand check for work item SLA violations.
+
+## Trigger
+User requests: "check my SLAs", "show SLA status", "do I have violations", "check my team's SLAs", "what items are overdue", "SLA report"
+
+## Process
+
+**1. Identify User Intent**
+Parse user input for SLA check keywords. This capability works for both registered and unregistered users.
+
+**2. Execute Check**
+
+IMPORTANT: Extract the current user ID from the "User Context Override" or "User Context" system message (format: "Current user: <userId>").
+
+Example call (replace <userId> with actual value from User Context):
+```
+WorkItemSlaTool.Execute("CheckSlaViolations", {"teamsUserId": "<userId>"})
+```
+
+This automatically:
+- Checks if user is registered (uses cached profile from UserConfiguration)
+- If not registered, fetches profile from Microsoft Graph for one-time check
+- Queries Azure DevOps for SLA violations (user + direct reports if manager)
+- Returns violations grouped by owner email
+- Executes violation checks in parallel for performance
+
+**3. Communicate Results**
+
+For managers with violations:
+"⚠️ Found X SLA violation(s) across your team"
+[Show violations grouped by owner]
+
+For ICs with violations:
+"⚠️ Found X SLA violation(s) for your work items"
+[Show list of violations with details]
+
+For no violations:
+"✅ No SLA violations found for you/your team!"
+
+## Violation Details
+
+Each violation includes:
+- Work item ID and title
+- Work item type (Bug, Task, User Story, etc.)
+- Days since last update
+- SLA threshold (how many days allowed)
+- Direct link to work item in Azure DevOps
+
+## Key Features
+
+**Works Without Registration:**
+Users can check SLA violations on-demand even if they haven't registered for daily notifications. This performs a one-time check using Microsoft Graph API.
+
+**Manager Aggregation:**
+Managers see violations for themselves AND all direct reports, grouped by owner email for clarity.
+
+**Performance Optimized:**
+Violation checks for multiple team members execute in parallel (~10-20x faster for large teams).
+
+**Storage-First Fallback:**
+Registered users get instant cached results including their configured area paths. Unregistered users fetch fresh data from Microsoft Graph (checks all area paths).
+
+**Area Path Filtering:**
+For registered users, uses the area paths specified during registration. If no area paths were specified, checks all areas. Unregistered users always check all area paths.
+
+## SLA Rules
+
+Violations are calculated based on days since last work item update:
+- Bug: Must be updated within X days
+- Task: Must be updated within Y days
+- User Story: Must be updated within Z days
+(Thresholds configured in system settings)
+
+## Related Capabilities
+
+- **RegisterSlaNotifications:** Receive daily automated SLA checks
+- **UnregisterSlaNotifications:** Stop receiving daily notifications
+
+## Error Handling
+
+If email cannot be retrieved:
+"Could not retrieve your email. Please try again."
+
+If Azure DevOps query fails:
+"An error occurred while checking violations. Please try again."

@@ -21,6 +21,13 @@ namespace Hermes.Storage.Repositories.UserConfiguration
 		public NotificationPreferences Notifications { get; set; } = new();
 
 		/// <summary>
+		/// Work item update SLA notification registration profile.
+		/// Null indicates user has never registered for SLA notifications.
+		/// IsRegistered=false indicates user unregistered but data is preserved.
+		/// </summary>
+		public WorkItemUpdateSlaRegistrationProfile? SlaRegistration { get; set; }
+
+		/// <summary>
 		/// When this configuration was first created.
 		/// </summary>
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
