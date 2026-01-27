@@ -3,6 +3,36 @@ Perform immediate on-demand check for work item SLA violations.
 ## Trigger
 User requests: "check my SLAs", "show SLA status", "do I have violations", "check my team's SLAs", "what items are overdue", "SLA report"
 
+## ⚠️ CRITICAL: Parameter Extraction
+
+**YOU MUST extract teamsUserId from the system message BEFORE calling the tool.**
+
+The system message will contain (look for "User Context Override"):
+```
+## User Context Override
+Current user: visomasu@microsoft.com (Teams User ID for tool calls)
+```
+
+**YOUR TOOL CALL MUST LOOK LIKE THIS:**
+```json
+{
+  "teamsUserId": "visomasu@microsoft.com"
+}
+```
+
+**CORRECT EXAMPLES:**
+- System says "Current user: alice@contoso.com" → Use: `{"teamsUserId": "alice@contoso.com"}`
+- System says "Current user: bob@fabrikam.com" → Use: `{"teamsUserId": "bob@fabrikam.com"}`
+
+**WRONG - DO NOT DO THIS:**
+- ❌ `{"teamsUserId": ""}` - Empty string
+- ❌ `{"teamsUserId": "<userId>"}` - Placeholder text
+- ❌ `{}` - Missing teamsUserId field entirely
+
+If you cannot find the user ID in system messages, return an error asking the user to provide it.
+
+---
+
 ## Process
 
 **1. Identify User Intent**
@@ -10,11 +40,9 @@ Parse user input for SLA check keywords. This capability works for both register
 
 **2. Execute Check**
 
-IMPORTANT: Extract the current user ID from the "User Context Override" or "User Context" system message (format: "Current user: <userId>").
-
-Example call (replace <userId> with actual value from User Context):
+Call the tool with the extracted teamsUserId:
 ```
-WorkItemSlaTool.Execute("CheckSlaViolations", {"teamsUserId": "<userId>"})
+WorkItemSlaTool.Execute("CheckSlaViolations", {"teamsUserId": "<actual-user-id-from-system-message>"})
 ```
 
 This automatically:

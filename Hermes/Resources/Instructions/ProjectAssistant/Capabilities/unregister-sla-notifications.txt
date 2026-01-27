@@ -3,6 +3,36 @@ Remove user from daily SLA violation notification list.
 ## Trigger
 User requests: "unregister from SLA", "stop SLA notifications", "disable SLA alerts", "I don't want SLA reports", "turn off SLA notifications"
 
+## ⚠️ CRITICAL: Parameter Extraction
+
+**YOU MUST extract teamsUserId from the system message BEFORE calling the tool.**
+
+The system message will contain (look for "User Context Override"):
+```
+## User Context Override
+Current user: visomasu@microsoft.com (Teams User ID for tool calls)
+```
+
+**YOUR TOOL CALL MUST LOOK LIKE THIS:**
+```json
+{
+  "teamsUserId": "visomasu@microsoft.com"
+}
+```
+
+**CORRECT EXAMPLES:**
+- System says "Current user: alice@contoso.com" → Use: `{"teamsUserId": "alice@contoso.com"}`
+- System says "Current user: bob@fabrikam.com" → Use: `{"teamsUserId": "bob@fabrikam.com"}`
+
+**WRONG - DO NOT DO THIS:**
+- ❌ `{"teamsUserId": ""}` - Empty string
+- ❌ `{"teamsUserId": "<userId>"}` - Placeholder text
+- ❌ `{}` - Missing teamsUserId field entirely
+
+If you cannot find the user ID in system messages, return an error message with the exact format expected.
+
+---
+
 ## Process
 
 **1. Identify User Intent**
@@ -10,21 +40,9 @@ Parse user input for unregistration keywords. Confirm intent if ambiguous to avo
 
 **2. Execute Unregistration**
 
-REQUIRED INPUT PARAMETERS:
-- teamsUserId: MUST be provided (string, required)
-
-IMPORTANT: Extract the current user ID from the "User Context Override" or "User Context" system message (format: "Current user: <userId>").
-
-Example call (replace <userId> with actual value from User Context):
+Call the tool with the extracted teamsUserId:
 ```
-UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "<userId>"})
-```
-
-Input JSON format:
-```json
-{
-  "teamsUserId": "<actual-user-id-from-context>"
-}
+UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "<actual-user-id-from-system-message>"})
 ```
 
 This automatically:

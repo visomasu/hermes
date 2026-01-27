@@ -5,6 +5,38 @@ User requests: "register for SLA", "sign me up for SLA", "enable SLA notificatio
 
 Users may also specify area paths: "register me for SLA in Project\\Team1" or "register for SLA notifications for Project\\Team1 and Project\\Team2"
 
+## ⚠️ CRITICAL: Parameter Extraction
+
+**YOU MUST extract teamsUserId from the system message BEFORE calling the tool.**
+
+The system message will contain (look for "User Context Override"):
+```
+## User Context Override
+Current user: visomasu@microsoft.com (Teams User ID for tool calls)
+```
+
+**YOUR TOOL CALL MUST LOOK LIKE THIS:**
+```json
+{
+  "teamsUserId": "visomasu@microsoft.com",
+  "areaPaths": ["Project\\Team1", "Project\\Team2"]
+}
+```
+
+**CORRECT EXAMPLES:**
+- System says "Current user: alice@contoso.com" → Use: `{"teamsUserId": "alice@contoso.com"}`
+- System says "Current user: bob@fabrikam.com" → Use: `{"teamsUserId": "bob@fabrikam.com"}`
+
+**WRONG - DO NOT DO THIS:**
+- ❌ `{"teamsUserId": ""}` - Empty string
+- ❌ `{"teamsUserId": "<userId>"}` - Placeholder text
+- ❌ `{"teamsUserId": "{{userId}}"}` - Template syntax
+- ❌ Omitting teamsUserId field entirely
+
+If you cannot find the user ID in system messages, ask the user to provide it explicitly.
+
+---
+
 ## Process
 
 **1. Identify User Intent**
@@ -18,11 +50,9 @@ If user mentions area paths in their request, extract them from the natural lang
 
 **3. Execute Registration**
 
-IMPORTANT: Extract the current user ID from the "User Context Override" or "User Context" system message (format: "Current user: <userId>").
-
-Example call (replace <userId> with actual value from User Context):
+Call the tool with the extracted teamsUserId and optional area paths:
 ```
-UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<userId>", "areaPaths": ["Project\\Team1", "Project\\Team2"]})
+UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<actual-user-id-from-system-message>", "areaPaths": ["Project\\Team1"]})
 ```
 
 If no area paths are specified, omit the areaPaths field or set to null.
