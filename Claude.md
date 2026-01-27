@@ -575,6 +575,248 @@ dotnet build
 
 ---
 
+## Integration Testing
+
+⚠️ **MANDATORY: Run integration tests BEFORE every commit to prevent regressions**
+
+Integration tests verify end-to-end capability functionality through the REST API, ensuring LLM routing, tool invocation, and response formatting all work correctly.
+
+### Prerequisites
+
+1. **CosmosDB Emulator** running locally
+2. **Azure DevOps** access configured (uses Azure CLI authentication)
+3. **Microsoft Graph** credentials in `appsettings.json` (for SLA capabilities)
+4. **Application running**: `dotnet run --project Hermes`
+
+### Test Approach
+
+**Use the REST chat endpoint for testing:**
+```bash
+curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
+  -H "Content-Type: application/json" \
+  -H "x-ms-correlation-id: test-001" \
+  -d '{"text": "<natural language request>", "userId": "<user@microsoft.com>"}'
+```
+
+**Why REST endpoint?**
+- Faster iteration than Teams bot
+- Easy to verify LLM routing and prompt effectiveness
+- Enables prompt refinement based on test results
+- Simulates real user scenarios
+
+### Integration Test Suite
+
+Run ALL capabilities before committing to catch regressions:
+
+#### 1. Newsletter Generation (Azure DevOps Tool)
+
+**Test Command:**
+```bash
+curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "generate a newsletter for epic 123456"}'
+```
+
+**Expected Result:**
+- ✅ LLM calls `AzureDevOpsTool.Execute("GenerateNewsletter", ...)`
+- ✅ Returns formatted newsletter with summary, progress, risks, timeline
+- ✅ Includes work item IDs as citations
+
+**Verify in Logs:**
+```
+info: Hermes.Tools.AzureDevOps.AzureDevOpsTool[0]
+      Executing AzureDevOpsTool operation: GenerateNewsletter
+```
+
+#### 2. Parent Hierarchy Validation (Azure DevOps Tool)
+
+**Test Command:**
+```bash
+curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "validate the parent hierarchy from work item 123456"}'
+```
+
+**Expected Result:**
+- ✅ LLM calls `AzureDevOpsTool.Execute("ValidateHierarchy", ...)`
+- ✅ Returns validation results with any hierarchy violations
+- ✅ Suggests corrections if hierarchy is invalid
+
+**Verify in Logs:**
+```
+info: Hermes.Tools.AzureDevOps.AzureDevOpsTool[0]
+      Executing AzureDevOpsTool operation: ValidateHierarchy
+```
+
+#### 3. Register SLA Notifications (User Management Tool)
+
+**Test Command:**
+```bash
+curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "register me for SLA notifications", "userId": "testuser@microsoft.com"}'
+```
+
+**Expected Result:**
+- ✅ LLM calls `UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "testuser@microsoft.com"})`
+- ✅ Microsoft Graph fetches user profile and direct reports
+- ✅ UserConfiguration created in CosmosDB with SlaRegistration
+- ✅ Response confirms registration (manager: includes direct report count)
+
+**Verify in Logs:**
+```
+info: Hermes.Tools.UserManagement.UserManagementTool[0]
+      Executing UserManagementTool operation: RegisterSlaNotifications
+info: Hermes.Integrations.MicrosoftGraph.MicrosoftGraphClient[0]
+      Retrieved profile for user testuser@microsoft.com: Email=..., IsManager=True, DirectReports=X
+info: Hermes.Tools.UserManagement.Capabilities.RegisterSlaNotificationsCapability[0]
+      Successfully registered user testuser@microsoft.com for SLA notifications
+```
+
+**Verify in CosmosDB:**
+Query CosmosDB to confirm UserConfiguration document exists:
+```sql
+SELECT * FROM c WHERE c.SlaRegistration != null AND c.SlaRegistration.IsRegistered = true
+```
+
+#### 4. Check SLA Violations (Work Item SLA Tool)
+
+**Test Command:**
+```bash
+curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "check my SLA violations", "userId": "testuser@microsoft.com"}'
+```
+
+**Expected Result:**
+- ✅ LLM calls `WorkItemSlaTool.Execute("CheckSlaViolations", {"teamsUserId": "testuser@microsoft.com"})`
+- ✅ Returns formatted report with violations grouped by owner (for managers)
+- ✅ Includes work item details: ID, title, days since update, SLA threshold
+- ✅ Shows top priority items and actionable recommendations
+
+**Verify in Logs:**
+```
+info: Hermes.Tools.WorkItemSla.WorkItemSlaTool[0]
+      Executing WorkItemSlaTool operation: CheckSlaViolations
+info: Hermes.Tools.WorkItemSla.Capabilities.CheckSlaViolationsCapability[0]
+      Found X SLA violations for user testuser@microsoft.com (Y owners)
+```
+
+**Expected Response Format (Manager):**
+- Summary section with total violations and breakdown
+- Quick owner breakdown table
+- Top 5 most stale items prioritized
+- Recommended next steps
+
+#### 5. Unregister SLA Notifications (User Management Tool)
+
+**Test Command:**
+```bash
+curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "unregister me from SLA notifications", "userId": "testuser@microsoft.com"}'
+```
+
+**Expected Result:**
+- ✅ LLM calls `UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "testuser@microsoft.com"})`
+- ✅ UserConfiguration updated: `IsRegistered = false`
+- ✅ Response confirms unregistration
+
+**Verify in Logs:**
+```
+info: Hermes.Tools.UserManagement.UserManagementTool[0]
+      Executing UserManagementTool operation: UnregisterSlaNotifications
+info: Hermes.Tools.UserManagement.Capabilities.UnregisterSlaNotificationsCapability[0]
+      Successfully unregistered user testuser@microsoft.com from SLA notifications
+```
+
+**Verify Scheduled Job:**
+Wait for next scheduled job (runs every minute) and confirm:
+```
+info: Hermes.Storage.Repositories.UserConfiguration.UserConfigurationRepository[0]
+      GetAllWithSlaRegistrationAsync found 0 registered users
+```
+
+### Common Integration Test Issues
+
+**Issue: "TeamsUserId is required" error**
+- **Cause:** LLM not extracting userId from User Context system message
+- **Check:** Review capability instruction files for clear parameter extraction guidance
+- **Workaround:** LLM should self-correct on retry after seeing error message
+
+**Issue: Tool not being called**
+- **Cause:** Tool not registered in HermesModule or capability not added to agentspec.json
+- **Check:**
+  ```bash
+  grep -r "RegisterType.*MyCapability" Hermes/DI/
+  grep "my-capability" Hermes/Resources/Instructions/ProjectAssistant/agentspec.json
+  ```
+
+**Issue: "Operation not supported" error**
+- **Cause:** Operation name mismatch between instruction file and tool's switch statement
+- **Check:** Tool should include common aliases (e.g., "RegisterSLA", "RegisterSlaNotifications", "RegisterForSlaNotifications")
+
+**Issue: Response timeout**
+- **Cause:** Long-running operations or slow external APIs
+- **Not critical:** Check logs to verify tool execution succeeded even if response times out
+
+### Pre-Commit Integration Test Checklist
+
+Before committing capability changes, verify:
+
+- [ ] **Unit tests pass**: `dotnet test Hermes.Tests`
+- [ ] **Application builds**: `dotnet build Hermes`
+- [ ] **Application starts**: `dotnet run --project Hermes` (no startup errors)
+- [ ] **Newsletter generation works**: Test with valid epic/feature ID
+- [ ] **Hierarchy validation works**: Test with valid work item ID
+- [ ] **SLA registration works**: Test with valid user ID, verify in CosmosDB
+- [ ] **SLA check works**: Test returns formatted violations report
+- [ ] **SLA unregistration works**: Test updates CosmosDB, scheduled job skips user
+- [ ] **Logs confirm tool execution**: Check for "Executing [Tool] operation: [Operation]" messages
+- [ ] **No regressions**: Previously working capabilities still work
+
+### Automated Integration Test Script
+
+Consider creating `Tools/test-integration.sh`:
+```bash
+#!/bin/bash
+# Integration test suite for Hermes capabilities
+
+BASE_URL="http://localhost:3978/api/hermes/v1.0/chat"
+USER_ID="testuser@microsoft.com"
+
+echo "Testing Newsletter Generation..."
+curl -X POST "$BASE_URL" -H "Content-Type: application/json" \
+  -d '{"text": "generate a newsletter for epic 123456"}' --max-time 45
+
+echo "Testing SLA Registration..."
+curl -X POST "$BASE_URL" -H "Content-Type: application/json" \
+  -d "{\"text\": \"register me for SLA notifications\", \"userId\": \"$USER_ID\"}" --max-time 45
+
+echo "Testing SLA Check..."
+curl -X POST "$BASE_URL" -H "Content-Type: application/json" \
+  -d "{\"text\": \"check my SLA violations\", \"userId\": \"$USER_ID\"}" --max-time 45
+
+echo "Testing SLA Unregistration..."
+curl -X POST "$BASE_URL" -H "Content-Type: application/json" \
+  -d "{\"text\": \"unregister me from SLA notifications\", \"userId\": \"$USER_ID\"}" --max-time 45
+
+echo "Integration tests complete. Check logs for verification."
+```
+
+### Log Monitoring During Tests
+
+**Tail logs in separate terminal:**
+```bash
+# While app is running, monitor logs
+dotnet run --project Hermes | tee hermes.log
+
+# In another terminal, grep for specific patterns
+tail -f hermes.log | grep -E "Executing.*Tool|Successfully|error|fail"
+```
+
+---
+
 ## Common Pitfalls to Avoid
 
 1. ❌ Don't create capabilities that take `string` input and manually parse JSON
