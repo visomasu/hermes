@@ -614,7 +614,7 @@ Run ALL capabilities before committing to catch regressions:
 ```bash
 curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
   -H "Content-Type: application/json" \
-  -d '{"text": "generate a newsletter for epic 123456"}'
+  -d '{"text": "generate a newsletter for feature 3097408"}'
 ```
 
 **Expected Result:**
@@ -634,7 +634,7 @@ info: Hermes.Tools.AzureDevOps.AzureDevOpsTool[0]
 ```bash
 curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
   -H "Content-Type: application/json" \
-  -d '{"text": "validate the parent hierarchy from work item 123456"}'
+  -d '{"text": "validate the parent hierarchy from work item 3097408"}'
 ```
 
 **Expected Result:**
