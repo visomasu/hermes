@@ -11,17 +11,19 @@ Parse user input for unregistration keywords. Confirm intent if ambiguous to avo
 **2. Execute Unregistration**
 
 REQUIRED INPUT PARAMETERS:
-- teamsUserId: MUST be provided (string, required) - get from User Context section at the top of agent.txt
+- teamsUserId: MUST be provided (string, required)
 
-Example call:
+IMPORTANT: Extract the current user ID from the "User Context Override" or "User Context" system message (format: "Current user: <userId>").
+
+Example call (replace <userId> with actual value from User Context):
 ```
-UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "visomasu@microsoft.com"})
+UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "<userId>"})
 ```
 
-For the current user (see User Context section), construct the input JSON as:
+Input JSON format:
 ```json
 {
-  "teamsUserId": "visomasu@microsoft.com"
+  "teamsUserId": "<actual-user-id-from-context>"
 }
 ```
 
