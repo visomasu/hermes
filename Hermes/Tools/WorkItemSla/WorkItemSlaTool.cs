@@ -31,7 +31,7 @@ namespace Hermes.Tools.WorkItemSla
 		public string Name => "WorkItemSlaTool";
 
 		/// <inheritdoc/>
-		public string Description => "Provides work item SLA capabilities such as checking violations on-demand for users and their teams.";
+		public string Description => "Provides work item SLA capabilities such as checking violations on-demand for users and their teams. IMPORTANT: Extract 'teamsUserId' from the 'User Context Override' section in system message (e.g., 'Current user: visomasu@microsoft.com') - use the email address as the teamsUserId parameter.";
 
 		/// <inheritdoc/>
 		public IReadOnlyList<string> Capabilities => new[]
