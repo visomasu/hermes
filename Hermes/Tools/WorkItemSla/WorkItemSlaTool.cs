@@ -95,7 +95,7 @@ namespace Hermes.Tools.WorkItemSla
 
 			return operation switch
 			{
-				"CheckSlaViolations" => await ExecuteCheckViolationsAsync(input),
+				"CheckSlaViolations" or "CheckViolations" or "CheckSLA" => await ExecuteCheckViolationsAsync(input),
 				_ => throw new NotSupportedException($"Operation '{operation}' is not supported by {Name}."),
 			};
 		}
