@@ -9,7 +9,21 @@ User requests: "unregister from SLA", "stop SLA notifications", "disable SLA ale
 Parse user input for unregistration keywords. Confirm intent if ambiguous to avoid accidental unregistration.
 
 **2. Execute Unregistration**
-Call: `UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "<user_id>"})`
+
+REQUIRED INPUT PARAMETERS:
+- teamsUserId: MUST be provided (string, required) - get from User Context section at the top of agent.txt
+
+Example call:
+```
+UserManagementTool.Execute("UnregisterSlaNotifications", {"teamsUserId": "visomasu@microsoft.com"})
+```
+
+For the current user (see User Context section), construct the input JSON as:
+```json
+{
+  "teamsUserId": "visomasu@microsoft.com"
+}
+```
 
 This automatically:
 - Checks if user is currently registered

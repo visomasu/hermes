@@ -9,6 +9,8 @@ using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Notifications.Infra;
 using Hermes.Tools;
 using Hermes.Tools.AzureDevOps;
+using Hermes.Tools.UserManagement;
+using Hermes.Tools.WorkItemSla;
 
 namespace Hermes.DI
 {
@@ -101,6 +103,8 @@ namespace Hermes.DI
                 }
 
                 var azureDevOpsTool = ctx.Resolve<AzureDevOpsTool>();
+                var userManagementTool = ctx.Resolve<UserManagementTool>();
+                var workItemSlaTool = ctx.Resolve<WorkItemSlaTool>();
                 var instructionsRepository = ctx.Resolve<IHermesInstructionsRepository>();
                 var conversationHistoryRepository = ctx.Resolve<IConversationHistoryRepository>();
                 var phraseGenerator = ctx.Resolve<IWaitingPhraseGenerator>();
@@ -109,7 +113,7 @@ namespace Hermes.DI
                 return new HermesOrchestrator(
                     endpoint,
                     apiKey,
-                    new[] { azureDevOpsTool },
+                    new IAgentTool[] { azureDevOpsTool, userManagementTool, workItemSlaTool },
                     instructionsRepository,
                     conversationHistoryRepository,
                     ctx.Resolve<IAgentPromptComposer>(),

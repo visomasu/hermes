@@ -102,8 +102,8 @@ namespace Hermes.Tools.UserManagement
 
 			return operation switch
 			{
-				"RegisterSlaNotifications" => await ExecuteRegisterAsync(input),
-				"UnregisterSlaNotifications" => await ExecuteUnregisterAsync(input),
+				"RegisterSlaNotifications" or "RegisterSLA" => await ExecuteRegisterAsync(input),
+				"UnregisterSlaNotifications" or "UnregisterSLA" => await ExecuteUnregisterAsync(input),
 				_ => throw new NotSupportedException($"Operation '{operation}' is not supported by {Name}."),
 			};
 		}

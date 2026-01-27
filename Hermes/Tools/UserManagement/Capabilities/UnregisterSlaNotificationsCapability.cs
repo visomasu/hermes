@@ -34,10 +34,11 @@ namespace Hermes.Tools.UserManagement.Capabilities
 		{
 			if (string.IsNullOrWhiteSpace(input.TeamsUserId))
 			{
+				_logger.LogWarning("UnregisterSlaNotifications called with missing or empty TeamsUserId");
 				return JsonSerializer.Serialize(new
 				{
 					success = false,
-					message = "TeamsUserId is required"
+					message = "TeamsUserId is required. Please provide the Teams user ID in the input JSON: {\"teamsUserId\": \"<user-id>\"}"
 				});
 			}
 

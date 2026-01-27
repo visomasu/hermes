@@ -9,7 +9,9 @@ User requests: "check my SLAs", "show SLA status", "do I have violations", "chec
 Parse user input for SLA check keywords. This capability works for both registered and unregistered users.
 
 **2. Execute Check**
-Call: `UserManagementTool.Execute("CheckSlaViolations", {"teamsUserId": "<user_id>"})`
+Call: `WorkItemSlaTool.Execute("CheckSlaViolations", {"teamsUserId": "visomasu@microsoft.com"})`
+
+Note: Use the current user ID from the User Context section (visomasu@microsoft.com).
 
 This automatically:
 - Checks if user is registered (uses cached profile from UserConfiguration)

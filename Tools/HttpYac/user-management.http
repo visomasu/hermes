@@ -1,0 +1,119 @@
+### Test User Registration for SLA Notifications (Explicit)
+# @name register-sla-explicit
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "register me for SLA notifications"
+}
+
+###
+
+### Test User Registration for SLA Notifications (Natural)
+# @name register-sla-natural
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "I want to receive daily SLA violation reports for my team"
+}
+
+###
+
+### Test User Registration for SLA Notifications (Alternative phrasing)
+# @name register-sla-alternative
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "sign me up for SLA alerts"
+}
+
+###
+
+### Test On-Demand SLA Check (Direct)
+# @name check-sla-direct
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "check my SLA violations"
+}
+
+###
+
+### Test On-Demand SLA Check (Natural)
+# @name check-sla-natural
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "do I have any SLA violations?"
+}
+
+###
+
+### Test On-Demand SLA Check (Team-focused)
+# @name check-sla-team
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "show me my team's SLA status"
+}
+
+###
+
+### Test Unregister from SLA Notifications
+# @name unregister-sla
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "unregister me from SLA notifications"
+}
+
+###
+
+### Test Unregister (Alternative phrasing)
+# @name unregister-sla-alt
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "stop sending me SLA alerts"
+}
+
+###
+
+### Test General Help Request (Should mention SLA capabilities)
+# @name general-help
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "what can you help me with?"
+}
+
+###
+
+### Test SLA Capabilities Query
+# @name sla-capabilities
+POST {{host}}/api/hermes/v1.0/chat
+Content-Type: application/json
+x-ms-correlation-id: {{$guid}}
+
+{
+  "text": "tell me about SLA monitoring"
+}
+
+###

@@ -17,7 +17,9 @@ If user mentions area paths in their request, extract them from the natural lang
 - No area path mentioned → areaPaths: null (checks all areas)
 
 **3. Execute Registration**
-Call: `UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<user_id>", "areaPaths": ["Project\\Team1", "Project\\Team2"]})`
+Call: `UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "visomasu@microsoft.com", "areaPaths": ["Project\\Team1", "Project\\Team2"]})`
+
+Note: Use the current user ID from the User Context section (visomasu@microsoft.com). If no area paths are specified, omit the areaPaths field or set to null.
 
 This automatically:
 - Fetches user's Azure AD email via Microsoft Graph
