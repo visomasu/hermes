@@ -614,6 +614,7 @@ Run ALL capabilities before committing to catch regressions:
 ```bash
 curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
   -H "Content-Type: application/json" \
+  -H "x-ms-correlation-id: test-correlation-1" \
   -d '{"text": "generate a newsletter for feature 3097408"}'
 ```
 
@@ -634,6 +635,7 @@ info: Hermes.Tools.AzureDevOps.AzureDevOpsTool[0]
 ```bash
 curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
   -H "Content-Type: application/json" \
+  -H "x-ms-correlation-id: test-correlation-2" \
   -d '{"text": "validate the parent hierarchy from work item 3097408"}'
 ```
 
@@ -654,6 +656,7 @@ info: Hermes.Tools.AzureDevOps.AzureDevOpsTool[0]
 ```bash
 curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
   -H "Content-Type: application/json" \
+  -H "x-ms-correlation-id: test-correlation-3" \
   -d '{"text": "register me for SLA notifications", "userId": "testuser@microsoft.com"}'
 ```
 
@@ -685,6 +688,7 @@ SELECT * FROM c WHERE c.SlaRegistration != null AND c.SlaRegistration.IsRegister
 ```bash
 curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
   -H "Content-Type: application/json" \
+  -H "x-ms-correlation-id: test-correlation-4" \
   -d '{"text": "check my SLA violations", "userId": "testuser@microsoft.com"}'
 ```
 
@@ -714,6 +718,7 @@ info: Hermes.Tools.WorkItemSla.Capabilities.CheckSlaViolationsCapability[0]
 ```bash
 curl -X POST "http://localhost:3978/api/hermes/v1.0/chat" \
   -H "Content-Type: application/json" \
+  -H "x-ms-correlation-id: test-correlation-5" \
   -d '{"text": "unregister me from SLA notifications", "userId": "testuser@microsoft.com"}'
 ```
 
