@@ -151,7 +151,7 @@ namespace Hermes.Tests.Storage.Repositories.UserConfiguration
 				x => x.Log(
 					LogLevel.Warning,
 					It.IsAny<EventId>(),
-					It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("cross-partition query not yet implemented")),
+					It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Unable to access CosmosDbStorageClient")),
 					It.IsAny<Exception>(),
 					It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
 				Times.Once);
