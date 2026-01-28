@@ -1,0 +1,55 @@
+Discover and summarize user activity across Azure DevOps and integrated services, including pull requests created by the user.
+
+## Intent Detection
+
+**Required:**
+- **User email:** Identify the user's email address (e.g., "john.doe@company.com", "what did user@example.com work on", "my activity" → use current user's email if known)
+- If no email provided: Ask "Please provide the email address of the user whose activity you want to discover."
+
+**Optional parameters:**
+- **Time period:** "last 7 days", "past 30 days", "last month", "this week" → map to `daysBack`
+  - Default: 7 days
+
+## Tool Operations
+
+**Pull request activity:**
+```json
+{
+  "userEmail": "user@example.com",
+  "daysBack": 14
+}
+```
+
+## Output Format
+
+Present results grouped by activity type in a clear, readable format:
+
+### Pull Requests Created by {User} (Last {N} Days)
+| PR ID | Title | Status | Repository | Target Branch | Created Date |
+|-------|-------|--------|------------|---------------|--------------|
+| 1234 | Add new feature | Active | my-repo | main | 2026-01-21 |
+
+## Summary Statistics
+
+After the tables, provide a brief summary:
+
+**Activity Summary:**
+- Pull Requests Created: N pull requests (in last N days)
+
+## Edge Cases
+
+- **User not found:** The query may return empty results; report this clearly.
+- **Empty email:** Ask the user to provide an email address before proceeding.
+
+## Future Activity Types
+
+The following activity types are planned but not yet implemented:
+- Pull requests reviewed
+- Pull requests commented on
+- Commits and pushes
+- Wiki/documentation changes
+- Build and release activity
+- OneDrive/SharePoint documents
+- Teams messages and mentions
+
+When users request these, respond: "That activity type is not yet supported. Currently, I can discover pull requests created."

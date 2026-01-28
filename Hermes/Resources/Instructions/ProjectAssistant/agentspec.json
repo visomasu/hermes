@@ -26,6 +26,11 @@
       "id": "unregister-sla-notifications",
       "name": "UnregisterSlaNotifications",
       "description": "Remove user from daily SLA notification list. User will no longer receive scheduled SLA reports but can still use on-demand checks."
+    },
+    {
+      "id": "discover-user-activity",
+      "name": "Discover User Activity",
+      "description": "Discover and summarize user pull request activity over past n days."
     }
   ]
 }
