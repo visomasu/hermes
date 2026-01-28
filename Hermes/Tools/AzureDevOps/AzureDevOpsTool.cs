@@ -129,7 +129,6 @@ namespace Hermes.Tools.AzureDevOps
 				"GetWorkItemsByAreaPath" => await ExecuteGetWorkItemsByAreaPathAsync(input),
 				"GetParentHierarchy" => await ExecuteGetParentHierarchyAsync(input),
 				"GetFullHierarchy" => await ExecuteGetFullHierarchyAsync(input),
-				"DiscoverUserActivity" => await _ExecuteDiscoverUserActivityAsync(input),
 				_ => throw new NotSupportedException($"Operation '{operation}' is not supported."),
 			};
 		}
@@ -181,18 +180,6 @@ namespace Hermes.Tools.AzureDevOps
 				?? throw new ArgumentException("Invalid input for GetWorkItemsByAreaPath.");
 
 			return await _getWorkItemsByAreaPathCapability.ExecuteAsync(model);
-		}
-
-		#endregion
-
-		#region DiscoverUserActivity
-
-		private async Task<string> _ExecuteDiscoverUserActivityAsync(string input)
-		{
-			var model = JsonSerializer.Deserialize<DiscoverUserActivityCapabilityInput>(input)
-				?? throw new ArgumentException("Invalid input for DiscoverUserActivity.");
-
-			return await _discoverUserActivityCapability.ExecuteAsync(model);
 		}
 
 		#endregion

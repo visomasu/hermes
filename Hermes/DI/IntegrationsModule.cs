@@ -38,6 +38,13 @@ namespace Hermes.DI
 			.As<IAzureDevOpsWorkItemClient>()
 			.SingleInstance();
 
+			builder.Register(c =>
+			{
+				return new AzureDevOpsGitClient(organization, project, pat);
+			})
+			.As<IAzureDevOpsGitClient>()
+			.SingleInstance();
+
 			// Register Azure OpenAI Embedding Client
 			builder.Register(c =>
 			{

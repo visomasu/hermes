@@ -4,7 +4,7 @@ using Hermes.Tools.Models;
 namespace Hermes.Tools.AzureDevOps.Capabilities.Inputs
 {
 	/// <summary>
-	/// Input model for discovering user activity in Azure DevOps and integrated services.
+	/// Input model for discovering user pull request activity in Azure DevOps.
 	/// </summary>
 	[JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
 	public sealed class DiscoverUserActivityCapabilityInput : ToolCapabilityInputBase
@@ -20,24 +20,5 @@ namespace Hermes.Tools.AzureDevOps.Capabilities.Inputs
 		/// </summary>
 		[JsonPropertyName("daysBack")]
 		public int DaysBack { get; init; } = 7;
-
-		/// <summary>
-		/// Types of activity to include. Default is all work item activity.
-		/// Can be combined using flags (e.g., WorkItemsAssigned | WorkItemsChanged).
-		/// </summary>
-		[JsonPropertyName("activityTypes")]
-		public UserActivityType ActivityTypes { get; init; } = UserActivityType.AllWorkItems;
-
-		/// <summary>
-		/// Options for filtering work item activity queries.
-		/// Only applies when work item activity types are requested.
-		/// </summary>
-		[JsonPropertyName("workItemOptions")]
-		public WorkItemActivityOptions? WorkItemOptions { get; init; }
-
-		// Future activity options can be added here:
-		// public PullRequestActivityOptions? PullRequestOptions { get; init; }
-		// public CodeActivityOptions? CodeOptions { get; init; }
-		// public DocumentActivityOptions? DocumentOptions { get; init; }
 	}
 }

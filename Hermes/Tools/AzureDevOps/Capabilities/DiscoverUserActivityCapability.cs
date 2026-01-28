@@ -1,15 +1,17 @@
 using System.Text.Json;
 using Integrations.AzureDevOps;
 using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
+using Microsoft.Extensions.Logging;
 
 namespace Hermes.Tools.AzureDevOps.Capabilities
 {
 	/// <summary>
-	/// Capability for discovering user activity across Azure DevOps and integrated services.
+	/// Capability for discovering user pull request activity in Azure DevOps.
 	/// </summary>
 	public sealed class DiscoverUserActivityCapability : IAgentToolCapability<DiscoverUserActivityCapabilityInput>
 	{
-		private readonly IAzureDevOpsWorkItemClient _workItemClient;
+		private readonly IAzureDevOpsGitClient _gitClient;
+		private readonly ILogger<DiscoverUserActivityCapability> _logger;
 		private const int DefaultDaysBack = 7;
 
 		private static readonly JsonSerializerOptions JsonOptions = new()
@@ -18,16 +20,19 @@ namespace Hermes.Tools.AzureDevOps.Capabilities
 			DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
 		};
 
-		public DiscoverUserActivityCapability(IAzureDevOpsWorkItemClient workItemClient)
+		public DiscoverUserActivityCapability(
+			IAzureDevOpsGitClient gitClient,
+			ILogger<DiscoverUserActivityCapability> logger)
 		{
-			_workItemClient = workItemClient;
+			_gitClient = gitClient;
+			_logger = logger;
 		}
 
 		/// <inheritdoc />
 		public string Name => "DiscoverUserActivity";
 
 		/// <inheritdoc />
-		public string Description => "Discovers user activity across Azure DevOps and integrated services, including work items, pull requests, commits, and documents within a configurable time period.";
+		public string Description => "Discovers user pull request activity in Azure DevOps within a configurable time period.";
 
 		/// <inheritdoc />
 		public async Task<string> ExecuteAsync(DiscoverUserActivityCapabilityInput input)
@@ -38,176 +43,49 @@ namespace Hermes.Tools.AzureDevOps.Capabilities
 			}
 
 			var daysBack = input.DaysBack > 0 ? input.DaysBack : DefaultDaysBack;
-			var activityTypes = input.ActivityTypes;
 
-			// Build list of tasks for each activity category
-			var tasks = new List<Task<object?>>();
+			_logger.LogInformation(
+				"Discovering user activity for {UserEmail} over last {DaysBack} days",
+				input.UserEmail, daysBack);
 
-			// Work Items
-			if (_HasAnyWorkItemActivityType(activityTypes))
-			{
-				tasks.Add(_GetWorkItemActivityAsync(input.UserEmail, daysBack, activityTypes, input.WorkItemOptions));
-			}
+			_logger.LogInformation("Fetching pull request activity for {UserEmail}", input.UserEmail);
+			var pullRequestResult = await _GetPullRequestActivityAsync(input.UserEmail, daysBack);
 
-			// Future activity categories:
-			// if (_HasAnyPullRequestActivityType(activityTypes))
-			// {
-			//     tasks.Add(_GetPullRequestActivityAsync(input.UserEmail, daysBack, activityTypes, input.PullRequestOptions));
-			// }
-			//
-			// if (_HasAnyDocumentActivityType(activityTypes))
-			// {
-			//     tasks.Add(_GetDocumentActivityAsync(input.UserEmail, daysBack, activityTypes, input.DocumentOptions));
-			// }
-
-			// Execute all category tasks in parallel
-			var results = await Task.WhenAll(tasks);
-
-			// Build the result object
 			var result = new
 			{
 				userEmail = input.UserEmail,
 				periodDays = daysBack,
-				activityTypes = activityTypes.ToString(),
-				workItems = _HasAnyWorkItemActivityType(activityTypes) ? results.FirstOrDefault(r => r is WorkItemActivityResult) : null,
-				// pullRequests = _HasAnyPullRequestActivityType(activityTypes) ? results.FirstOrDefault(r => r is PullRequestActivityResult) : null,
-				// documents = _HasAnyDocumentActivityType(activityTypes) ? results.FirstOrDefault(r => r is DocumentActivityResult) : null,
+				pullRequests = pullRequestResult
 			};
+
+			_logger.LogInformation("User activity discovery completed for {UserEmail}", input.UserEmail);
 
 			return JsonSerializer.Serialize(result, JsonOptions);
 		}
 
-		#region Work Item Activity
+		#region Pull Request Activity
 
-		private static readonly string[] DefaultWorkItemFields = new[]
-		{
-			"System.Id",
-			"System.Title",
-			"System.State",
-			"System.WorkItemType",
-			"System.AssignedTo",
-			"System.CreatedBy",
-			"System.CreatedDate",
-			"System.ChangedBy",
-			"System.ChangedDate",
-			"System.AreaPath"
-		};
-
-		private static bool _HasAnyWorkItemActivityType(UserActivityType activityTypes)
-		{
-			return activityTypes.HasFlag(UserActivityType.WorkItemsAssigned) ||
-				   activityTypes.HasFlag(UserActivityType.WorkItemsChanged) ||
-				   activityTypes.HasFlag(UserActivityType.WorkItemsCreated) ||
-				   activityTypes.HasFlag(UserActivityType.WorkItemComments);
-		}
-
-		private async Task<object?> _GetWorkItemActivityAsync(
+		private async Task<PullRequestActivityResult> _GetPullRequestActivityAsync(
 			string userEmail,
-			int daysBack,
-			UserActivityType activityTypes,
-			WorkItemActivityOptions? options)
+			int daysBack)
 		{
-			var fields = options?.Fields ?? DefaultWorkItemFields;
-			var states = options?.States;
-			var workItemTypes = options?.WorkItemTypes;
+			var json = await _gitClient.GetPullRequestsCreatedByUserAsync(
+				userEmail,
+				daysBack);
 
-			// Initialize result collections
-			var assignedItems = new List<object>();
-			var changedItems = new List<object>();
-			var createdItems = new List<object>();
+			var createdPullRequests = _ParsePullRequests(json);
 
-			// Build list of tasks based on requested work item activity types
-			var tasks = new List<Task>();
+			_logger.LogInformation(
+				"Pull request activity retrieved for {UserEmail}: {CreatedCount} created",
+				userEmail, createdPullRequests.Count);
 
-			if (activityTypes.HasFlag(UserActivityType.WorkItemsAssigned))
+			return new PullRequestActivityResult
 			{
-				tasks.Add(_FetchAssignedWorkItemsAsync(userEmail, states, fields, workItemTypes, assignedItems));
-			}
-
-			if (activityTypes.HasFlag(UserActivityType.WorkItemsChanged))
-			{
-				tasks.Add(_FetchChangedWorkItemsAsync(userEmail, daysBack, states, fields, workItemTypes, changedItems));
-			}
-
-			if (activityTypes.HasFlag(UserActivityType.WorkItemsCreated))
-			{
-				tasks.Add(_FetchCreatedWorkItemsAsync(userEmail, daysBack, states, fields, workItemTypes, createdItems));
-			}
-
-			// WorkItemComments not yet implemented
-			// if (activityTypes.HasFlag(UserActivityType.WorkItemComments))
-			// {
-			//     tasks.Add(_FetchWorkItemCommentsAsync(userEmail, daysBack, commentItems));
-			// }
-
-			// Execute all tasks in parallel
-			await Task.WhenAll(tasks);
-
-			return new WorkItemActivityResult
-			{
-				Assigned = activityTypes.HasFlag(UserActivityType.WorkItemsAssigned) ? assignedItems : null,
-				Changed = activityTypes.HasFlag(UserActivityType.WorkItemsChanged) ? changedItems : null,
-				Created = activityTypes.HasFlag(UserActivityType.WorkItemsCreated) ? createdItems : null
+				Created = createdPullRequests
 			};
 		}
 
-		private async Task _FetchAssignedWorkItemsAsync(
-			string userEmail,
-			string[]? states,
-			IEnumerable<string> fields,
-			string[]? workItemTypes,
-			List<object> results)
-		{
-			var json = await _workItemClient.GetWorkItemsByAssignedUserAsync(
-				userEmail,
-				states,
-				fields,
-				iterationPath: null,
-				workItemTypes);
-
-			var items = _ParseWorkItems(json);
-			results.AddRange(items);
-		}
-
-		private async Task _FetchChangedWorkItemsAsync(
-			string userEmail,
-			int daysBack,
-			string[]? states,
-			IEnumerable<string> fields,
-			string[]? workItemTypes,
-			List<object> results)
-		{
-			var json = await _workItemClient.GetWorkItemsChangedByUserAsync(
-				userEmail,
-				daysBack,
-				states,
-				fields,
-				workItemTypes);
-
-			var items = _ParseWorkItems(json);
-			results.AddRange(items);
-		}
-
-		private async Task _FetchCreatedWorkItemsAsync(
-			string userEmail,
-			int daysBack,
-			string[]? states,
-			IEnumerable<string> fields,
-			string[]? workItemTypes,
-			List<object> results)
-		{
-			var json = await _workItemClient.GetWorkItemsCreatedByUserAsync(
-				userEmail,
-				daysBack,
-				states,
-				fields,
-				workItemTypes);
-
-			var items = _ParseWorkItems(json);
-			results.AddRange(items);
-		}
-
-		private static List<object> _ParseWorkItems(string json)
+		private static List<object> _ParsePullRequests(string json)
 		{
 			var result = new List<object>();
 
@@ -230,55 +108,35 @@ namespace Hermes.Tools.AzureDevOps.Capabilities
 
 			foreach (var item in itemsArray.EnumerateArray())
 			{
-				var workItem = new
+				var pullRequest = new
 				{
-					Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0,
-					Title = _GetFieldString(item, "System.Title"),
-					State = _GetFieldString(item, "System.State"),
-					WorkItemType = _GetFieldString(item, "System.WorkItemType"),
-					AreaPath = _GetFieldString(item, "System.AreaPath"),
-					AssignedTo = _GetFieldString(item, "System.AssignedTo"),
-					CreatedBy = _GetFieldString(item, "System.CreatedBy"),
-					CreatedDate = _GetFieldString(item, "System.CreatedDate"),
-					ChangedBy = _GetFieldString(item, "System.ChangedBy"),
-					ChangedDate = _GetFieldString(item, "System.ChangedDate")
+					PullRequestId = item.TryGetProperty("pullrequestid", out var idProp) ? idProp.GetInt32() : 0,
+					Title = item.TryGetProperty("title", out var titleProp) ? titleProp.GetString() : null,
+					Status = item.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : null,
+					CreatedBy = item.TryGetProperty("createdby", out var createdByProp) ? createdByProp.GetString() : null,
+					CreatedByEmail = item.TryGetProperty("createdbyemail", out var emailProp) ? emailProp.GetString() : null,
+					CreationDate = item.TryGetProperty("creationdate", out var creationDateProp) ? creationDateProp.GetString() : null,
+					ClosedDate = item.TryGetProperty("closeddate", out var closedDateProp) ? closedDateProp.GetString() : null,
+					RepositoryName = item.TryGetProperty("repositoryname", out var repoProp) ? repoProp.GetString() : null,
+					SourceRefName = item.TryGetProperty("sourcerefname", out var sourceProp) ? sourceProp.GetString() : null,
+					TargetRefName = item.TryGetProperty("targetrefname", out var targetProp) ? targetProp.GetString() : null,
+					Url = item.TryGetProperty("url", out var urlProp) ? urlProp.GetString() : null
 				};
 
-				result.Add(workItem);
+				result.Add(pullRequest);
 			}
 
 			return result;
-		}
-
-		private static string? _GetFieldString(JsonElement item, string fieldName)
-		{
-			if (!item.TryGetProperty("fields", out var fieldsElement))
-			{
-				return null;
-			}
-
-			if (fieldsElement.TryGetProperty(fieldName, out var fieldValue))
-			{
-				return fieldValue.ValueKind == JsonValueKind.Null ? null : fieldValue.ToString();
-			}
-
-			return null;
 		}
 
 		#endregion
 
 		#region Result Models
 
-		private class WorkItemActivityResult
+		private class PullRequestActivityResult
 		{
-			public List<object>? Assigned { get; init; }
-			public List<object>? Changed { get; init; }
 			public List<object>? Created { get; init; }
 		}
-
-		// Future result models:
-		// private class PullRequestActivityResult { ... }
-		// private class DocumentActivityResult { ... }
 
 		#endregion
 	}
