@@ -13,9 +13,24 @@
       "description": "Validate and analyze hierarchical relationships (for example, parent/child links in storage documents or Azure DevOps work items), detect broken or cyclic hierarchies, and suggest or apply corrections according to Hermes business rules."
     },
     {
-      "id": "discover-user-activity",
-      "name": "Discover User Activity",
-      "description": "Discover and summarize user activity across Azure DevOps and integrated services, retrieving work items assigned to, changed by, and created by a specific user within a configurable time period. Supports filtering by work item types, states, and activity categories."
+      "id": "register-sla-notifications",
+      "name": "RegisterSlaNotifications",
+      "description": "Register users to receive daily SLA violation notifications for their work items and direct reports. Automatically discovers manager status and direct reports via Microsoft Graph."
+    },
+    {
+      "id": "check-sla-violations",
+      "name": "CheckSlaViolations",
+      "description": "Perform immediate on-demand check for SLA violations. Works for both registered and unregistered users. Managers see team-wide violations grouped by owner."
+    },
+    {
+      "id": "unregister-sla-notifications",
+      "name": "UnregisterSlaNotifications",
+      "description": "Remove user from daily SLA notification list. User will no longer receive scheduled SLA reports but can still use on-demand checks."
+    },
+    {
+      "id": "discover-user-pull-request-activity",
+      "name": "Discover User Pull Request Activity",
+      "description": "Discover and summarize user pull request activity over past n days."
     }
   ]
 }

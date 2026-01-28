@@ -25,10 +25,18 @@ namespace Hermes.Notifications.WorkItemSla
 		public Dictionary<string, int> SlaRules { get; set; } = new();
 
 		/// <summary>
-		/// Gets or sets the iteration path filter.
+		/// Gets or sets the team name for querying current iteration.
+		/// Required to dynamically determine the current iteration path based on dates.
+		/// Example: "OneCRM Team", "Platform Team"
+		/// If null or empty, iteration filtering is skipped.
+		/// </summary>
+		public string? TeamName { get; set; }
+
+		/// <summary>
+		/// Gets or sets the iteration path filter (deprecated - use TeamName for automatic current iteration).
 		/// If set, only work items under this iteration path will be checked.
-		/// Use "@CurrentIteration" for the current iteration or specify a path like "Project\\Sprint 1".
-		/// If null or empty, all iterations are checked.
+		/// Specify a path like "Project\\Sprint 1".
+		/// If null or empty, all iterations are checked (or current iteration if TeamName is set).
 		/// </summary>
 		public string? IterationPath { get; set; }
 

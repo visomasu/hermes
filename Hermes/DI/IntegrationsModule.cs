@@ -1,5 +1,6 @@
 using Autofac;
 using Hermes.Integrations.AzureOpenAI;
+using Hermes.Integrations.MicrosoftGraph;
 using Integrations.AzureDevOps;
 using Microsoft.Extensions.Logging;
 
@@ -29,11 +30,11 @@ namespace Hermes.DI
 		{
             string organization = _configuration["AzureDevOps:Organization"] ?? string.Empty;
             string project = _configuration["AzureDevOps:Project"] ?? string.Empty;
-			string pat = _configuration["AzureDevOps:PersonalAccessToken"] ?? string.Empty;
 
 			builder.Register(c =>
 			{
-				return new AzureDevOpsWorkItemClient(organization, project, pat);
+				// Uses DefaultAzureCredential (az login for local dev, Managed Identity for production)
+				return new AzureDevOpsWorkItemClient(organization, project);
 			})
 			.As<IAzureDevOpsWorkItemClient>()
 			.SingleInstance();
@@ -55,6 +56,16 @@ namespace Hermes.DI
 				return new AzureOpenAIEmbeddingClient(endpoint, embeddingModel, logger);
 			})
 			.As<IAzureOpenAIEmbeddingClient>()
+			.SingleInstance();
+
+			// Register Microsoft Graph Client
+			// Uses DefaultAzureCredential (az login for local dev, Managed Identity for production)
+			builder.Register(c =>
+			{
+				var logger = c.Resolve<ILogger<MicrosoftGraphClient>>();
+				return new MicrosoftGraphClient(logger);
+			})
+			.As<IMicrosoftGraphClient>()
 			.SingleInstance();
 		}
 	}

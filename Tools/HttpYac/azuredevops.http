@@ -2,3 +2,10 @@
 # @name retrieve-work-item-ado
 GET {{host}}/api/azuredevops/workitem/5753933
 x-ms-correlation-id: {{$guid}}
+
+###
+
+### Retrieve current iteration for a team.
+# @name get-current-iteration
+GET {{host}}/api/azuredevops/current-iteration/UCP Authentication Anti-Fraud and Control Operations
+x-ms-correlation-id: {{$guid}}

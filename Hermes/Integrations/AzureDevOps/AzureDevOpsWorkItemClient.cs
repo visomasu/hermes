@@ -1,4 +1,8 @@
+using Azure.Core;
+using Azure.Identity;
 using Exceptions;
+using Microsoft.TeamFoundation.Core.WebApi.Types;
+using Microsoft.TeamFoundation.Work.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.Common;
@@ -38,17 +42,38 @@ namespace Integrations.AzureDevOps
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the AzureDevOpsWorkItemClient class using the Azure DevOps .NET SDK.
+		/// Initializes a new instance of the AzureDevOpsWorkItemClient class using Azure CLI authentication.
+		/// Uses DefaultAzureCredential which supports:
+		/// - Azure CLI (az login) for local development
+		/// - Managed Identity for production (Azure App Service, Container Apps, etc.)
+		/// - Environment variables
 		/// </summary>
 		/// <param name="organization">Azure DevOps organization name.</param>
 		/// <param name="project">Azure DevOps project name.</param>
-		/// <param name="personalAccessToken">Personal Access Token for authentication.</param>
-		public AzureDevOpsWorkItemClient(string organization, string project, string personalAccessToken)
+		public AzureDevOpsWorkItemClient(string organization, string project)
 		{
 			_project = project;
+
+			// Use DefaultAzureCredential for authentication (supports az login, Managed Identity, etc.)
+			var tokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+			{
+				// Exclude interactive browser credential to avoid prompts in production
+				ExcludeInteractiveBrowserCredential = true,
+				// Exclude Visual Studio Code credential for cleaner auth flow
+				ExcludeVisualStudioCodeCredential = true
+			});
+
+			// Get access token for Azure DevOps
+			var tokenRequestContext = new TokenRequestContext(new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" });
+			var accessToken = tokenCredential.GetToken(tokenRequestContext, default);
+
+			// Create VssConnection with OAuth access token as PAT
+			// VssBasicCredential accepts Bearer tokens as the password parameter
+			var vssCredential = new VssBasicCredential(string.Empty, accessToken.Token);
+
 			_connection = new VssConnection(
 				new Uri($"https://dev.azure.com/{organization}"),
-				new VssBasicCredential(string.Empty, personalAccessToken)
+				vssCredential
 			);
 		}
 
@@ -372,6 +397,7 @@ namespace Integrations.AzureDevOps
 			IEnumerable<string>? states = null,
 			IEnumerable<string>? fields = null,
 			string? iterationPath = null,
+			IEnumerable<string>? areaPaths = null,
 			IEnumerable<string>? workItemTypes = null,
 			CancellationToken cancellationToken = default)
 		{
@@ -387,7 +413,7 @@ namespace Integrations.AzureDevOps
 					.Distinct()
 					.ToList();
 
-				var wiql = BuildAssignedUserWiql(userEmail, states, iterationPath, workItemTypes);
+				var wiql = BuildAssignedUserWiql(userEmail, states, iterationPath, areaPaths, workItemTypes);
 
 				var client = GetClient();
 				var queryResult = await client.QueryByWiqlAsync(wiql, _project);
@@ -425,6 +451,7 @@ namespace Integrations.AzureDevOps
 			string userEmail,
 			IEnumerable<string>? states,
 			string? iterationPath,
+			IEnumerable<string>? areaPaths,
 			IEnumerable<string>? workItemTypes)
 		{
 			var wiqlClauses = new List<string>
@@ -453,6 +480,20 @@ namespace Integrations.AzureDevOps
 				wiqlClauses.Add($"[System.IterationPath] UNDER '{iterationPath.Replace("'", "''")}'");
 			}
 
+			// Filter by area paths
+			var areaPathsList = areaPaths?
+				.Where(a => !string.IsNullOrWhiteSpace(a))
+				.Select(a => a.Trim())
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			if (areaPathsList != null && areaPathsList.Count > 0)
+			{
+				var areaPathConditions = areaPathsList
+					.Select(a => $"[System.AreaPath] UNDER '{a.Replace("'", "''")}'");
+				wiqlClauses.Add($"({string.Join(" OR ", areaPathConditions)})");
+			}
+
 			// Filter by work item types
 			var typesList = workItemTypes?
 				.Where(t => !string.IsNullOrWhiteSpace(t))
@@ -478,206 +519,49 @@ namespace Integrations.AzureDevOps
 		}
 
 		/// <inheritdoc/>
-		public async Task<string> GetWorkItemsChangedByUserAsync(
-			string userEmail,
-			int daysBack,
-			IEnumerable<string>? states = null,
-			IEnumerable<string>? fields = null,
-			IEnumerable<string>? workItemTypes = null,
+		public async Task<string?> GetCurrentIterationPathAsync(
+			string teamName,
 			CancellationToken cancellationToken = default)
 		{
-			if (string.IsNullOrWhiteSpace(userEmail))
+			if (string.IsNullOrWhiteSpace(teamName))
 			{
-				throw new IntegrationException("userEmail must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
-			}
-
-			if (daysBack < 0)
-			{
-				throw new IntegrationException("daysBack must be a non-negative integer", IntegrationException.ErrorCode.UnexpectedError);
+				throw new IntegrationException("teamName must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
 			}
 
 			try
 			{
-				var allFields = (fields ?? Enumerable.Empty<string>())
-					.Concat(MandatoryFields)
-					.Distinct()
-					.ToList();
+				// Get Work HTTP client for querying team iterations
+				var workClient = _connection.GetClient<WorkHttpClient>();
 
-				var wiql = _BuildChangedByUserWiql(userEmail, daysBack, states, workItemTypes);
+				// Get team context
+				var teamContext = new TeamContext(_project, teamName);
 
-				var client = GetClient();
-				var queryResult = await client.QueryByWiqlAsync(wiql, _project, cancellationToken: cancellationToken);
+				// Query team iterations
+				var iterations = await workClient.GetTeamIterationsAsync(teamContext, cancellationToken: cancellationToken);
 
-				if (queryResult.WorkItems == null || !queryResult.WorkItems.Any())
+				if (iterations == null || !iterations.Any())
 				{
-					return JsonSerializer.Serialize(new { count = 0, value = Array.Empty<object>() }, LowercaseJsonOptions);
+					return null;
 				}
 
-				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
-				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All, cancellationToken: cancellationToken);
+				// Find the iteration where current date falls within start and finish dates
+				var now = DateTime.UtcNow;
+				var currentIteration = iterations.FirstOrDefault(iteration =>
+					iteration.Attributes != null &&
+					iteration.Attributes.StartDate.HasValue &&
+					iteration.Attributes.FinishDate.HasValue &&
+					iteration.Attributes.StartDate.Value <= now &&
+					iteration.Attributes.FinishDate.Value >= now);
 
-				var filteredResults = workItems.Select(workItem => new
-				{
-					id = workItem.Id,
-					rev = workItem.Rev,
-					fields = allFields.ToDictionary(
-						field => field,
-						field => workItem.Fields.TryGetValue(field, out var value) ? value : null
-					)
-				});
-
-				return JsonSerializer.Serialize(new { count = filteredResults.Count(), value = filteredResults }, LowercaseJsonOptions);
+				// Return the iteration path if found
+				return currentIteration?.Path;
 			}
 			catch (Exception ex)
 			{
 				throw new IntegrationException(
-					$"Error querying work items changed by user '{userEmail}': {ex.Message}",
+					$"Error querying current iteration for team '{teamName}': {ex.Message}",
 					IntegrationException.ErrorCode.UnexpectedError,
 					ex);
-			}
-		}
-
-		/// <inheritdoc/>
-		public async Task<string> GetWorkItemsCreatedByUserAsync(
-			string userEmail,
-			int daysBack,
-			IEnumerable<string>? states = null,
-			IEnumerable<string>? fields = null,
-			IEnumerable<string>? workItemTypes = null,
-			CancellationToken cancellationToken = default)
-		{
-			if (string.IsNullOrWhiteSpace(userEmail))
-			{
-				throw new IntegrationException("userEmail must not be null or empty", IntegrationException.ErrorCode.UnexpectedError);
-			}
-
-			if (daysBack < 0)
-			{
-				throw new IntegrationException("daysBack must be a non-negative integer", IntegrationException.ErrorCode.UnexpectedError);
-			}
-
-			try
-			{
-				var allFields = (fields ?? Enumerable.Empty<string>())
-					.Concat(MandatoryFields)
-					.Distinct()
-					.ToList();
-
-				var wiql = _BuildCreatedByUserWiql(userEmail, daysBack, states, workItemTypes);
-
-				var client = GetClient();
-				var queryResult = await client.QueryByWiqlAsync(wiql, _project, cancellationToken: cancellationToken);
-
-				if (queryResult.WorkItems == null || !queryResult.WorkItems.Any())
-				{
-					return JsonSerializer.Serialize(new { count = 0, value = Array.Empty<object>() }, LowercaseJsonOptions);
-				}
-
-				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
-				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All, cancellationToken: cancellationToken);
-
-				var filteredResults = workItems.Select(workItem => new
-				{
-					id = workItem.Id,
-					rev = workItem.Rev,
-					fields = allFields.ToDictionary(
-						field => field,
-						field => workItem.Fields.TryGetValue(field, out var value) ? value : null
-					)
-				});
-
-				return JsonSerializer.Serialize(new { count = filteredResults.Count(), value = filteredResults }, LowercaseJsonOptions);
-			}
-			catch (Exception ex)
-			{
-				throw new IntegrationException(
-					$"Error querying work items created by user '{userEmail}': {ex.Message}",
-					IntegrationException.ErrorCode.UnexpectedError,
-					ex);
-			}
-		}
-
-		private static Wiql _BuildChangedByUserWiql(
-			string userEmail,
-			int daysBack,
-			IEnumerable<string>? states,
-			IEnumerable<string>? workItemTypes)
-		{
-			var wiqlClauses = new List<string>
-			{
-				"[System.TeamProject] = @project",
-				$"[System.ChangedBy] = '{userEmail.Replace("'", "''")}'",
-				$"[System.ChangedDate] >= @today - {daysBack}"
-			};
-
-			_AddStateAndTypeFilters(wiqlClauses, states, workItemTypes);
-
-			return new Wiql
-			{
-				Query =
-					"SELECT [System.Id] " +
-					"FROM WorkItems " +
-					"WHERE " + string.Join(" AND ", wiqlClauses) +
-					" ORDER BY [System.ChangedDate] DESC"
-			};
-		}
-
-		private static Wiql _BuildCreatedByUserWiql(
-			string userEmail,
-			int daysBack,
-			IEnumerable<string>? states,
-			IEnumerable<string>? workItemTypes)
-		{
-			var wiqlClauses = new List<string>
-			{
-				"[System.TeamProject] = @project",
-				$"[System.CreatedBy] = '{userEmail.Replace("'", "''")}'",
-				$"[System.CreatedDate] >= @today - {daysBack}"
-			};
-
-			_AddStateAndTypeFilters(wiqlClauses, states, workItemTypes);
-
-			return new Wiql
-			{
-				Query =
-					"SELECT [System.Id] " +
-					"FROM WorkItems " +
-					"WHERE " + string.Join(" AND ", wiqlClauses) +
-					" ORDER BY [System.CreatedDate] DESC"
-			};
-		}
-
-		private static void _AddStateAndTypeFilters(
-			List<string> wiqlClauses,
-			IEnumerable<string>? states,
-			IEnumerable<string>? workItemTypes)
-		{
-			// Filter by states
-			var statesList = states?
-				.Where(s => !string.IsNullOrWhiteSpace(s))
-				.Select(s => s.Trim())
-				.Distinct(StringComparer.OrdinalIgnoreCase)
-				.ToList();
-
-			if (statesList != null && statesList.Count > 0)
-			{
-				var stateConditions = statesList
-					.Select(s => $"'{s.Replace("'", "''")}'");
-				wiqlClauses.Add($"[System.State] IN ({string.Join(",", stateConditions)})");
-			}
-
-			// Filter by work item types
-			var typesList = workItemTypes?
-				.Where(t => !string.IsNullOrWhiteSpace(t))
-				.Select(t => t.Trim())
-				.Distinct(StringComparer.OrdinalIgnoreCase)
-				.ToList();
-
-			if (typesList != null && typesList.Count > 0)
-			{
-				var typeConditions = typesList
-					.Select(t => $"[System.WorkItemType] = '{t.Replace("'", "''")}'");
-				wiqlClauses.Add($"({string.Join(" OR ", typeConditions)})");
 			}
 		}
 	}

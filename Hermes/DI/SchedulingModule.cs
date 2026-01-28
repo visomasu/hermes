@@ -2,6 +2,7 @@ using Autofac;
 using Hermes.Configuration;
 using Hermes.Scheduling;
 using Hermes.Scheduling.Jobs;
+using Hermes.Domain.WorkItemSla;
 using Hermes.Notifications.WorkItemSla;
 
 namespace Hermes.DI

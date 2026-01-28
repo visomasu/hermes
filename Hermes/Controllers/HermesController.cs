@@ -34,7 +34,13 @@ namespace Hermes.Controllers
 		{
 			this.logger.LogInformation("[{ClassName}] New chat requested.", nameof(HermesController));
 
-			var result = await _orchestrator.OrchestrateAsync("session-1", input.Text);
+			// If userId is provided, encode it in the sessionId for now (format: userId|sessionId)
+			// This allows the orchestrator to extract user context without breaking existing interfaces
+			var sessionId = !string.IsNullOrWhiteSpace(input.UserId)
+				? $"{input.UserId}|session-1"
+				: "session-1";
+
+			var result = await _orchestrator.OrchestrateAsync(sessionId, input.Text);
 			return Ok(result);
 		}
 

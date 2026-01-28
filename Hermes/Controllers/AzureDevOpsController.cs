@@ -51,5 +51,34 @@ namespace Hermes.Controllers
 				return StatusCode(500, "Error retrieving work item.");
 			}
 		}
+
+		/// <summary>
+		/// Retrieves the current iteration path for a given team based on the current date.
+		/// </summary>
+		/// <param name="teamName">The team name to query (e.g., "OneCRM Team").</param>
+		/// <returns>The current iteration path if found, otherwise NotFound.</returns>
+		[HttpGet("current-iteration/{teamName}")]
+		public async Task<ActionResult<string>> GetCurrentIteration(string teamName)
+		{
+			_logger.LogInformation("[{ClassName}] Entry: GetCurrentIteration endpoint called for team {TeamName}.", nameof(AzureDevOpsController), teamName);
+			try
+			{
+				var iterationPath = await _workItemClient.GetCurrentIterationPathAsync(teamName);
+
+				if (string.IsNullOrEmpty(iterationPath))
+				{
+					_logger.LogWarning("No current iteration found for team {TeamName}.", teamName);
+					return NotFound(new { error = $"No current iteration found for team '{teamName}'." });
+				}
+
+				_logger.LogInformation("Current iteration for team {TeamName}: {IterationPath}", teamName, iterationPath);
+				return Ok(new { teamName, iterationPath, timestamp = DateTime.UtcNow });
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error retrieving current iteration for team {TeamName}.", teamName);
+				return StatusCode(500, new { error = "Error retrieving current iteration.", details = ex.Message });
+			}
+		}
 	}
 }
