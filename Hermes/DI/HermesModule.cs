@@ -87,8 +87,20 @@ namespace Hermes.DI
             builder.Register(ctx =>
             {
                 var config = ctx.Resolve<IConfiguration>();
-                var endpoint = config["OpenAI:Endpoint"] ?? string.Empty;
-                var apiKey = config["OpenAI:ApiKey"] ?? string.Empty;
+                var env = ctx.Resolve<IHostEnvironment>();
+                string endpoint;
+                string apiKey;
+
+                if (env.IsDevelopment())
+                {
+                    endpoint = "https://visomasu-project-hermes.openai.azure.com/";
+                    apiKey = "dev-api-key";
+                }
+                else
+                {
+                    endpoint = config["OpenAI:Endpoint"] ?? string.Empty;
+                    apiKey = config["OpenAI:ApiKey"] ?? string.Empty;
+                }
 
                 var azureDevOpsTool = ctx.Resolve<AzureDevOpsTool>();
                 var userManagementTool = ctx.Resolve<UserManagementTool>();
