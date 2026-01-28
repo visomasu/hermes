@@ -17,6 +17,7 @@ namespace Hermes.Tools.AzureDevOps
 		private readonly IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> _getWorkItemsByAreaPathCapability;
 		private readonly IAgentToolCapability<GetParentHierarchyCapabilityInput> _getParentHierarchyCapability;
 		private readonly IAgentToolCapability<GetFullHierarchyCapabilityInput> _getFullHierarchyCapability;
+		private readonly IAgentToolCapability<DiscoverUserActivityCapabilityInput> _discoverUserActivityCapability;
 		private readonly int _defaultDepth = 2;
 
 		// Static mapping of work item type to fields
@@ -35,12 +36,14 @@ namespace Hermes.Tools.AzureDevOps
 		/// <param name="getWorkItemsByAreaPathCapability">Capability implementation for GetWorkItemsByAreaPath.</param>
 		/// <param name="getParentHierarchyCapability">Capability implementation for GetParentHierarchy.</param>
 		/// <param name="getFullHierarchyCapability">Capability implementation for GetFullHierarchy.</param>
+		/// <param name="discoverUserActivityCapability">Capability implementation for DiscoverUserActivity.</param>
 		public AzureDevOpsTool(
 			IAzureDevOpsWorkItemClient client,
 			IAgentToolCapability<GetWorkItemTreeCapabilityInput> getWorkItemTreeCapability,
 			IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> getWorkItemsByAreaPathCapability,
 			IAgentToolCapability<GetParentHierarchyCapabilityInput> getParentHierarchyCapability,
-			IAgentToolCapability<GetFullHierarchyCapabilityInput> getFullHierarchyCapability)
+			IAgentToolCapability<GetFullHierarchyCapabilityInput> getFullHierarchyCapability,
+			IAgentToolCapability<DiscoverUserActivityCapabilityInput> discoverUserActivityCapability)
 		{
 			_client = client;
 
@@ -48,6 +51,7 @@ namespace Hermes.Tools.AzureDevOps
 			_getWorkItemsByAreaPathCapability = getWorkItemsByAreaPathCapability;
 			_getParentHierarchyCapability = getParentHierarchyCapability;
 			_getFullHierarchyCapability = getFullHierarchyCapability;
+			_discoverUserActivityCapability = discoverUserActivityCapability;
 		}
 
 		/// <inheritdoc/>
@@ -57,7 +61,7 @@ namespace Hermes.Tools.AzureDevOps
 		public string Description => "Provides Azure DevOps capabilities such as retrieving work item trees, parent hierarchies and more.";
 
 		/// <inheritdoc/>
-		public IReadOnlyList<string> Capabilities => new[] { "GetWorkItemTree", "GetWorkItemsByAreaPath", "GetParentHierarchy", "GetFullHierarchy" };
+		public IReadOnlyList<string> Capabilities => new[] { "GetWorkItemTree", "GetWorkItemsByAreaPath", "GetParentHierarchy", "GetFullHierarchy", "DiscoverUserActivity" };
 
 		/// <inheritdoc/>
 		public string GetMetadata()
@@ -66,13 +70,15 @@ namespace Hermes.Tools.AzureDevOps
 			var getWorkItemsByAreaPathInput = BuildInputSchemaDescription(typeof(GetWorkItemsByAreaPathCapabilityInput));
 			var getParentHierarchyInput = BuildInputSchemaDescription(typeof(GetParentHierarchyCapabilityInput));
 			var getFullHierarchyInput = BuildInputSchemaDescription(typeof(GetFullHierarchyCapabilityInput));
+			var discoverUserActivityInput = BuildInputSchemaDescription(typeof(DiscoverUserActivityCapabilityInput));
 
 			return
-				"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy] | " +
+				"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy, DiscoverUserActivity] | " +
 				$"Input (GetWorkItemTree): {getWorkItemTreeInput} | " +
 				$"Input (GetWorkItemsByAreaPath): {getWorkItemsByAreaPathInput} | " +
 				$"Input (GetParentHierarchy): {getParentHierarchyInput} | " +
 				$"Input (GetFullHierarchy): {getFullHierarchyInput} | " +
+				$"Input (DiscoverUserActivity): {discoverUserActivityInput} | " +
 				"Output: JSON";
 		}
 
@@ -123,6 +129,7 @@ namespace Hermes.Tools.AzureDevOps
 				"GetWorkItemsByAreaPath" => await ExecuteGetWorkItemsByAreaPathAsync(input),
 				"GetParentHierarchy" => await ExecuteGetParentHierarchyAsync(input),
 				"GetFullHierarchy" => await ExecuteGetFullHierarchyAsync(input),
+				"DiscoverUserActivity" => await _ExecuteDiscoverUserActivityAsync(input),
 				_ => throw new NotSupportedException($"Operation '{operation}' is not supported."),
 			};
 		}
@@ -174,6 +181,18 @@ namespace Hermes.Tools.AzureDevOps
 				?? throw new ArgumentException("Invalid input for GetWorkItemsByAreaPath.");
 
 			return await _getWorkItemsByAreaPathCapability.ExecuteAsync(model);
+		}
+
+		#endregion
+
+		#region DiscoverUserActivity
+
+		private async Task<string> _ExecuteDiscoverUserActivityAsync(string input)
+		{
+			var model = JsonSerializer.Deserialize<DiscoverUserActivityCapabilityInput>(input)
+				?? throw new ArgumentException("Invalid input for DiscoverUserActivity.");
+
+			return await _discoverUserActivityCapability.ExecuteAsync(model);
 		}
 
 		#endregion

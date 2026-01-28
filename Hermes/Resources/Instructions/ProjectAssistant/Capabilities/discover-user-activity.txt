@@ -10,15 +10,19 @@ Discover and summarize user activity across Azure DevOps and integrated services
 - **Time period:** "last 7 days", "past 30 days", "last month", "this week" → map to `daysBack`
   - Default: 7 days
 
-## Tool Operations
+## Tool Call Format
 
-**Pull request activity:**
-```json
-{
-  "userEmail": "user@example.com",
-  "daysBack": 14
-}
+**IMPORTANT:** Use exactly this operation name and input format:
+
 ```
+AzureDevOpsTool.Execute("DiscoverUserActivity", {"userEmail": "user@example.com", "daysBack": 14})
+```
+
+**Input schema (only these two fields):**
+- `userEmail` (string, required): The user's email address
+- `daysBack` (int, optional): Number of days to look back, default 7
+
+**Do NOT include any other fields** like `activityTypes`, `scope`, `pageSize`, etc. - they are not supported.
 
 ## Output Format
 
