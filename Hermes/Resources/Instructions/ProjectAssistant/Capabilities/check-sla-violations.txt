@@ -54,15 +54,93 @@ This automatically:
 
 **3. Communicate Results**
 
-For managers with violations:
-"⚠️ Found X SLA violation(s) across your team"
-[Show violations grouped by owner]
+🚨 **MANDATORY FORMATTING FOR MANAGERS** 🚨
 
-For ICs with violations:
-"⚠️ Found X SLA violation(s) for your work items"
-[Show list of violations with details]
+YOU MUST ALWAYS USE THIS EXACT STRUCTURE. NO EXCEPTIONS.
 
-For no violations:
+```
+## 🔴 Your SLA Violations (X items)
+[table with manager's own violations]
+
+## 👥 Team SLA Violations (Y items across Z team members)
+[details for each direct report]
+```
+
+**For managers with violations:**
+
+**STEP 1: Understand the JSON response structure**
+The tool returns this structure:
+```json
+{
+  "success": true,
+  "message": "...",
+  "isManager": true,
+  "directReportCount": 11,
+  "violations": {
+    "visomasu@microsoft.com": [ {violation1}, {violation2} ],
+    "alice@microsoft.com": [ {violation3} ],
+    "bob@microsoft.com": [ {violation4}, {violation5} ]
+  }
+}
+```
+
+**STEP 2: Separate the violations by owner**
+The manager's email is the one that matches the teamsUserId you passed to the tool.
+YOU MUST:
+1. Find the manager's email in the violations dictionary keys (it matches the teamsUserId)
+2. Extract violations[managerEmail] → These are the manager's own violations (Section 1)
+3. Extract all OTHER keys in violations → These are direct reports' violations (Section 2)
+
+Example: If teamsUserId = "visomasu@microsoft.com", then:
+- Section 1 violations: violations["visomasu@microsoft.com"]
+- Section 2 violations: violations["alice@microsoft.com"] + violations["bob@microsoft.com"] + ...
+
+**STEP 3: Format Section 1 - Manager's Own Violations**
+- Heading: "## 🔴 Your SLA Violations (X items)"
+- If X = 0: Show "✅ You have no SLA violations"
+- If X > 0: Show table with manager's violations ONLY
+- Table columns: Work Item ID, Type, Title, Days Since Update, SLA Threshold
+
+**STEP 4: Format Section 2 - Team Violations**
+- Heading: "## 👥 Team SLA Violations (X items across Y team members)"
+- If X = 0: Show "✅ Your team has no SLA violations"
+- If X > 0: Group by owner email, create subsection for each direct report
+- For each owner: "### [owner email] (X violations)"
+- Include same table as Section 1
+
+**CRITICAL: DO NOT skip Section 2 even if you think it's obvious from the data. Always show both sections.**
+
+**Example Manager Format:**
+```
+## 🔴 Your SLA Violations (2 items)
+
+| Work Item | Type | Title | Days Since Update | SLA Threshold |
+|-----------|------|-------|-------------------|---------------|
+| #123456 | Task | Fix bug in auth | 8 | 5 |
+| #789012 | User Story | Update docs | 10 | 7 |
+
+## 👥 Team SLA Violations (5 items across 3 team members)
+
+### alice@microsoft.com (2 violations)
+| Work Item | Type | Title | Days Since Update | SLA Threshold |
+|-----------|------|-------|-------------------|---------------|
+| #111111 | Bug | Memory leak | 6 | 3 |
+| #222222 | Task | Code review | 7 | 5 |
+
+### bob@microsoft.com (3 violations)
+[table with Bob's violations...]
+
+**Recommended Actions:**
+- Review your 2 overdue items first
+- Follow up with alice@microsoft.com (2 items, 3+ days overdue)
+- Schedule team standup to triage remaining items
+```
+
+**For ICs with violations:**
+"## 🔴 Your SLA Violations (X items)"
+[Show table with violation details]
+
+**For no violations:**
 "✅ No SLA violations found for you/your team!"
 
 ## Violation Details
