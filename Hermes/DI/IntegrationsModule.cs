@@ -41,7 +41,7 @@ namespace Hermes.DI
 
 			builder.Register(c =>
 			{
-				return new AzureDevOpsGitClient(organization, project, pat);
+				return new AzureDevOpsGitClient(organization, project);
 			})
 			.As<IAzureDevOpsGitClient>()
 			.SingleInstance();

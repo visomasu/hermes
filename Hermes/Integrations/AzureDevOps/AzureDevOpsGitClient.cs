@@ -1,3 +1,5 @@
+using Azure.Core;
+using Azure.Identity;
 using Exceptions;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using Microsoft.VisualStudio.Services.Common;
@@ -33,13 +35,23 @@ namespace Integrations.AzureDevOps
 		/// </summary>
 		/// <param name="organization">Azure DevOps organization name.</param>
 		/// <param name="project">Azure DevOps project name.</param>
-		/// <param name="personalAccessToken">Personal Access Token for authentication.</param>
-		public AzureDevOpsGitClient(string organization, string project, string personalAccessToken)
+		public AzureDevOpsGitClient(string organization, string project)
 		{
 			_project = project;
+
+			var tokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+			{
+				ExcludeInteractiveBrowserCredential = true,
+				ExcludeVisualStudioCodeCredential = true
+			});
+
+			var tokenRequestContext = new TokenRequestContext(new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" });
+			var accessToken = tokenCredential.GetToken(tokenRequestContext, default);
+			var vssCredential = new VssBasicCredential(string.Empty, accessToken.Token);
+
 			_connection = new VssConnection(
 				new Uri($"https://dev.azure.com/{organization}"),
-				new VssBasicCredential(string.Empty, personalAccessToken)
+				vssCredential
 			);
 		}
 
