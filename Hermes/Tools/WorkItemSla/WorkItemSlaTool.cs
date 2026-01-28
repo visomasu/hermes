@@ -95,7 +95,12 @@ namespace Hermes.Tools.WorkItemSla
 
 			return operation switch
 			{
-				"CheckSlaViolations" or "CheckViolations" or "CheckSLA" => await ExecuteCheckViolationsAsync(input),
+				// Accept any reasonable variation - all route to CheckSlaViolations
+				_ when operation.Contains("Violation", StringComparison.OrdinalIgnoreCase) ||
+				       operation.Contains("SLA", StringComparison.OrdinalIgnoreCase) ||
+				       operation.Equals("CheckSlaViolations", StringComparison.OrdinalIgnoreCase) ||
+				       operation.Equals("CheckViolations", StringComparison.OrdinalIgnoreCase)
+					=> await ExecuteCheckViolationsAsync(input),
 				_ => throw new NotSupportedException($"Operation '{operation}' is not supported by {Name}."),
 			};
 		}

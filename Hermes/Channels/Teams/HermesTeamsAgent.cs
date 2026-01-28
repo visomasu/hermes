@@ -106,7 +106,25 @@ namespace Hermes.Channels.Teams
             var userText = turnContext.Activity.Text ?? string.Empty;
 
             // Use the Teams conversation id as the session id for history and orchestration
-            var sessionId = turnContext.Activity.Conversation?.Id ?? string.Empty;
+            // Encode userId into sessionId (format: userId|sessionId) so orchestrator can extract user context
+            var conversationId = turnContext.Activity.Conversation?.Id ?? string.Empty;
+            var userId = turnContext.Activity.From?.Id;
+
+            // In emulator/agentsplayground, user IDs are mock values - use az CLI to get real user
+            if (_IsEmulatorMode(turnContext))
+            {
+                var realUserId = await _GetAzCliUserEmailAsync();
+                if (!string.IsNullOrWhiteSpace(realUserId))
+                {
+                    userId = realUserId;
+                    _logger.LogInformation("Using az CLI user email {Email} for emulator mode (original: {OriginalUserId})",
+                        userId, turnContext.Activity.From?.Id);
+                }
+            }
+
+            var sessionId = !string.IsNullOrWhiteSpace(userId)
+                ? $"{userId}|{conversationId}"
+                : conversationId;
 
             string response;
 
@@ -217,6 +235,67 @@ namespace Hermes.Channels.Teams
             {
                 _logger.LogError(ex, "Error capturing conversation reference");
                 // Don't throw - this is non-critical for message handling
+            }
+        }
+
+        /// <summary>
+        /// Detects if the bot is running in emulator/agentsplayground mode.
+        /// </summary>
+        /// <param name="turnContext">The turn context</param>
+        /// <returns>True if running in emulator mode</returns>
+        private bool _IsEmulatorMode(ITurnContext turnContext)
+        {
+            // Check if channel ID indicates emulator
+            var channelId = turnContext.Activity.ChannelId;
+            return string.Equals(channelId, "emulator", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Gets the email address of the currently logged-in user from az CLI.
+        /// Used in emulator mode to replace mock user IDs with real user context.
+        /// </summary>
+        /// <returns>User email address, or null if not available</returns>
+        private async Task<string?> _GetAzCliUserEmailAsync()
+        {
+            try
+            {
+                var isWindows = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+                var fileName = isWindows ? "cmd.exe" : "az";
+                var arguments = isWindows ? "/c az ad signed-in-user show --query userPrincipalName -o tsv" : "ad signed-in-user show --query userPrincipalName -o tsv";
+
+                var azProcess = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = fileName,
+                        Arguments = arguments,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                azProcess.Start();
+                var output = await azProcess.StandardOutput.ReadToEndAsync();
+                var error = await azProcess.StandardError.ReadToEndAsync();
+                await azProcess.WaitForExitAsync();
+
+                if (azProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    var email = output.Trim();
+                    _logger.LogInformation("Retrieved user email from az CLI: {Email}", email);
+                    return email;
+                }
+
+                _logger.LogWarning("Failed to get user email from az CLI. Error: {Error}. Exit code: {ExitCode}",
+                    error, azProcess.ExitCode);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user email from az CLI");
+                return null;
             }
         }
 
