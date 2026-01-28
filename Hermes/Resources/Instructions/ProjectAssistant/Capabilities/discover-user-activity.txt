@@ -1,4 +1,4 @@
-Discover and summarize user activity across Azure DevOps and integrated services, including work items assigned to, changed by, and created by a specific user, as well as pull requests created by the user.
+Discover and summarize user activity across Azure DevOps and integrated services, including pull requests created by the user.
 
 ## Intent Detection
 
@@ -9,105 +9,20 @@ Discover and summarize user activity across Azure DevOps and integrated services
 **Optional parameters:**
 - **Time period:** "last 7 days", "past 30 days", "last month", "this week" → map to `daysBack`
   - Default: 7 days
-- **Activity types:** "assigned to me", "items I changed", "items I created", "my pull requests", "all activity"
-  - Default: all work item activity (assigned + changed + created)
-  - Can combine: "assigned items and my pull requests"
-- **Work item types:** "only bugs", "tasks and user stories", "features"
-- **States:** "active items", "closed items", "new items"
-- **PR statuses:** "active PRs", "completed PRs", "abandoned PRs"
-- **Repositories:** "repo-name" - filter PRs to specific repositories
 
 ## Tool Operations
-
-Use `AzureDevOpsTool` with operation `DiscoverUserActivity`:
-
-**All work item activity (default):**
-```json
-{
-  "userEmail": "user@example.com",
-  "daysBack": 7,
-  "activityTypes": "AllWorkItems"
-}
-```
-
-**Specific activity types:**
-```json
-{
-  "userEmail": "user@example.com",
-  "daysBack": 14,
-  "activityTypes": "WorkItemsAssigned, WorkItemsChanged"
-}
-```
-
-**With filtering options:**
-```json
-{
-  "userEmail": "user@example.com",
-  "daysBack": 30,
-  "activityTypes": "AllWorkItems",
-  "workItemOptions": {
-    "states": ["Active", "New"],
-    "workItemTypes": ["Bug", "Task", "User Story"]
-  }
-}
-```
 
 **Pull request activity:**
 ```json
 {
   "userEmail": "user@example.com",
-  "daysBack": 14,
-  "activityTypes": "PullRequestsCreated"
+  "daysBack": 14
 }
 ```
-
-**Pull requests with filters:**
-```json
-{
-  "userEmail": "user@example.com",
-  "daysBack": 30,
-  "activityTypes": "PullRequestsCreated",
-  "pullRequestOptions": {
-    "statuses": ["Active", "Completed"],
-    "repositories": ["my-repo", "other-repo"]
-  }
-}
-```
-
-**Combined work items and pull requests:**
-```json
-{
-  "userEmail": "user@example.com",
-  "daysBack": 7,
-  "activityTypes": "AllWorkItems, PullRequestsCreated"
-}
-```
-
-**Activity Type Values:**
-- `WorkItemsAssigned` - Work items currently assigned to the user
-- `WorkItemsChanged` - Work items changed by the user within the time period
-- `WorkItemsCreated` - Work items created by the user within the time period
-- `AllWorkItems` - All of the above work item types
-- `PullRequestsCreated` - Pull requests created by the user within the time period
 
 ## Output Format
 
 Present results grouped by activity type in a clear, readable format:
-
-### Work Items Assigned to {User}
-| ID | Title | Type | State | Area Path |
-|----|-------|------|-------|-----------|
-| 123 | Fix login bug | Bug | Active | Project\Team |
-
-### Work Items Changed by {User} (Last {N} Days)
-| ID | Title | Type | State | Changed Date |
-|----|-------|------|-------|--------------|
-| 456 | Add feature X | User Story | Active | 2026-01-22 |
-
-### Work Items Created by {User} (Last {N} Days)
-| ID | Title | Type | State | Created Date |
-|----|-------|------|-------|--------------|
-| 789 | New task | Task | New | 2026-01-20 |
 
 ### Pull Requests Created by {User} (Last {N} Days)
 | PR ID | Title | Status | Repository | Target Branch | Created Date |
@@ -119,16 +34,11 @@ Present results grouped by activity type in a clear, readable format:
 After the tables, provide a brief summary:
 
 **Activity Summary:**
-- Assigned: X work items
-- Changed: Y work items (in last N days)
-- Created: Z work items (in last N days)
 - Pull Requests Created: N pull requests (in last N days)
 
 ## Edge Cases
 
-- **No activity found:** Report "No work items found for {activity type} in the specified period."
 - **User not found:** The query may return empty results; report this clearly.
-- **Large result sets:** If results exceed 50 items per category, note that results may be truncated.
 - **Empty email:** Ask the user to provide an email address before proceeding.
 
 ## Future Activity Types
@@ -142,4 +52,4 @@ The following activity types are planned but not yet implemented:
 - OneDrive/SharePoint documents
 - Teams messages and mentions
 
-When users request these, respond: "That activity type is not yet supported. Currently, I can discover work item activity (assigned, changed, created) and pull requests created."
+When users request these, respond: "That activity type is not yet supported. Currently, I can discover pull requests created."
