@@ -109,7 +109,7 @@ namespace Hermes.Tests.Channels.Teams
                 .Returns("brilliant-dancing-thought");
 
             orchestratorMock
-                .Setup(o => o.OrchestrateAsync("conv-id", "hello from teams", It.IsAny<Action<string>?>()))
+                .Setup(o => o.OrchestrateAsync("user-id|conv-id", "hello from teams", It.IsAny<Action<string>?>()))
                 .ReturnsAsync("orchestrated response");
 
             var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
@@ -148,7 +148,7 @@ namespace Hermes.Tests.Channels.Teams
             )!;
 
             // Assert
-            orchestratorMock.Verify(o => o.OrchestrateAsync("conv-id", "hello from teams", It.IsAny<Action<string>?>()), Times.Once);
+            orchestratorMock.Verify(o => o.OrchestrateAsync("user-id|conv-id", "hello from teams", It.IsAny<Action<string>?>()), Times.Once);
             Assert.NotNull(sentActivity);
             Assert.Equal(ActivityTypes.Message, sentActivity!.Type);
             Assert.Equal("orchestrated response", sentActivity.Text);
@@ -166,7 +166,7 @@ namespace Hermes.Tests.Channels.Teams
 
             // Simulate orchestration taking some time
             orchestratorMock
-                .Setup(o => o.OrchestrateAsync("conv-id", "test message", It.IsAny<Action<string>?>()))
+                .Setup(o => o.OrchestrateAsync("user-id|conv-id", "test message", It.IsAny<Action<string>?>()))
                 .Returns(async () =>
                 {
                     await Task.Delay(100); // Small delay to simulate work
