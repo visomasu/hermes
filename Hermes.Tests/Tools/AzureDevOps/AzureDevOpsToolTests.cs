@@ -193,7 +193,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			// For the subtree, GetWorkItemTreeCapability will call GetWorkItemAsync on the client.
 			var workItemJson = "{\"id\":42,\"fields\":{\"System.WorkItemType\":\"Feature\"}}";
 			mockClient
-				.Setup(c => c.GetWorkItemAsync(42))
+				.Setup(c => c.GetWorkItemAsync(42, null))
 				.ReturnsAsync(workItemJson);
 			mockClient
 				.Setup(c => c.GetWorkItemAsync(42, It.IsAny<IEnumerable<string>>()))
@@ -217,7 +217,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			Assert.Contains("\"id\":42", result); // children tree keeps original casing
 
 			mockClient.Verify(c => c.GetParentHierarchyAsync(42, It.IsAny<IEnumerable<string>>()), Times.Once);
-			mockClient.Verify(c => c.GetWorkItemAsync(42), Times.Once);
+			mockClient.Verify(c => c.GetWorkItemAsync(42, null), Times.Once);
 		}
 
 		[Fact]
