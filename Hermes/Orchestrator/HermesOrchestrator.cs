@@ -36,6 +36,9 @@ namespace Hermes.Orchestrator
         // Default number of past turns to include in the context window.
         private const int DefaultContextTurns = 5;
 
+        // Current progress callback for the active orchestration (used by tool wrappers).
+        private Action<string>? _currentProgressCallback;
+
         /// <summary>
         /// Initializes a new instance of the HermesOrchestrator class using the specified endpoint and API key.
         /// </summary>
@@ -173,12 +176,38 @@ namespace Hermes.Orchestrator
                 var aiFunction = AIFunctionFactory.Create(
                     method: new Func<string, string, Task<string>>(async (operation, input) =>
                     {
+                        // Notify progress callback that a tool is being executed
+                        var progressMessage = _GetToolProgressMessage(tool.Name, operation);
+                        _currentProgressCallback?.Invoke(progressMessage);
+
                         return await tool.ExecuteAsync(operation, input).ConfigureAwait(false);
                     }),
                     options: options);
 
                 _tools.Add(aiFunction);
             }
+        }
+
+        /// <summary>
+        /// Generates a human-friendly progress message for a tool operation.
+        /// </summary>
+        private static string _GetToolProgressMessage(string toolName, string operation)
+        {
+            // Map tool operations to user-friendly messages
+            return (toolName, operation) switch
+            {
+                ("AzureDevOpsTool", "GetWorkItemTree") => "Fetching work item hierarchy...",
+                ("AzureDevOpsTool", "GetParentHierarchy") => "Retrieving parent work items...",
+                ("AzureDevOpsTool", "GetFullHierarchy") => "Building complete hierarchy...",
+                ("AzureDevOpsTool", "GetWorkItemsByAreaPath") => "Searching work items by area...",
+                ("AzureDevOpsTool", "GenerateNewsletter") => "Generating newsletter...",
+                ("AzureDevOpsTool", "ValidateHierarchy") => "Validating work item hierarchy...",
+                ("AzureDevOpsTool", "DiscoverUserActivity") => "Discovering user activity...",
+                ("UserManagementTool", "RegisterSlaNotifications") => "Registering for SLA notifications...",
+                ("UserManagementTool", "UnregisterSlaNotifications") => "Unregistering from SLA notifications...",
+                ("WorkItemSlaTool", "CheckSlaViolations") => "Checking SLA violations...",
+                _ => $"Executing {operation}..."
+            };
         }
 
         #endregion
@@ -220,71 +249,79 @@ namespace Hermes.Orchestrator
             // Append the current user query as the last message.
             contextMessages.Add(new ChatMessage(ChatRole.User, [new TextContent(query)]));
 
-            // Invoke progress callback with a fun phrase before starting agent execution.
-            progressCallback?.Invoke(_phraseGenerator.GeneratePhrase());
+            // Set the progress callback so tool invocations can report progress.
+            _currentProgressCallback = progressCallback;
 
-            var response = await agent.RunAsync(contextMessages).ConfigureAwait(false);
-            var responseText = response.AsChatResponse().Text;
-
-            var historyEntries = new List<ConversationMessage>
+            try
             {
-                new ConversationMessage
-                {
-                    Role = "user",
-                    Content = query,
-                    Timestamp = DateTimeOffset.UtcNow
-                },
-                new ConversationMessage
-                {
-                    Role = "assistant",
-                    Content = responseText,
-                    Timestamp = DateTimeOffset.UtcNow
-                }
-            };
+                var response = await agent.RunAsync(contextMessages).ConfigureAwait(false);
+                var responseText = response.AsChatResponse().Text;
 
-            await _conversationHistoryRepository
-                .WriteConversationHistoryAsync(actualSessionId, historyEntries)
-                .ConfigureAwait(false);
+                var historyEntries = new List<ConversationMessage>
+                {
+                    new ConversationMessage
+                    {
+                        Role = "user",
+                        Content = query,
+                        Timestamp = DateTimeOffset.UtcNow
+                    },
+                    new ConversationMessage
+                    {
+                        Role = "assistant",
+                        Content = responseText,
+                        Timestamp = DateTimeOffset.UtcNow
+                    }
+                };
 
-            return responseText;
+                await _conversationHistoryRepository
+                    .WriteConversationHistoryAsync(actualSessionId, historyEntries)
+                    .ConfigureAwait(false);
+
+                return responseText;
+            }
+            finally
+            {
+                // Clear the progress callback after orchestration completes.
+                _currentProgressCallback = null;
+            }
         }
 
-        /// <summary>
-        /// Builds a list of chat messages representing relevant dialogue turns
-        /// from the stored conversation history for the given session, filtered by semantic relevance to the current query.
-        /// </summary>
-        /// <param name="sessionId">The session identifier.</param>
-        /// <param name="currentQuery">The current user query to compare against for relevance.</param>
-        /// <param name="maxContextTurns">Maximum number of context turns to include (used as fallback).</param>
-        private async Task<List<ChatMessage>> BuildContextWindowAsync(string sessionId, string currentQuery, int maxContextTurns)
+    /// <summary>
+    /// Builds a list of chat messages representing relevant dialogue turns
+    /// from the stored conversation history for the given session, filtered by semantic relevance to the current query.
+    /// </summary>
+    /// <param name="sessionId">The session identifier.</param>
+    /// <param name="currentQuery">The current user query to compare against for relevance.</param>
+    /// <param name="maxContextTurns">Maximum number of context turns to include (used as fallback).</param>
+    private async Task<List<ChatMessage>> BuildContextWindowAsync(string sessionId, string currentQuery, int maxContextTurns)
+    {
+        var historyJson = await _conversationHistoryRepository
+            .GetConversationHistoryAsync(sessionId)
+            .ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(historyJson))
         {
-            var historyJson = await _conversationHistoryRepository
-                .GetConversationHistoryAsync(sessionId)
-                .ConfigureAwait(false);
+            return new List<ChatMessage>();
+        }
 
-            if (string.IsNullOrWhiteSpace(historyJson))
-            {
-                return new List<ChatMessage>();
-            }
+        // Deserialize the history JSON into ConversationMessage objects.
+        var history = JsonSerializer.Deserialize<List<ConversationMessage>>(historyJson) ?? new List<ConversationMessage>();
 
-            // Deserialize the history JSON into ConversationMessage objects.
-            var history = JsonSerializer.Deserialize<List<ConversationMessage>>(historyJson) ?? new List<ConversationMessage>();
+        if (history.Count == 0)
+        {
+            return new List<ChatMessage>();
+        }
 
-            if (history.Count == 0)
-            {
-                return new List<ChatMessage>();
-            }
+        // Use context selector to filter relevant messages based on semantic similarity.
+        var selectedMessages = await _contextSelector
+            .SelectRelevantContextAsync(currentQuery, history)
+            .ConfigureAwait(false);
 
-            // Use context selector to filter relevant messages based on semantic similarity.
-            var selectedMessages = await _contextSelector
-                .SelectRelevantContextAsync(currentQuery, history)
-                .ConfigureAwait(false);
-
-            return selectedMessages
-                .Select(m => new ChatMessage(
-                    m.Role == "user" ? ChatRole.User : ChatRole.Assistant,
-                    [new TextContent(m.Content ?? string.Empty)]))
-                .ToList();
+        return selectedMessages
+            .Select(m => new ChatMessage(
+                m.Role == "user" ? ChatRole.User : ChatRole.Assistant,
+                [new TextContent(m.Content ?? string.Empty)]))
+            .ToList();
         }
     }
 }
