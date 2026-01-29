@@ -92,7 +92,7 @@ namespace Hermes.Channels.Teams
         /// <summary>
         /// Handles incoming message activities from Teams users.
         /// Uses the Hermes orchestrator to process the user's message and returns the AI response.
-        /// Shows typing indicators with fun phrases while processing.
+        /// Uses Teams streaming UX to show tool call progress updates while processing.
         /// </summary>
         /// <param name="turnContext">The turn context containing information about the current conversation turn, including the incoming message activity.</param>
         /// <param name="turnState">The state object for the current turn, providing access to user, conversation, and temporary state information.</param>
@@ -108,23 +108,59 @@ namespace Hermes.Channels.Teams
             // Use the Teams conversation id as the session id for history and orchestration
             var sessionId = turnContext.Activity.Conversation?.Id ?? string.Empty;
 
-            string response;
+            // Streaming state - shared across the progress callback
+            string? streamId = null;
+            int streamSequence = 1;
 
-            // Create typing indicator with a fun phrase and start sending typing activities
-            using (var typingIndicator = new PeriodicTypingIndicator(turnContext, _phraseGenerator.GeneratePhrase()))
+            // Start streaming with informative update ("Thinking...")
+            try
             {
-                // Orchestrate with progress callback that receives waiting phrases
-                response = await _orchestrator.OrchestrateAsync(
-                    sessionId,
-                    userText,
-                    progressCallback: phrase =>
-                    {
-                        // Progress callback invoked when orchestration starts
-                        // Typing indicator is already running in the background
-                    });
+                streamId = await _SendStreamingInformativeUpdateAsync(turnContext, "Thinking...", streamSequence, null, cancellationToken);
+                streamSequence++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to start streaming, will fall back to regular message");
+            }
 
-                // Stop typing indicator before sending final response
-                await typingIndicator.StopAsync();
+            // Progress callback for intermediate updates
+            Action<string> progressCallback = (message) =>
+            {
+                if (string.IsNullOrEmpty(streamId))
+                {
+                    return; // Streaming not available
+                }
+
+                // Teams informative updates have a 1000 character limit per the streaming UX docs.
+                // Skip messages that exceed this limit to avoid API errors.
+                if (message.Length > 1000)
+                {
+                    _logger.LogWarning("Skipping streaming progress update - message exceeds 1000 char limit: {Length}", message.Length);
+                    return;
+                }
+
+                try
+                {
+                    // Fire-and-forget the informative update
+                    _ = _SendStreamingInformativeUpdateAsync(turnContext, message, streamSequence, streamId, cancellationToken);
+                    streamSequence++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send streaming progress update: {Message}", message);
+                }
+            };
+
+            // Run orchestration with progress callback
+            string response;
+            try
+            {
+                response = await _orchestrator.OrchestrateAsync(sessionId, userText, progressCallback);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Orchestration error");
+                response = "Sorry, I was unable to generate a response. Please try rephrasing your request.";
             }
 
             if (string.IsNullOrWhiteSpace(response))
@@ -132,9 +168,108 @@ namespace Hermes.Channels.Teams
                 response = "Sorry, I was unable to generate a response. Please try rephrasing your request.";
             }
 
-            await turnContext.SendActivityAsync(
-                MessageFactory.Text(response),
-                cancellationToken: cancellationToken);
+            // Send final message (with streaming if available, otherwise regular message)
+            if (!string.IsNullOrEmpty(streamId))
+            {
+                try
+                {
+                    await _SendStreamingFinalMessageAsync(turnContext, streamId, response, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send streaming final message, falling back to regular message");
+                    await turnContext.SendActivityAsync(MessageFactory.Text(response), cancellationToken);
+                }
+            }
+            else
+            {
+                await turnContext.SendActivityAsync(MessageFactory.Text(response), cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Sends an informative streaming update to Teams (e.g., "Thinking...").
+        /// This appears as a blue progress bar at the bottom of the chat.
+        /// </summary>
+        /// <param name="turnContext">The turn context.</param>
+        /// <param name="message">The informative message to display.</param>
+        /// <param name="streamSequence">The sequence number for this update (starts at 1).</param>
+        /// <param name="streamId">The stream ID for subsequent updates (null for the first update).</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The stream ID to use for subsequent streaming updates, or null if streaming failed.</returns>
+        private async Task<string?> _SendStreamingInformativeUpdateAsync(
+            ITurnContext turnContext,
+            string message,
+            int streamSequence,
+            string? streamId,
+            CancellationToken cancellationToken)
+        {
+            var streamInfoProperties = new Dictionary<string, JsonElement>
+            {
+                ["streamType"] = JsonSerializer.SerializeToElement("informative"),
+                ["streamSequence"] = JsonSerializer.SerializeToElement(streamSequence)
+            };
+
+            // Add streamId for subsequent updates (after the first one)
+            if (!string.IsNullOrEmpty(streamId))
+            {
+                streamInfoProperties["streamId"] = JsonSerializer.SerializeToElement(streamId);
+            }
+
+            var informativeActivity = new Activity
+            {
+                Type = ActivityTypes.Typing,
+                Text = message,
+                Entities = new List<Entity>
+                {
+                    new Entity
+                    {
+                        Type = "streaminfo",
+                        Properties = streamInfoProperties
+                    }
+                }
+            };
+
+            var response = await turnContext.SendActivityAsync(informativeActivity, cancellationToken);
+            _logger.LogDebug("Sent streaming informative update (seq={StreamSequence}): {Message}", streamSequence, message);
+            return response?.Id;
+        }
+
+        /// <summary>
+        /// Sends the final streaming message to Teams, completing the stream.
+        /// </summary>
+        /// <param name="turnContext">The turn context.</param>
+        /// <param name="streamId">The stream ID from the initial informative update.</param>
+        /// <param name="message">The final message content.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        private async Task _SendStreamingFinalMessageAsync(
+            ITurnContext turnContext,
+            string streamId,
+            string message,
+            CancellationToken cancellationToken)
+        {
+            var streamInfoProperties = new Dictionary<string, JsonElement>
+            {
+                ["streamId"] = JsonSerializer.SerializeToElement(streamId),
+                ["streamType"] = JsonSerializer.SerializeToElement("final")
+            };
+
+            var finalActivity = new Activity
+            {
+                Type = ActivityTypes.Message,
+                Text = message,
+                Entities = new List<Entity>
+                {
+                    new Entity
+                    {
+                        Type = "streaminfo",
+                        Properties = streamInfoProperties
+                    }
+                }
+            };
+
+            await turnContext.SendActivityAsync(finalActivity, cancellationToken);
+            _logger.LogDebug("Sent final streaming message for stream ID: {StreamId}", streamId);
         }
 
         /// <summary>
