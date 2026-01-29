@@ -8,6 +8,7 @@ using Integrations.AzureDevOps;
 using Hermes.Tools;
 using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
 using Hermes.Tools.AzureDevOps.Capabilities;
+using Microsoft.Extensions.Logging;
 
 namespace Hermes.Tests.Controllers
 {
@@ -20,8 +21,9 @@ namespace Hermes.Tests.Controllers
 			var mockAreaPathCapability = new Mock<IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput>>();
 			var mockParentHierarchyCapability = new Mock<IAgentToolCapability<GetParentHierarchyCapabilityInput>>();
 			var mockFullHierarchyCapability = new Mock<IAgentToolCapability<GetFullHierarchyCapabilityInput>>();
+			var mockDiscoverUserActivityCapability = new Mock<IAgentToolCapability<DiscoverUserActivityCapabilityInput>>();
 
-			return new Mock<AzureDevOpsTool>(MockBehavior.Default, mockClient.Object, mockTreeCapability.Object, mockAreaPathCapability.Object, mockParentHierarchyCapability.Object, mockFullHierarchyCapability.Object);
+			return new Mock<AzureDevOpsTool>(MockBehavior.Default, mockClient.Object, mockTreeCapability.Object, mockAreaPathCapability.Object, mockParentHierarchyCapability.Object, mockFullHierarchyCapability.Object, mockDiscoverUserActivityCapability.Object);
 		}
 
 		[Fact]
