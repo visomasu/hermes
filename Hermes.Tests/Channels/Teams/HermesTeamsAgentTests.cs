@@ -155,7 +155,7 @@ namespace Hermes.Tests.Channels.Teams
         }
 
         [Fact]
-        public async Task OnMessageAsync_SendsTypingIndicatorsDuringOrchestration()
+        public async Task OnMessageAsync_SendsStreamingActivitiesDuringOrchestration()
         {
             // Arrange
             var storageMock = new Mock<IStorage>();
@@ -164,16 +164,12 @@ namespace Hermes.Tests.Channels.Teams
             var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
             var sentActivities = new List<IActivity>();
 
-            phraseGeneratorMock
-                .Setup(p => p.GeneratePhrase())
-                .Returns("splendid-soaring-sketch");
-
             // Simulate orchestration taking some time
             orchestratorMock
                 .Setup(o => o.OrchestrateAsync("conv-id", "test message", It.IsAny<Action<string>?>()))
                 .Returns(async () =>
                 {
-                    await Task.Delay(5000); // 5 seconds - should trigger ~2 typing indicators
+                    await Task.Delay(100); // Small delay to simulate work
                     return "orchestrated response";
                 });
 
@@ -197,7 +193,7 @@ namespace Hermes.Tests.Channels.Teams
             turnContextMock
                 .Setup(c => c.SendActivityAsync(It.IsAny<IActivity>(), It.IsAny<CancellationToken>()))
                 .Callback<IActivity, CancellationToken>((a, _) => sentActivities.Add(a))
-                .ReturnsAsync(new ResourceResponse());
+                .ReturnsAsync(new ResourceResponse { Id = "stream-123" });
 
             var turnStateMock = new Mock<ITurnState>();
 
@@ -212,19 +208,17 @@ namespace Hermes.Tests.Channels.Teams
             )!;
 
             // Assert
-            // Should have sent at least 1 typing indicator + 1 final message
-            Assert.True(sentActivities.Count >= 2, $"Expected at least 2 activities (typing + message), got {sentActivities.Count}");
+            // Should have sent at least 2 activities: informative update (typing) + final message
+            Assert.True(sentActivities.Count >= 2, $"Expected at least 2 activities (streaming + message), got {sentActivities.Count}");
 
-            // Check that some activities were typing indicators
-            var typingActivities = sentActivities.Where(a => a.Type == ActivityTypes.Typing).ToList();
-            Assert.True(typingActivities.Count >= 1, $"Expected at least 1 typing indicator, got {typingActivities.Count}");
+            // First activity should be a typing indicator with streaminfo entity
+            var firstActivity = (Activity)sentActivities.First();
+            Assert.Equal(ActivityTypes.Typing, firstActivity.Type);
+            Assert.Equal("Thinking...", firstActivity.Text);
 
             // Check that the final message was sent
             var messageActivity = sentActivities.Last(a => a.Type == ActivityTypes.Message);
             Assert.Equal("orchestrated response", ((Activity)messageActivity).Text);
-
-            // Verify phrase generator was called
-            phraseGeneratorMock.Verify(p => p.GeneratePhrase(), Times.Once);
         }
 
         #region _ExtractAadObjectIdAsync Tests
@@ -555,6 +549,199 @@ namespace Hermes.Tests.Channels.Teams
             Assert.NotNull(updatedDocument);
             Assert.Equal(expectedAadObjectId, updatedDocument!.AadObjectId);
             conversationRefRepoMock.Verify(r => r.UpdateAsync("conv-id", It.IsAny<ConversationReferenceDocument>()), Times.Once);
+        }
+
+        #endregion
+
+        #region Streaming Tests
+
+        [Fact]
+        public async Task OnMessageAsync_SendsStreamingInformativeUpdate()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            orchestratorMock
+                .Setup(o => o.OrchestrateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Action<string>?>()))
+                .ReturnsAsync("orchestrated response");
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var activity = new Activity
+            {
+                Type = ActivityTypes.Message,
+                Text = "test message",
+                ChannelId = "msteams",
+                From = new ChannelAccount(id: "user-id"),
+                Recipient = new ChannelAccount(id: "bot-id"),
+                Conversation = new ConversationAccount(id: "conv-id")
+            };
+
+            var turnContextMock = new Mock<ITurnContext>();
+            turnContextMock.SetupGet(c => c.Activity).Returns(activity);
+
+            var sentActivities = new List<Activity>();
+            turnContextMock
+                .Setup(c => c.SendActivityAsync(It.IsAny<IActivity>(), It.IsAny<CancellationToken>()))
+                .Callback<IActivity, CancellationToken>((a, _) => sentActivities.Add((Activity)a))
+                .ReturnsAsync(new ResourceResponse { Id = "stream-123" });
+
+            var turnStateMock = new Mock<ITurnState>();
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("OnMessageAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            await (Task)method!.Invoke(
+                agent,
+                new object?[] { turnContextMock.Object, turnStateMock.Object, CancellationToken.None }
+            )!;
+
+            // Assert
+            // Should have at least 2 activities: informative update + final message
+            Assert.True(sentActivities.Count >= 2, $"Expected at least 2 activities, got {sentActivities.Count}");
+
+            // First activity should be a typing indicator with "Thinking..." and streaminfo entity
+            var firstActivity = sentActivities.First();
+            Assert.Equal(ActivityTypes.Typing, firstActivity.Type);
+            Assert.Equal("Thinking...", firstActivity.Text);
+            Assert.NotNull(firstActivity.Entities);
+            Assert.Contains(firstActivity.Entities, e => e.Type == "streaminfo");
+
+            // Last activity should be the final message
+            var lastActivity = sentActivities.Last();
+            Assert.Equal(ActivityTypes.Message, lastActivity.Type);
+            Assert.Equal("orchestrated response", lastActivity.Text);
+        }
+
+        [Fact]
+        public async Task OnMessageAsync_ProgressCallbackSkipsMessagesOver1000Chars()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            Action<string>? capturedCallback = null;
+            orchestratorMock
+                .Setup(o => o.OrchestrateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Action<string>?>()))
+                .Callback<string, string, Action<string>?>((_, _, callback) => capturedCallback = callback)
+                .ReturnsAsync("orchestrated response");
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var activity = new Activity
+            {
+                Type = ActivityTypes.Message,
+                Text = "test message",
+                ChannelId = "msteams",
+                From = new ChannelAccount(id: "user-id"),
+                Recipient = new ChannelAccount(id: "bot-id"),
+                Conversation = new ConversationAccount(id: "conv-id")
+            };
+
+            var turnContextMock = new Mock<ITurnContext>();
+            turnContextMock.SetupGet(c => c.Activity).Returns(activity);
+
+            var sentActivities = new List<Activity>();
+            turnContextMock
+                .Setup(c => c.SendActivityAsync(It.IsAny<IActivity>(), It.IsAny<CancellationToken>()))
+                .Callback<IActivity, CancellationToken>((a, _) => sentActivities.Add((Activity)a))
+                .ReturnsAsync(new ResourceResponse { Id = "stream-123" });
+
+            var turnStateMock = new Mock<ITurnState>();
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("OnMessageAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            await (Task)method!.Invoke(
+                agent,
+                new object?[] { turnContextMock.Object, turnStateMock.Object, CancellationToken.None }
+            )!;
+
+            // Invoke the captured callback with a message > 1000 chars
+            var longMessage = new string('x', 1001);
+            var activitiesBeforeCallback = sentActivities.Count;
+            capturedCallback?.Invoke(longMessage);
+
+            // Assert - no new activity should be sent for the long message
+            Assert.Equal(activitiesBeforeCallback, sentActivities.Count);
+        }
+
+        [Fact]
+        public async Task OnMessageAsync_FallsBackToRegularMessageWhenStreamingFails()
+        {
+            // Arrange
+            var storageMock = new Mock<IStorage>();
+            var options = new AgentApplicationOptions(storage: storageMock.Object);
+            var orchestratorMock = new Mock<IAgentOrchestrator>();
+            var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
+            var conversationRefRepoMock = new Mock<IConversationReferenceRepository>();
+            var loggerMock = new Mock<ILogger<HermesTeamsAgent>>();
+
+            orchestratorMock
+                .Setup(o => o.OrchestrateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Action<string>?>()))
+                .ReturnsAsync("orchestrated response");
+
+            var agent = new HermesTeamsAgent(options, orchestratorMock.Object, phraseGeneratorMock.Object, conversationRefRepoMock.Object, loggerMock.Object);
+
+            var activity = new Activity
+            {
+                Type = ActivityTypes.Message,
+                Text = "test message",
+                ChannelId = "msteams",
+                From = new ChannelAccount(id: "user-id"),
+                Recipient = new ChannelAccount(id: "bot-id"),
+                Conversation = new ConversationAccount(id: "conv-id")
+            };
+
+            var turnContextMock = new Mock<ITurnContext>();
+            turnContextMock.SetupGet(c => c.Activity).Returns(activity);
+
+            var callCount = 0;
+            var sentActivities = new List<Activity>();
+            turnContextMock
+                .Setup(c => c.SendActivityAsync(It.IsAny<IActivity>(), It.IsAny<CancellationToken>()))
+                .Callback<IActivity, CancellationToken>((a, _) =>
+                {
+                    callCount++;
+                    // First call (streaming start) throws, subsequent calls succeed
+                    if (callCount == 1)
+                    {
+                        throw new System.Exception("Streaming not supported");
+                    }
+                    sentActivities.Add((Activity)a);
+                })
+                .ReturnsAsync(new ResourceResponse { Id = "msg-123" });
+
+            var turnStateMock = new Mock<ITurnState>();
+
+            var method = typeof(HermesTeamsAgent)
+                .GetMethod("OnMessageAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            await (Task)method!.Invoke(
+                agent,
+                new object?[] { turnContextMock.Object, turnStateMock.Object, CancellationToken.None }
+            )!;
+
+            // Assert - should have sent at least the final message despite streaming failure
+            Assert.True(sentActivities.Count >= 1, "Should have sent at least 1 message");
+            var finalMessage = sentActivities.Last();
+            Assert.Equal(ActivityTypes.Message, finalMessage.Type);
+            Assert.Equal("orchestrated response", finalMessage.Text);
         }
 
         #endregion
