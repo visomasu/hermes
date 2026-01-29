@@ -17,7 +17,8 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			var areaPathCapability = new GetWorkItemsByAreaPathCapability(clientMock.Object);
 			var parentHierarchyCapability = new GetParentHierarchyCapability(clientMock.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
-			return new AzureDevOpsTool(clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability);
+			var discoverUserActivityCapability = new Mock<IAgentToolCapability<DiscoverUserActivityCapabilityInput>>().Object;
+			return new AzureDevOpsTool(clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
 		}
 
 		private static readonly List<string> FeatureFields = new() {
@@ -42,7 +43,8 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			Assert.Contains("GetWorkItemsByAreaPath", tool.Capabilities);
 			Assert.Contains("GetParentHierarchy", tool.Capabilities);
 			Assert.Contains("GetFullHierarchy", tool.Capabilities);
-			Assert.Contains("Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy]", tool.GetMetadata());
+			Assert.Contains("DiscoverUserActivity", tool.Capabilities);
+			Assert.Contains("Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy, DiscoverUserActivity]", tool.GetMetadata());
 		}
 
 		[Fact]
@@ -62,7 +64,8 @@ namespace Hermes.Tests.Tools.AzureDevOps
 
 			var parentHierarchyCapability = new GetParentHierarchyCapability(mockClient.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
-			var tool = new AzureDevOpsTool(mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability);
+			var discoverUserActivityCapability = new Mock<IAgentToolCapability<DiscoverUserActivityCapabilityInput>>().Object;
+			var tool = new AzureDevOpsTool(mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
 			var inputJson = JsonSerializer.Serialize(new { areaPath = "Project\\Team\\Area" });
 			var expectedResult = "[]";
 
@@ -185,7 +188,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			// For the subtree, GetWorkItemTreeCapability will call GetWorkItemAsync on the client.
 			var workItemJson = "{\"id\":42,\"fields\":{\"System.WorkItemType\":\"Feature\"}}";
 			mockClient
-				.Setup(c => c.GetWorkItemAsync(42))
+				.Setup(c => c.GetWorkItemAsync(42, null))
 				.ReturnsAsync(workItemJson);
 			mockClient
 				.Setup(c => c.GetWorkItemAsync(42, It.IsAny<IEnumerable<string>>()))
@@ -209,7 +212,7 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			Assert.Contains("\"id\":42", result); // children tree keeps original casing
 
 			mockClient.Verify(c => c.GetParentHierarchyAsync(42, It.IsAny<IEnumerable<string>>()), Times.Once);
-			mockClient.Verify(c => c.GetWorkItemAsync(42), Times.Once);
+			mockClient.Verify(c => c.GetWorkItemAsync(42, null), Times.Once);
 		}
 
 		[Fact]
