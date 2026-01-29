@@ -4,6 +4,7 @@ using Hermes.Tools.AzureDevOps;
 using Hermes.Tools.AzureDevOps.Capabilities;
 using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
 using Integrations.AzureDevOps;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -13,11 +14,14 @@ namespace Hermes.Tests.Tools.AzureDevOps
 	{
 		private static AzureDevOpsTool CreateTool(Mock<IAzureDevOpsWorkItemClient> clientMock)
 		{
+			var gitClientMock = new Mock<IAzureDevOpsGitClient>();
+			var loggerMock = new Mock<ILogger<DiscoverUserActivityCapability>>();
 			var treeCapability = new GetWorkItemTreeCapability(clientMock.Object);
 			var areaPathCapability = new GetWorkItemsByAreaPathCapability(clientMock.Object);
 			var parentHierarchyCapability = new GetParentHierarchyCapability(clientMock.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
-			return new AzureDevOpsTool(clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability);
+			var discoverUserActivityCapability = new DiscoverUserActivityCapability(gitClientMock.Object, loggerMock.Object);
+			return new AzureDevOpsTool(clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
 		}
 
 		private static readonly List<string> FeatureFields = new() {
@@ -42,7 +46,8 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			Assert.Contains("GetWorkItemsByAreaPath", tool.Capabilities);
 			Assert.Contains("GetParentHierarchy", tool.Capabilities);
 			Assert.Contains("GetFullHierarchy", tool.Capabilities);
-			Assert.Contains("Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy]", tool.GetMetadata());
+			Assert.Contains("DiscoverUserActivity", tool.Capabilities);
+			Assert.Contains("Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy, DiscoverUserActivity]", tool.GetMetadata());
 		}
 
 		[Fact]
@@ -57,12 +62,15 @@ namespace Hermes.Tests.Tools.AzureDevOps
 		public async Task ExecuteAsync_GetWorkItemsByAreaPath_DelegatesToCapability()
 		{
 			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+			var gitClientMock = new Mock<IAzureDevOpsGitClient>();
+			var loggerMock = new Mock<ILogger<DiscoverUserActivityCapability>>();
 			var treeCapability = new GetWorkItemTreeCapability(mockClient.Object);
 			var areaPathCapabilityMock = new Mock<IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput>>();
 
 			var parentHierarchyCapability = new GetParentHierarchyCapability(mockClient.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
-			var tool = new AzureDevOpsTool(mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability);
+			var discoverUserActivityCapability = new DiscoverUserActivityCapability(gitClientMock.Object, loggerMock.Object);
+			var tool = new AzureDevOpsTool(mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
 			var inputJson = JsonSerializer.Serialize(new { areaPath = "Project\\Team\\Area" });
 			var expectedResult = "[]";
 

@@ -14,6 +14,12 @@ namespace Hermes.Tools.WorkItemSla
 		private readonly IAgentToolCapability<CheckSlaViolationsCapabilityInput> _checkViolationsCapability;
 		private readonly ILogger<WorkItemSlaTool> _logger;
 
+		// Capability aliases for flexible operation name matching
+		private static readonly IReadOnlyDictionary<string, string[]> CapabilityAliases = new Dictionary<string, string[]>
+		{
+			{ "CheckSlaViolations", new[] { "CheckViolations", "CheckSLA", "GetViolations", "SLACheck", "SLAViolations", "GetSlaViolations" } }
+		};
+
 		/// <summary>
 		/// Initializes a new instance of <see cref="WorkItemSlaTool"/>.
 		/// </summary>
@@ -93,15 +99,17 @@ namespace Hermes.Tools.WorkItemSla
 		{
 			_logger.LogInformation("Executing WorkItemSlaTool operation: {Operation}", operation);
 
-			return operation switch
+			// Use CapabilityMatcher for flexible operation name resolution
+			if (!CapabilityMatcher.TryResolve(operation, CapabilityAliases, out var canonicalName))
 			{
-				// Accept any reasonable variation - all route to CheckSlaViolations
-				_ when operation.Contains("Violation", StringComparison.OrdinalIgnoreCase) ||
-				       operation.Contains("SLA", StringComparison.OrdinalIgnoreCase) ||
-				       operation.Equals("CheckSlaViolations", StringComparison.OrdinalIgnoreCase) ||
-				       operation.Equals("CheckViolations", StringComparison.OrdinalIgnoreCase)
-					=> await ExecuteCheckViolationsAsync(input),
-				_ => throw new NotSupportedException($"Operation '{operation}' is not supported by {Name}."),
+				throw new NotSupportedException(
+					CapabilityMatcher.FormatNotSupportedError(operation, Name, CapabilityAliases.Keys));
+			}
+
+			return canonicalName switch
+			{
+				"CheckSlaViolations" => await ExecuteCheckViolationsAsync(input),
+				_ => throw new InvalidOperationException($"Unhandled canonical operation: {canonicalName}"),
 			};
 		}
 

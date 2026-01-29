@@ -15,6 +15,13 @@ namespace Hermes.Tools.UserManagement
 		private readonly IAgentToolCapability<UnregisterSlaNotificationsCapabilityInput> _unregisterCapability;
 		private readonly ILogger<UserManagementTool> _logger;
 
+		// Capability aliases for flexible operation name matching
+		private static readonly IReadOnlyDictionary<string, string[]> CapabilityAliases = new Dictionary<string, string[]>
+		{
+			{ "RegisterSlaNotifications", new[] { "RegisterSLA", "RegisterForSlaNotifications", "RegisterForSLA", "Register" } },
+			{ "UnregisterSlaNotifications", new[] { "UnregisterSLA", "UnregisterForSlaNotifications", "UnregisterForSLA", "Unregister" } }
+		};
+
 		/// <summary>
 		/// Initializes a new instance of <see cref="UserManagementTool"/>.
 		/// </summary>
@@ -100,11 +107,18 @@ namespace Hermes.Tools.UserManagement
 		{
 			_logger.LogInformation("Executing UserManagementTool operation: {Operation}", operation);
 
-			return operation switch
+			// Use CapabilityMatcher for flexible operation name resolution
+			if (!CapabilityMatcher.TryResolve(operation, CapabilityAliases, out var canonicalName))
 			{
-				"RegisterSlaNotifications" or "RegisterSLA" or "RegisterForSlaNotifications" or "RegisterForSLA" => await ExecuteRegisterAsync(input),
-				"UnregisterSlaNotifications" or "UnregisterSLA" or "UnregisterForSlaNotifications" or "UnregisterForSLA" => await ExecuteUnregisterAsync(input),
-				_ => throw new NotSupportedException($"Operation '{operation}' is not supported by {Name}."),
+				throw new NotSupportedException(
+					CapabilityMatcher.FormatNotSupportedError(operation, Name, CapabilityAliases.Keys));
+			}
+
+			return canonicalName switch
+			{
+				"RegisterSlaNotifications" => await ExecuteRegisterAsync(input),
+				"UnregisterSlaNotifications" => await ExecuteUnregisterAsync(input),
+				_ => throw new InvalidOperationException($"Unhandled canonical operation: {canonicalName}"),
 			};
 		}
 

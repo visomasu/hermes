@@ -28,6 +28,16 @@ namespace Hermes.Tools.AzureDevOps
 			{ "Task", new List<string> { "System.Id", "System.Title", "System.State", "System.WorkItemType", "System.Description", "System.AssignedTo", "Custom.TaskField1", "Microsoft.VSTS.Scheduling.StartDate", "Microsoft.VSTS.Scheduling.TargetDate", "Microsoft.VSTS.Scheduling.FinishDate" } }
 		};
 
+		// Capability aliases for flexible operation name matching
+		private static readonly IReadOnlyDictionary<string, string[]> CapabilityAliases = new Dictionary<string, string[]>
+		{
+			{ "GetWorkItemTree", new[] { "GetTree", "WorkItemTree", "FetchTree" } },
+			{ "GetWorkItemsByAreaPath", new[] { "GetByAreaPath", "AreaPath", "GetWorkItemsByArea" } },
+			{ "GetParentHierarchy", new[] { "ParentHierarchy", "GetParents", "FetchParents" } },
+			{ "GetFullHierarchy", new[] { "FullHierarchy", "CompleteHierarchy", "GetCompleteHierarchy" } },
+			{ "DiscoverUserActivity", new[] { "UserActivity", "DiscoverActivity", "GetUserActivity" } }
+		};
+
 		/// <summary>
 		/// Initializes a new instance of <see cref="AzureDevOpsTool"/>.
 		/// </summary>
@@ -123,14 +133,21 @@ namespace Hermes.Tools.AzureDevOps
 		/// <inheritdoc/>
 		public virtual async Task<string> ExecuteAsync(string operation, string input)
 		{
-			return operation switch
+			// Use CapabilityMatcher for flexible operation name resolution
+			if (!CapabilityMatcher.TryResolve(operation, CapabilityAliases, out var canonicalName))
+			{
+				throw new NotSupportedException(
+					CapabilityMatcher.FormatNotSupportedError(operation, Name, CapabilityAliases.Keys));
+			}
+
+			return canonicalName switch
 			{
 				"GetWorkItemTree" => await ExecuteGetWorkItemTreeAsync(input),
 				"GetWorkItemsByAreaPath" => await ExecuteGetWorkItemsByAreaPathAsync(input),
 				"GetParentHierarchy" => await ExecuteGetParentHierarchyAsync(input),
 				"GetFullHierarchy" => await ExecuteGetFullHierarchyAsync(input),
 				"DiscoverUserActivity" => await _ExecuteDiscoverUserActivityAsync(input),
-				_ => throw new NotSupportedException($"Operation '{operation}' is not supported."),
+				_ => throw new InvalidOperationException($"Unhandled canonical operation: {canonicalName}"),
 			};
 		}
 

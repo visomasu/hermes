@@ -215,7 +215,109 @@ public class MyCapabilityInput : ToolCapabilityInputBase
 
 **CRITICAL:** Capabilities always return JSON strings.
 
-### 3. Dependency Injection Pattern
+### 3. Capability Matching Pattern
+
+**CapabilityMatcher provides flexible operation name resolution with multiple strategies:**
+
+```csharp
+// Define aliases for each capability (one-time setup in tool class)
+private static readonly IReadOnlyDictionary<string, string[]> CapabilityAliases = new Dictionary<string, string[]>
+{
+    { "GetWorkItemTree", new[] { "GetTree", "WorkItemTree", "FetchTree" } },
+    { "RegisterSlaNotifications", new[] { "RegisterSLA", "RegisterForSLA", "Register" } },
+    { "CheckSlaViolations", new[] { "CheckViolations", "CheckSLA", "SLACheck" } }
+};
+
+// Use in ExecuteAsync method
+public async Task<string> ExecuteAsync(string operation, string input)
+{
+    if (!CapabilityMatcher.TryResolve(operation, CapabilityAliases, out var canonicalName))
+    {
+        throw new NotSupportedException(
+            CapabilityMatcher.FormatNotSupportedError(operation, Name, CapabilityAliases.Keys));
+    }
+
+    return canonicalName switch
+    {
+        "GetWorkItemTree" => await ExecuteGetWorkItemTreeAsync(input),
+        "RegisterSlaNotifications" => await ExecuteRegisterAsync(input),
+        "CheckSlaViolations" => await ExecuteCheckViolationsAsync(input),
+        _ => throw new InvalidOperationException($"Unhandled canonical operation: {canonicalName}")
+    };
+}
+```
+
+**Matching strategies (applied in order of specificity):**
+
+1. **ExactMatch**: Case-insensitive exact match with canonical name
+   ```csharp
+   "GetWorkItemTree" → "GetWorkItemTree" ✅
+   "getworkitemtree" → "GetWorkItemTree" ✅
+   ```
+
+2. **AliasMatch**: Case-insensitive match with registered alias
+   ```csharp
+   "GetTree" → "GetWorkItemTree" ✅
+   "registersla" → "RegisterSlaNotifications" ✅
+   ```
+
+3. **PatternMatch**: Match after removing common affixes (Get, Capability)
+   ```csharp
+   "UserProfile" → "GetUserProfile" ✅
+   "RegisterSlaNotifications" → "RegisterSlaNotificationsCapability" ✅
+   ```
+
+4. **PartialMatch**: Substring match (only if unambiguous - exactly one match)
+   ```csharp
+   "Violations" → "CheckSlaViolations" ✅ (only one capability contains "Violations")
+   "SLA" → No match ❌ (ambiguous - matches multiple capabilities)
+   ```
+
+**Benefits:**
+- ✅ Consistent matching logic across all tools
+- ✅ LLM-friendly: accepts common variations without strict naming
+- ✅ Predictable: well-defined precedence (exact > alias > pattern > partial)
+- ✅ Testable: isolated utility with comprehensive unit tests
+- ✅ Maintainable: aliases defined once per tool
+- ✅ Self-documenting: aliases show alternative names
+
+**When to add aliases:**
+- Common abbreviations: "SLA" for "SlaNotifications"
+- Variations with/without prefixes: "Register" vs "RegisterFor"
+- Natural language alternatives: "Check", "Get", "Fetch"
+
+**Example tool implementation:**
+
+```csharp
+public class UserManagementTool : IAgentTool
+{
+    // Define aliases once
+    private static readonly IReadOnlyDictionary<string, string[]> CapabilityAliases = new Dictionary<string, string[]>
+    {
+        { "RegisterSlaNotifications", new[] { "RegisterSLA", "RegisterForSLA", "Register" } },
+        { "UnregisterSlaNotifications", new[] { "UnregisterSLA", "UnregisterForSLA", "Unregister" } }
+    };
+
+    public async Task<string> ExecuteAsync(string operation, string input)
+    {
+        // Use CapabilityMatcher for flexible resolution
+        if (!CapabilityMatcher.TryResolve(operation, CapabilityAliases, out var canonicalName))
+        {
+            throw new NotSupportedException(
+                CapabilityMatcher.FormatNotSupportedError(operation, Name, CapabilityAliases.Keys));
+        }
+
+        return canonicalName switch
+        {
+            "RegisterSlaNotifications" => await ExecuteRegisterAsync(input),
+            "UnregisterSlaNotifications" => await ExecuteUnregisterAsync(input),
+            _ => throw new InvalidOperationException($"Unhandled canonical operation: {canonicalName}")
+        };
+    }
+}
+```
+
+### 4. Dependency Injection Pattern
 
 **Lifecycle rules:**
 - **SingleInstance:** Storage clients, repositories, tools, orchestrators (stateful/expensive)
