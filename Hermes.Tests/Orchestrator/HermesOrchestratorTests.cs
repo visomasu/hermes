@@ -277,7 +277,7 @@ namespace Hermes.Tests.Orchestrator
 		}
 
 		[Fact]
-		public async Task OrchestrateAsync_WithProgressCallback_InvokesCallbackWithPhrase()
+		public async Task OrchestrateAsync_WithProgressCallback_SetsCallbackForToolInvocations()
 		{
 			// Arrange
 			var tools = new List<IAgentTool>();
@@ -285,10 +285,6 @@ namespace Hermes.Tests.Orchestrator
 			var instructionsRepoMock = new Mock<IHermesInstructionsRepository>();
 			var historyRepoMock = new Mock<IConversationHistoryRepository>();
 			var phraseGeneratorMock = new Mock<IWaitingPhraseGenerator>();
-
-			phraseGeneratorMock
-				.Setup(p => p.GeneratePhrase())
-				.Returns("brilliant-dancing-thought");
 
 			instructionsRepoMock
 				.Setup(r => r.GetByInstructionTypeAsync(HermesInstructionType.ProjectAssistant, null))
@@ -330,16 +326,19 @@ namespace Hermes.Tests.Orchestrator
 				phraseGeneratorMock.Object,
 				contextSelectorMock.Object);
 
-			string? capturedPhrase = null;
-			Action<string> progressCallback = phrase => capturedPhrase = phrase;
+			var capturedPhrases = new List<string>();
+			Action<string> progressCallback = phrase => capturedPhrases.Add(phrase);
 
 			// Act
-			await orchestrator.OrchestrateAsync("test-session", "Test query", progressCallback);
+			var response = await orchestrator.OrchestrateAsync("test-session", "Test query", progressCallback);
 
 			// Assert
-			Assert.NotNull(capturedPhrase);
-			Assert.Equal("brilliant-dancing-thought", capturedPhrase);
-			phraseGeneratorMock.Verify(p => p.GeneratePhrase(), Times.Once);
+			// The progress callback is now invoked when tools are called (not at orchestration start).
+			// Since no tools are registered/invoked in this test, the callback won't be invoked.
+			// This test verifies the orchestrator accepts the callback without error.
+			Assert.Equal("Test response.", response);
+			// Phrase generator is no longer used for progress callbacks (streaming now handles this)
+			phraseGeneratorMock.Verify(p => p.GeneratePhrase(), Times.Never);
 		}
 
 		[Fact]
