@@ -15,13 +15,14 @@ namespace Hermes.Tests.Tools.AzureDevOps
 		private static AzureDevOpsTool CreateTool(Mock<IAzureDevOpsWorkItemClient> clientMock)
 		{
 			var gitClientMock = new Mock<IAzureDevOpsGitClient>();
-			var loggerMock = new Mock<ILogger<DiscoverUserActivityCapability>>();
+			var discoverLoggerMock = new Mock<ILogger<DiscoverUserActivityCapability>>();
+			var toolLoggerMock = new Mock<ILogger<AzureDevOpsTool>>();
 			var treeCapability = new GetWorkItemTreeCapability(clientMock.Object);
 			var areaPathCapability = new GetWorkItemsByAreaPathCapability(clientMock.Object);
 			var parentHierarchyCapability = new GetParentHierarchyCapability(clientMock.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
-			var discoverUserActivityCapability = new DiscoverUserActivityCapability(gitClientMock.Object, loggerMock.Object);
-			return new AzureDevOpsTool(clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
+			var discoverUserActivityCapability = new DiscoverUserActivityCapability(gitClientMock.Object, discoverLoggerMock.Object);
+			return new AzureDevOpsTool(toolLoggerMock.Object, clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
 		}
 
 		private static readonly List<string> FeatureFields = new() {
@@ -70,7 +71,8 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			var parentHierarchyCapability = new GetParentHierarchyCapability(mockClient.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
 			var discoverUserActivityCapability = new DiscoverUserActivityCapability(gitClientMock.Object, loggerMock.Object);
-			var tool = new AzureDevOpsTool(mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
+			var toolLoggerMock = new Mock<ILogger<AzureDevOpsTool>>();
+			var tool = new AzureDevOpsTool(toolLoggerMock.Object, mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
 			var inputJson = JsonSerializer.Serialize(new { areaPath = "Project\\Team\\Area" });
 			var expectedResult = "[]";
 

@@ -1,0 +1,208 @@
+{
+  "summary": {
+    "totalScenarios": 2,
+    "passedScenarios": 2,
+    "failedScenarios": 0,
+    "totalTurns": 3,
+    "successRate": 1,
+    "overallScore": 1
+  },
+  "metrics": {
+    "toolSelectionAccuracy": 1,
+    "parameterExtractionAccuracy": 1,
+    "contextRetentionScore": 1,
+    "responseQualityScore": 1
+  },
+  "performance": {
+    "averageExecutionTimeMs": 25638,
+    "p95ExecutionTimeMs": 36940,
+    "p99ExecutionTimeMs": 36940
+  },
+  "scenarioResults": [
+    {
+      "scenarioName": "Newsletter Generation with Follow-up Hierarchy Validation",
+      "passed": true,
+      "overallScore": 1,
+      "executionMode": 0,
+      "dataMode": 0,
+      "executionTimeMs": 52722,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GenerateNewsletter or aliases [GetWorkItemTree, GetTree, WorkItemTree], Actual: GetWorkItemTree"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 5753933"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 2 context item(s): lastFeatureId, lastOperation"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 5796, Required: 100"
+            },
+            "ResponseQuality_Section_Progress": {
+              "passed": true,
+              "details": "Present"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 36940,
+          "capturedMetadata": {
+            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, SLA violation tracking, and discovering user PR activity.\n\n# [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant (Feature #5753933)\n\n## Overview\nProject Hermes automates creation of status updates and newsletters using Azure DevOps data and integrates with Microsoft Teams for ad-hoc queries and notifications. The feature (#5753933) is Active and has progressed through core engineering and LLM/tool integration; current focus is integration of notifications and SLA-driven workflows ahead of previews and GA.\n\n---\n\n## Execution Timelines \u0026 Milestones\n\n| Milestone | Target Date | Status |\n|-----------|-------------|--------|\n| Project start | 2025-10-01 | \u2713 Started (Start date set on feature #5753933) |\n| Private Preview (target) | 2026-01-15 | \u27F3 In Progress \u2014 target passed; verification needed (see assumption) |\n| Public Preview (target) | 2026-02-15 | \u25EF Upcoming |\n| GA (target) | 2026-03-15 | \u25EF Upcoming |\n| Notifications / SLA capability (story #6028024) | (no explicit milestone date) | \u27F3 In Progress (story #6028024 Active; tasks 6028027 Closed, 6028028 New) |\n\nStatus Legend:\n- \u2713 Completed \u2014 Closed/Resolved work items or explicit start date\n- \u27F3 In Progress \u2014 Active work items or targets passed but completion not explicitly tracked\n- \u25EF Upcoming \u2014 Future targets\n- \u2717 Blocked \u2014 High-risk items (none explicit)\n\nSources: Feature #5753933 (start/target dates, preview/GA fields), Story #6028024 and tasks #6028027, #6028028.\n\n---\n\n## Outcomes Since Last Newsletter\nTop 3 recent, business-impacting deliveries (traceable):\n\n\u2022 **Agent orchestration host implemented (#5754128)** \u2014 Orchestration layer and tool registration completed, enabling Hermes to execute LLM \u002B tool flows and drive downstream features (#5898189, #5898188, #5898186).\n\n\u2022 **LLM summarization / newsletter capability delivered (#5754135)** \u2014 Hermes can summarize a single level of a work item tree into the newsletter template and integrate work-item retrieval as a tool (#5969638, #5898208, #5898210).\n\n\u2022 **Teams integration via M365 Agent SDK completed (#5969635)** \u2014 Hermes can send/receive messages in Teams, enabling user-facing interactions and notifications (#5969636, #5969637).\n\n(References: #5754128, #5754135, #5969635)\n\n---\n\n## Current Milestone Progress\n\nCurrent Focus: Implement and validate scheduled notifications and SLA-driven sign-ups so Hermes can proactively notify users of work-item update SLA violations (User Story #6028024).\n\nProgress: 77% complete across child stories of the feature \u2014 10 of 13 child user stories are Closed; 1 Active; 1 New; 1 Removed. Calculation: Completed = 10 closed / 13 total child stories = 76.9% (~77%). Evidence: child stories list under feature #5753933 (examples: #5754128 Closed, #5754134 Closed, #5754135 Closed, #6028024 Active, #6034604 New, #5754125 Removed).\n\nNext steps:\n- Complete task #6028028 (Implement sign-up capability for SLA notifications) \u2014 currently New.\n- End-to-end validation of notification plumbing into Teams and sign-up workflows.\n- Confirm Private Preview outcomes (evidence/acceptance) and prepare Public Preview plan for Feb 15 and GA for Mar 15 (#5753933).\n\nSources: child work items under feature #5753933 (see IDs above).\n\n---\n\n## Risks \u0026 Mitigation Plan\n\n| Risk | Impact | Mitigation |\n|------|--------|------------|\n| Lack of explicit preview completion tracking | Medium \u2014 target dates (Private/Public) may be missed without acceptance artifacts | Capture acceptance checklists for Private Preview and Public Preview and update work items to Closed when validated (action: product owner to add acceptance comments on #5753933) |\n| Scope creep from multi-project support (#6034604 is New) | Medium \u2014 additional integration points could delay previews | Treat multi-project support as a follow-up capability if blocking; prioritize core SLA/notifications for current previews; create separate sprint for #6034604 |\n| Removed chat interface stories (e.g., #5754125 Removed) \u2014 possible scope reprioritization | Low/Medium \u2014 may reflect de-scoped UX work that could impact demos | Confirm scope decision and update roadmap; if UX still required, replan as follow-up increment |\n\nNote: Root feature risk assessment explicitly marked \u0022Risk level is low\u0022 in the feature (#5753933). No High risks flagged in child items metadata.\n\nSources: Feature #5753933 (Custom.RiskAssessmentComment), work items #6034604, #5754125.\n\n---\n\nAssumptions \u0026 Data Gaps\n- Assumption: Private Preview target (2026-01-15) is an intended milestone; there is no explicit \u0022preview completed\u0022 work item or acceptance record in the retrieved tree \u2014 verification required. (Feature #5753933)\n- Some child items are in state Removed (e.g., #5754125) \u2014 I treat these as de-scoped artifacts unless product clarifies otherwise.\n- Not all milestones are modelled as dedicated work items; milestone completion was inferred from child work-item states and feature-level date fields. If you track previews via release work items or tags, provide those IDs for precise status.\n- Dates are taken from Azure DevOps fields on the feature and child items; inconsistent or missing target/finish dates on some tasks may affect schedule calculations (example: some tasks have target dates earlier than start dates).\n\nIf you\u0027d like, I can:\n- Produce a one-slide summary for leadership with the milestones, completion %, key blockers, and next decisions.\n- Validate whether Private Preview was actually executed (search for release notes, acceptance test items, or tags) \u2014 provide additional work item or area-path scope if available.\n\n(Primary source: Azure DevOps work-item tree retrieved for Feature #5753933 and its children \u2014 see referenced IDs above.)",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
+            "sessionId": "b27f960b-b94e-495a-ae55-80616210cd43"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetParentHierarchy or aliases [GetFullHierarchy], Actual: GetParentHierarchy"
+            },
+            "ContextRetention_ContextUsed_lastFeatureId": {
+              "passed": true,
+              "details": "Context \u0027lastFeatureId\u0027=\u00225753933\u0022 correctly used in parameter \u0027workItemId\u0027"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_DoesNotContain_which_feature": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_provide": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 221, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 15781,
+          "capturedMetadata": {
+            "responseText": "| Feature ID | Title | Hierarchy Valid | Validation Results |\n|------------|-------|-----------------|---------------------|\n| 5753933 | [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant | Yes | None |",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
+            "sessionId": "b27f960b-b94e-495a-ae55-80616210cd43"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 1,
+        "averageExecutionTimeMs": 26360.5,
+        "totalTurns": 2,
+        "passedTurns": 2,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "Simple Tool Selection Test",
+      "passed": true,
+      "overallScore": 1,
+      "executionMode": 0,
+      "dataMode": 0,
+      "executionTimeMs": 24193,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GenerateNewsletter or aliases [GetWorkItemTree, WorkItemTree], Actual: GetWorkItemTree"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 123456"
+            },
+            "ResponseQuality_Contains_123456": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 3997, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 24193,
+          "capturedMetadata": {
+            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, SLA violation tracking, and discovering user PR activity.\n\n# [CRM Core] HP Driver Update Initiative Newsletter\n\n## Overview\nThis work item (User Story #123456) is titled \u0022[CRM Core] HP Driver Update\u0022 and is recorded as Closed in Azure DevOps (System.State = Closed). The record contains start (2016-08-31) and target (2016-09-19) dates but no description or acceptance criteria. Based on the title, the objective appears to be delivering an HP driver update within CRM Core to restore or improve device compatibility; this is an inferred business objective and should be validated with the product owner (#118973 is listed as the parent).  \n\n---\n\n## Execution Timelines \u0026 Milestones\n\n| Milestone | Target Date | Status |\n|-----------|-------------|--------|\n| HP Driver Update (User Story #123456) | 2016-09-19 | \u2713 Completed (Closed) |\n\nStatus Legend:\n- \u2713 Completed (Closed/Resolved work items)\n- \u27F3 In Progress (Active work items)\n- \u25EF Upcoming (New work items)\n- \u2717 Blocked (work items flagged High risk)\n\n---\n\n## Outcomes Since Last Newsletter\n\u2022 **Delivered HP driver update to CRM Core (Work Item #123456):** Item is Closed \u2014 indicates the change was completed and delivered to the tracked branch/commit history. Confirmed links include associated commits and branch artifacts (see Dev links on the work item).  \n\u2022 **Test artifacts referenced:** Several test cases/shared steps reference this story (e.g., #635434, #553794, #545486, #602701) \u2014 these indicate testing activity tied to the delivery.  \n\nNote: Business impact (e.g., reduced incidents, user adoption) is not recorded in the work item and should be confirmed with product analytics or support metrics.\n\n---\n\n## Current Milestone Progress\n\n**Current Focus:** No active development \u2014 the primary user story (#123456) is Closed. Recommend focusing on validation (post-deployment monitoring and stakeholder acceptance).  \n\n**Progress:** 100% complete for the tracked user story (1 of 1 items closed).  \n**Next Steps:** \n- Validate production telemetry and support tickets to confirm the expected impact.  \n- Close or reconcile any remaining test cases referenced (#635434, #553794, #545486, #602701).  \n- Confirm parent feature/epic acceptance and release notes with owner of #118973.\n\n---\n\n## Risks \u0026 Mitigation Plan\nNo explicit Medium/High risk flags were present on the work item record for #123456.\n\n- Current status: No significant risks identified at this time. Monitoring continues.\n- Suggested mitigations (proactive):\n  - Monitor support and telemetry for regressions for 2-4 weeks post-deployment.\n  - Ensure release notes and known-issues are communicated to support and customer success.\n  - Validate that dependent areas referenced by \u0022Affects\u0022 links (e.g., #782228, #754754, #782208) report no regressions.\n\n---\n\nAssumptions \u0026 Data Gaps\n- The supplied ID (123456) is a User Story, not a Feature \u2014 user requested a \u0022feature\u0022 but the item type is System.WorkItemType = User Story. Parent is listed as #118973 (please confirm if that is the intended feature/epic).  \n- Missing fields: work item description, acceptance criteria, owner, actual/completion date, release/release train, and business outcome metrics. These gaps limit confirmation of customer impact and deployment scope.  \n- Related artifacts and test case IDs were inferred from the work item relations returned by Azure DevOps (relations include parent #118973 and test/shared-step references #635434, #553794, #545486, #602701; affects links include #782228, #754754, #782208).\n\nSources: Azure DevOps work item #123456 (relations: parent #118973; test refs #635434, #553794, #545486, #602701; affects #782228, #754754, #782208).  \n\nIf you want a newsletter scoped to the parent feature/epic (#118973) or a full hierarchy (depth \u003E3) so we can report across all child features/stories, tell me which work item ID to use and I will retrieve and summarize it.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
+            "sessionId": "3524e6a5-c8ed-4f54-9369-7d22c74ad312"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 1,
+        "averageExecutionTimeMs": 24193,
+        "totalTurns": 1,
+        "passedTurns": 1,
+        "failedTurns": 0
+      }
+    }
+  ]
+}

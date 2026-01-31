@@ -1,0 +1,65 @@
+# Simple Tool Selection Test
+# Tests that the LLM correctly selects the AzureDevOpsTool for a newsletter request
+
+name: "Simple Tool Selection Test"
+description: "Verifies basic tool selection for newsletter generation"
+executionMode: "RestApi"
+dataMode: "Mock"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+  mockData:
+    workItems:
+      - id: 123456
+        title: "Test Feature"
+        type: "Feature"
+        state: "Active"
+        relations:
+          - type: "Child"
+            id: 123457
+      - id: 123457
+        title: "Test User Story"
+        type: "User Story"
+        state: "Active"
+        relations:
+          - type: "Parent"
+            id: 123456
+
+# Scoring weights (using defaults)
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+# Stop on first failure
+stopOnFailure: true
+
+# Single turn conversation
+turns:
+  # Turn 1: Request newsletter generation
+  - turnNumber: 1
+    input: "generate a newsletter for feature 123456"
+    expectations:
+      # Tool Selection (30% weight) - Main focus of this test
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GenerateNewsletter"
+        allowedAliases:
+          - "GetWorkItemTree"
+          - "WorkItemTree"
+
+      # Parameter Extraction (30% weight)
+      parameterExtraction:
+        expectedParameters:
+          workItemId: 123456
+        requiredParameters:
+          - "workItemId"
+
+      # Response Quality (15% weight)
+      responseQuality:
+        mustContain:
+          - "123456"
+        minLength: 50

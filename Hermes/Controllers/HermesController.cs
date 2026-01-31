@@ -36,9 +36,14 @@ namespace Hermes.Controllers
 
 			// If userId is provided, encode it in the sessionId for now (format: userId|sessionId)
 			// This allows the orchestrator to extract user context without breaking existing interfaces
+			// Use provided sessionId or generate a new one
+			var actualSessionId = !string.IsNullOrWhiteSpace(input.SessionId)
+				? input.SessionId
+				: Guid.NewGuid().ToString();
+
 			var sessionId = !string.IsNullOrWhiteSpace(input.UserId)
-				? $"{input.UserId}|session-1"
-				: "session-1";
+				? $"{input.UserId}|{actualSessionId}"
+				: actualSessionId;
 
 			var result = await _orchestrator.OrchestrateAsync(sessionId, input.Text);
 			return Ok(result);

@@ -7,6 +7,7 @@ using Hermes.Storage.Repositories.HermesInstructions;
 using Hermes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text.Json;
 using Xunit;
@@ -37,6 +38,7 @@ namespace Hermes.Tests.Orchestrator
 
 			// Act - use the test-only constructor that accepts an AIAgent
 			var orchestrator = new HermesOrchestrator(
+				new Mock<ILogger<HermesOrchestrator>>().Object,
 				agentMock.Object,
 				"https://test.openai.azure.com/",
 				"test-api-key",
@@ -99,6 +101,7 @@ namespace Hermes.Tests.Orchestrator
 				.ReturnsAsync(new List<ConversationMessage>());
 
 			var orchestrator = new HermesOrchestrator(
+				new Mock<ILogger<HermesOrchestrator>>().Object,
 				agentMock.Object,
 				"https://test.openai.azure.com/",
 				"test-api-key",
@@ -167,6 +170,7 @@ namespace Hermes.Tests.Orchestrator
 				.ReturnsAsync(new List<ConversationMessage>());
 
 			var orchestrator = new HermesOrchestrator(
+				new Mock<ILogger<HermesOrchestrator>>().Object,
 				agentMock.Object,
 				"https://test.openai.azure.com/",
 				"test-api-key",
@@ -248,6 +252,7 @@ namespace Hermes.Tests.Orchestrator
 				.ReturnsAsync(existingHistory);
 
 			var orchestrator = new HermesOrchestrator(
+				new Mock<ILogger<HermesOrchestrator>>().Object,
 				agentMock.Object,
 				"https://test.openai.azure.com/",
 				"test-api-key",
@@ -314,6 +319,7 @@ namespace Hermes.Tests.Orchestrator
 				.ReturnsAsync(new List<ConversationMessage>());
 
 			var orchestrator = new HermesOrchestrator(
+				new Mock<ILogger<HermesOrchestrator>>().Object,
 				agentMock.Object,
 				"https://test.openai.azure.com/",
 				"test-api-key",
@@ -375,6 +381,7 @@ namespace Hermes.Tests.Orchestrator
 				.ReturnsAsync(new List<ConversationMessage>());
 
 			var orchestrator = new HermesOrchestrator(
+				new Mock<ILogger<HermesOrchestrator>>().Object,
 				agentMock.Object,
 				"https://test.openai.azure.com/",
 				"test-api-key",
@@ -432,6 +439,7 @@ namespace Hermes.Tests.Orchestrator
 				.ReturnsAsync(new List<ConversationMessage>());
 
 			var orchestrator = new HermesOrchestrator(
+				new Mock<ILogger<HermesOrchestrator>>().Object,
 				agentMock.Object,
 				"https://test.openai.azure.com/",
 				"test-api-key",

@@ -21,6 +21,13 @@ namespace Hermes.Controllers.Models
         public string? UserId { get; set; }
 
         /// <summary>
+        /// Optional session identifier for tracking multi-turn conversations.
+        /// If not provided, a new session ID will be generated.
+        /// </summary>
+        [JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of the ChatInput class with the specified text content.
         /// </summary>
         /// <param name="text">The text to be used as the input message. Cannot be null.</param>

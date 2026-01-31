@@ -2,6 +2,7 @@ using Integrations.AzureDevOps;
 using System.Text.Json;
 using Hermes.Tools.AzureDevOps.Capabilities;
 using Hermes.Tools.AzureDevOps.Capabilities.Inputs;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 
 namespace Hermes.Tools.AzureDevOps
@@ -12,6 +13,7 @@ namespace Hermes.Tools.AzureDevOps
 	public class AzureDevOpsTool : IAgentTool
 	{
 		private readonly IAzureDevOpsWorkItemClient _client;
+		private readonly ILogger<AzureDevOpsTool> _logger;
 
 		private readonly IAgentToolCapability<GetWorkItemTreeCapabilityInput> _getWorkItemTreeCapability;
 		private readonly IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> _getWorkItemsByAreaPathCapability;
@@ -41,6 +43,7 @@ namespace Hermes.Tools.AzureDevOps
 		/// <summary>
 		/// Initializes a new instance of <see cref="AzureDevOpsTool"/>.
 		/// </summary>
+		/// <param name="logger">Logger instance.</param>
 		/// <param name="client">The Azure DevOps work item client.</param>
 		/// <param name="getWorkItemTreeCapability">Capability implementation for GetWorkItemTree.</param>
 		/// <param name="getWorkItemsByAreaPathCapability">Capability implementation for GetWorkItemsByAreaPath.</param>
@@ -48,6 +51,7 @@ namespace Hermes.Tools.AzureDevOps
 		/// <param name="getFullHierarchyCapability">Capability implementation for GetFullHierarchy.</param>
 		/// <param name="discoverUserActivityCapability">Capability implementation for DiscoverUserActivity.</param>
 		public AzureDevOpsTool(
+			ILogger<AzureDevOpsTool> logger,
 			IAzureDevOpsWorkItemClient client,
 			IAgentToolCapability<GetWorkItemTreeCapabilityInput> getWorkItemTreeCapability,
 			IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> getWorkItemsByAreaPathCapability,
@@ -56,6 +60,7 @@ namespace Hermes.Tools.AzureDevOps
 			IAgentToolCapability<DiscoverUserActivityCapabilityInput> discoverUserActivityCapability)
 		{
 			_client = client;
+			_logger = logger;
 
 			_getWorkItemTreeCapability = getWorkItemTreeCapability;
 			_getWorkItemsByAreaPathCapability = getWorkItemsByAreaPathCapability;
@@ -133,6 +138,8 @@ namespace Hermes.Tools.AzureDevOps
 		/// <inheritdoc/>
 		public virtual async Task<string> ExecuteAsync(string operation, string input)
 		{
+			_logger.LogInformation("Executing AzureDevOpsTool operation: {Operation}", operation);
+
 			// Use CapabilityMatcher for flexible operation name resolution
 			if (!CapabilityMatcher.TryResolve(operation, CapabilityAliases, out var canonicalName))
 			{
