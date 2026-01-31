@@ -1,0 +1,82 @@
+# User Activity Discovery
+# Tests discovering and summarizing user pull request activity
+
+name: "User Activity Discovery"
+description: "Tests discovering user PR activity with natural language time period extraction"
+executionMode: "RestApi"
+dataMode: "Real"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+
+# Scoring weights
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Discover user activity with explicit time period
+  - turnNumber: 1
+    input: "show me pull request activity for user@microsoft.com over the last 30 days"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "DiscoverUserActivity"
+        allowedAliases:
+          - "GetUserPullRequestActivity"
+          - "GetUserActivity"
+          - "DiscoverPRActivity"
+
+      parameterExtraction:
+        expectedParameters:
+          userEmail: "user@microsoft.com"
+          days: 30
+        requiredParameters:
+          - "userEmail"
+          - "days"
+
+      contextRetention:
+        shouldRemember:
+          - key: "lastUserQueried"
+            value: "user@microsoft.com"
+          - key: "lastDaysPeriod"
+            value: "30"
+
+      responseQuality:
+        mustContain:
+          - "pull request"
+        minLength: 100
+
+  # Turn 2: Query same user with relative time (context retention)
+  - turnNumber: 2
+    input: "show me their activity for the last 7 days"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "DiscoverUserActivity"
+
+      parameterExtraction:
+        expectedParameters:
+          days: 7
+        requiredParameters:
+          - "days"
+
+      contextRetention:
+        verifyContextUsage:
+          - contextKey: "lastUserQueried"
+            usedInParameter: "userEmail"
+
+      responseQuality:
+        mustContain:
+          - "pull request"
+        mustNotContain:
+          - "which user"
+          - "specify a user"
+        minLength: 50
