@@ -8,7 +8,7 @@ dataMode: "Real"
 
 # Setup configuration
 setup:
-  userId: "testuser@microsoft.com"
+  userId: "visomasu@microsoft.com"
   sessionId: ""  # Will be auto-generated
 
 # Scoring weights
@@ -36,7 +36,7 @@ turns:
 
       parameterExtraction:
         expectedParameters:
-          teamsUserId: "testuser@microsoft.com"
+          teamsUserId: "visomasu@microsoft.com"
         requiredParameters:
           - "teamsUserId"
 
@@ -57,6 +57,10 @@ turns:
       toolSelection:
         expectedTool: "WorkItemSlaTool"
         expectedCapability: "CheckSlaViolations"
+        allowedAliases:
+          - "CheckViolations"
+          - "CheckSLA"
+          - "GetViolations"
 
       parameterExtraction:
         expectedParameters:
@@ -76,10 +80,14 @@ turns:
       toolSelection:
         expectedTool: "WorkItemSlaTool"
         expectedCapability: "CheckSlaViolations"
+        allowedAliases:
+          - "CheckViolations"
+          - "CheckSLA"
+          - "GetViolations"
 
       parameterExtraction:
         expectedParameters:
-          teamsUserId: "testuser@microsoft.com"
+          teamsUserId: "visomasu@microsoft.com"
         requiredParameters:
           - "teamsUserId"
 

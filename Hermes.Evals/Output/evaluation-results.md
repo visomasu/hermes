@@ -1,22 +1,22 @@
 # Hermes Evaluation Report
 
-**Generated:** 2026-01-31 04:27:50 UTC
+**Generated:** 2026-01-31 05:45:06 UTC
 
 ## Executive Summary
 
-**Status:** ✅ **PASSING**
+**Status:** ❌ **FAILING**
 
-- **Scenarios Passed:** 2/2 (100.0%)
-- **Overall Score:** 1.000
+- **Scenarios Passed:** 0/1 (0.0%)
+- **Overall Score:** 0.900
 - **Total Turns Executed:** 3
-- **Average Execution Time:** 25638ms per turn
+- **Average Execution Time:** 18008ms per turn
 
 ## Evaluation Metrics
 
 | Dimension | Score | Grade | Target |
 |-----------|-------|-------|--------|
 | Tool Selection | 1.000 | Excellent ✅ | 0.95 |
-| Parameter Extraction | 1.000 | Excellent ✅ | 0.98 |
+| Parameter Extraction | 0.667 | Poor ⚠️ | 0.98 |
 | Context Retention | 1.000 | Excellent ✅ | 0.80 |
 | Response Quality | 1.000 | Excellent ✅ | 0.75 |
 
@@ -24,48 +24,39 @@
 
 | Metric | Value | Target |
 |--------|-------|--------|
-| Average Execution Time | 25638ms | <1500ms |
-| P95 Execution Time | 36940ms | <2500ms |
-| P99 Execution Time | 36940ms | <3000ms |
+| Average Execution Time | 18008ms | <1500ms |
+| P95 Execution Time | 28190ms | <2500ms |
+| P99 Execution Time | 28190ms | <3000ms |
 
 ## Detailed Scenario Results
 
-### ✅ Newsletter Generation with Follow-up Hierarchy Validation
+### ❌ SLA Violation Checks
 
-- **Status:** PASSED
-- **Overall Score:** 1.000
+- **Status:** FAILED
+- **Overall Score:** 0.900
 - **Execution Mode:** RestApi
-- **Data Mode:** Mock
-- **Execution Time:** 52722ms
-- **Turns:** 2 (2 passed, 0 failed)
+- **Data Mode:** Real
+- **Execution Time:** 54026ms
+- **Turns:** 3 (2 passed, 1 failed)
 
 **Dimension Scores:**
 
 - Tool Selection: 1.000
-- Parameter Extraction: 1.000
+- Parameter Extraction: 0.667
 - Context Retention: 1.000
 - Response Quality: 1.000
 
-### ✅ Simple Tool Selection Test
+**Failed Turns:**
 
-- **Status:** PASSED
-- **Overall Score:** 1.000
-- **Execution Mode:** RestApi
-- **Data Mode:** Mock
-- **Execution Time:** 24193ms
-- **Turns:** 1 (1 passed, 0 failed)
-
-**Dimension Scores:**
-
-- Tool Selection: 1.000
-- Parameter Extraction: 1.000
-- Context Retention: 1.000
-- Response Quality: 1.000
+- **Turn 2:** Score 0.700
+  - ❌ ParameterExtraction_Parameter_teamsUserId: Expected: "user@microsoft.com", Actual: "visomasu@microsoft.com"
 
 
 ## Recommendations
 
+- 🔧 **Parameter Extraction:** Improve parameter extraction prompts or add more examples to capability instructions.
 - ⚡ **Performance:** Average execution time exceeds target. Consider optimization or caching strategies.
+- ⚠️ **Overall Success Rate:** Less than 80% of scenarios passing. Investigate failed scenarios for systemic issues.
 
 ---
 

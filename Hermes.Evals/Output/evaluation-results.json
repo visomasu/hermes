@@ -1,31 +1,31 @@
 {
   "summary": {
-    "totalScenarios": 2,
-    "passedScenarios": 2,
-    "failedScenarios": 0,
+    "totalScenarios": 1,
+    "passedScenarios": 0,
+    "failedScenarios": 1,
     "totalTurns": 3,
-    "successRate": 1,
-    "overallScore": 1
+    "successRate": 0,
+    "overallScore": 0.9
   },
   "metrics": {
     "toolSelectionAccuracy": 1,
-    "parameterExtractionAccuracy": 1,
+    "parameterExtractionAccuracy": 0.6666666666666666,
     "contextRetentionScore": 1,
     "responseQualityScore": 1
   },
   "performance": {
-    "averageExecutionTimeMs": 25638,
-    "p95ExecutionTimeMs": 36940,
-    "p99ExecutionTimeMs": 36940
+    "averageExecutionTimeMs": 18008.333333333332,
+    "p95ExecutionTimeMs": 28190,
+    "p99ExecutionTimeMs": 28190
   },
   "scenarioResults": [
     {
-      "scenarioName": "Newsletter Generation with Follow-up Hierarchy Validation",
-      "passed": true,
-      "overallScore": 1,
+      "scenarioName": "SLA Violation Checks",
+      "passed": false,
+      "overallScore": 0.9,
       "executionMode": 0,
-      "dataMode": 0,
-      "executionTimeMs": 52722,
+      "dataMode": 1,
+      "executionTimeMs": 54026,
       "startTime": "0001-01-01T00:00:00+00:00",
       "endTime": "0001-01-01T00:00:00+00:00",
       "duration": "00:00:00",
@@ -44,115 +44,80 @@
           "checks": {
             "ToolSelection_CorrectToolSelected": {
               "passed": true,
-              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+              "details": "Expected: WorkItemSlaTool, Actual: WorkItemSlaTool"
             },
             "ToolSelection_CorrectCapabilitySelected": {
               "passed": true,
-              "details": "Expected: GenerateNewsletter or aliases [GetWorkItemTree, GetTree, WorkItemTree], Actual: GetWorkItemTree"
+              "details": "Expected: CheckSlaViolations or aliases [CheckSLA, GetSlaViolations, ShowSlaViolations], Actual: CheckSlaViolations"
             },
-            "ParameterExtraction_Parameter_workItemId": {
+            "ParameterExtraction_Parameter_teamsUserId": {
               "passed": true,
-              "details": "Correct: 5753933"
+              "details": "Correct: \u0022visomasu@microsoft.com\u0022"
             },
             "ContextRetention_ContextStored": {
               "passed": true,
-              "details": "Stored 2 context item(s): lastFeatureId, lastOperation"
+              "details": "Stored 1 context item(s): lastSlaCheck"
             },
-            "ResponseQuality_Contains_5753933": {
+            "ResponseQuality_Contains_SLA": {
               "passed": true,
               "details": "Present"
             },
             "ResponseQuality_MinimumLength": {
               "passed": true,
-              "details": "Length: 5796, Required: 100"
-            },
-            "ResponseQuality_Section_Progress": {
-              "passed": true,
-              "details": "Present"
+              "details": "Length: 2393, Required: 50"
             }
           },
           "error": null,
-          "executionTimeMs": 36940,
+          "executionTimeMs": 17789,
           "capturedMetadata": {
-            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, SLA violation tracking, and discovering user PR activity.\n\n# [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant (Feature #5753933)\n\n## Overview\nProject Hermes automates creation of status updates and newsletters using Azure DevOps data and integrates with Microsoft Teams for ad-hoc queries and notifications. The feature (#5753933) is Active and has progressed through core engineering and LLM/tool integration; current focus is integration of notifications and SLA-driven workflows ahead of previews and GA.\n\n---\n\n## Execution Timelines \u0026 Milestones\n\n| Milestone | Target Date | Status |\n|-----------|-------------|--------|\n| Project start | 2025-10-01 | \u2713 Started (Start date set on feature #5753933) |\n| Private Preview (target) | 2026-01-15 | \u27F3 In Progress \u2014 target passed; verification needed (see assumption) |\n| Public Preview (target) | 2026-02-15 | \u25EF Upcoming |\n| GA (target) | 2026-03-15 | \u25EF Upcoming |\n| Notifications / SLA capability (story #6028024) | (no explicit milestone date) | \u27F3 In Progress (story #6028024 Active; tasks 6028027 Closed, 6028028 New) |\n\nStatus Legend:\n- \u2713 Completed \u2014 Closed/Resolved work items or explicit start date\n- \u27F3 In Progress \u2014 Active work items or targets passed but completion not explicitly tracked\n- \u25EF Upcoming \u2014 Future targets\n- \u2717 Blocked \u2014 High-risk items (none explicit)\n\nSources: Feature #5753933 (start/target dates, preview/GA fields), Story #6028024 and tasks #6028027, #6028028.\n\n---\n\n## Outcomes Since Last Newsletter\nTop 3 recent, business-impacting deliveries (traceable):\n\n\u2022 **Agent orchestration host implemented (#5754128)** \u2014 Orchestration layer and tool registration completed, enabling Hermes to execute LLM \u002B tool flows and drive downstream features (#5898189, #5898188, #5898186).\n\n\u2022 **LLM summarization / newsletter capability delivered (#5754135)** \u2014 Hermes can summarize a single level of a work item tree into the newsletter template and integrate work-item retrieval as a tool (#5969638, #5898208, #5898210).\n\n\u2022 **Teams integration via M365 Agent SDK completed (#5969635)** \u2014 Hermes can send/receive messages in Teams, enabling user-facing interactions and notifications (#5969636, #5969637).\n\n(References: #5754128, #5754135, #5969635)\n\n---\n\n## Current Milestone Progress\n\nCurrent Focus: Implement and validate scheduled notifications and SLA-driven sign-ups so Hermes can proactively notify users of work-item update SLA violations (User Story #6028024).\n\nProgress: 77% complete across child stories of the feature \u2014 10 of 13 child user stories are Closed; 1 Active; 1 New; 1 Removed. Calculation: Completed = 10 closed / 13 total child stories = 76.9% (~77%). Evidence: child stories list under feature #5753933 (examples: #5754128 Closed, #5754134 Closed, #5754135 Closed, #6028024 Active, #6034604 New, #5754125 Removed).\n\nNext steps:\n- Complete task #6028028 (Implement sign-up capability for SLA notifications) \u2014 currently New.\n- End-to-end validation of notification plumbing into Teams and sign-up workflows.\n- Confirm Private Preview outcomes (evidence/acceptance) and prepare Public Preview plan for Feb 15 and GA for Mar 15 (#5753933).\n\nSources: child work items under feature #5753933 (see IDs above).\n\n---\n\n## Risks \u0026 Mitigation Plan\n\n| Risk | Impact | Mitigation |\n|------|--------|------------|\n| Lack of explicit preview completion tracking | Medium \u2014 target dates (Private/Public) may be missed without acceptance artifacts | Capture acceptance checklists for Private Preview and Public Preview and update work items to Closed when validated (action: product owner to add acceptance comments on #5753933) |\n| Scope creep from multi-project support (#6034604 is New) | Medium \u2014 additional integration points could delay previews | Treat multi-project support as a follow-up capability if blocking; prioritize core SLA/notifications for current previews; create separate sprint for #6034604 |\n| Removed chat interface stories (e.g., #5754125 Removed) \u2014 possible scope reprioritization | Low/Medium \u2014 may reflect de-scoped UX work that could impact demos | Confirm scope decision and update roadmap; if UX still required, replan as follow-up increment |\n\nNote: Root feature risk assessment explicitly marked \u0022Risk level is low\u0022 in the feature (#5753933). No High risks flagged in child items metadata.\n\nSources: Feature #5753933 (Custom.RiskAssessmentComment), work items #6034604, #5754125.\n\n---\n\nAssumptions \u0026 Data Gaps\n- Assumption: Private Preview target (2026-01-15) is an intended milestone; there is no explicit \u0022preview completed\u0022 work item or acceptance record in the retrieved tree \u2014 verification required. (Feature #5753933)\n- Some child items are in state Removed (e.g., #5754125) \u2014 I treat these as de-scoped artifacts unless product clarifies otherwise.\n- Not all milestones are modelled as dedicated work items; milestone completion was inferred from child work-item states and feature-level date fields. If you track previews via release work items or tags, provide those IDs for precise status.\n- Dates are taken from Azure DevOps fields on the feature and child items; inconsistent or missing target/finish dates on some tasks may affect schedule calculations (example: some tasks have target dates earlier than start dates).\n\nIf you\u0027d like, I can:\n- Produce a one-slide summary for leadership with the milestones, completion %, key blockers, and next decisions.\n- Validate whether Private Preview was actually executed (search for release notes, acceptance test items, or tags) \u2014 provide additional work item or area-path scope if available.\n\n(Primary source: Azure DevOps work-item tree retrieved for Feature #5753933 and its children \u2014 see referenced IDs above.)",
+            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, SLA violation tracking, and discovering user PR activity.\n\nSummary\n- Source: WorkItem SLA check for visomasu@microsoft.com (tool result). Key findings: 264 SLA violations across your team; you are a manager with 11 direct reports. (Tool: CheckSlaViolations)\n- Immediate risk: multiple long-open bugs/tasks that have exceeded SLA by months (some \u003E400 days). These are actionable escalations that need triage now.\n\nTop urgent violations (samples)\n| Work Item | Type | Days since update | SLA threshold | Link |\n|-----------|------|-------------------:|---------------:|------|\n| 4528211 | Bug | 400 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4528211 |\n| 4439974 | Bug | 428 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4439974 |\n| 4390140 | Bug | 438 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4390140 |\n| 4400845 | Task | 480 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4400845 |\n| 4400787 | Task | 480 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4400787 |\n| 2877867 | Task | 1,262 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/2877867 |\n\nRecommended next steps\n1. Triage workshop (30\u201345 min): review the items above and assign owners or close-as-obsolete. Start with Bugs #4528211, #4439974, #4390140 due to low SLA thresholds and long staleness.\n2. Quick wins: identify and close stale tasks (e.g., #2877867) or convert to backlog items with updated owner/dates.\n3. Prevent recurrence: enable automated SLA notifications for the owning teams (I can register you\u2014see capability: \u0022Register for SLA notifications\u0022).\n\nAssumptions \u0026 data gaps\n- The SLA report includes DaysSinceUpdate and SLA thresholds but does not include severity, current assignee, or business impact fields \u2014 I inferred urgency from DaysSinceUpdate vs threshold.\n- This is an aggregated team-level export; if you want a per-direct-report breakdown or a paginated full list, I can produce that on request.\n\nDo you want:\n- A full paginated export of your 264 violations, or\n- I register you for daily SLA notifications, or\n- I create a prioritized triage list of top 20 items with owners and suggested actions?\n\n(Examples cited above: work items #4528211, #4439974, #4390140 \u2014 source: SLA check tool output.)",
             "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
-            "sessionId": "b27f960b-b94e-495a-ae55-80616210cd43"
+            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
           }
         },
         {
           "turnNumber": 2,
           "evaluatorName": "Aggregated",
-          "success": true,
-          "overallScore": 1,
+          "success": false,
+          "overallScore": 0.7000000000000001,
           "scores": {
             "toolSelection": 1,
-            "parameterExtraction": 1,
+            "parameterExtraction": 0,
             "contextRetention": 1,
             "responseQuality": 1
           },
           "checks": {
             "ToolSelection_CorrectToolSelected": {
               "passed": true,
-              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+              "details": "Expected: WorkItemSlaTool, Actual: WorkItemSlaTool"
             },
             "ToolSelection_CorrectCapabilitySelected": {
               "passed": true,
-              "details": "Expected: GetParentHierarchy or aliases [GetFullHierarchy], Actual: GetParentHierarchy"
+              "details": "Expected: CheckSlaViolations or aliases [CheckViolations, CheckSLA, GetViolations], Actual: CheckSlaViolations"
             },
-            "ContextRetention_ContextUsed_lastFeatureId": {
-              "passed": true,
-              "details": "Context \u0027lastFeatureId\u0027=\u00225753933\u0022 correctly used in parameter \u0027workItemId\u0027"
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": false,
+              "details": "Expected: \u0022user@microsoft.com\u0022, Actual: \u0022visomasu@microsoft.com\u0022"
             },
-            "ResponseQuality_Contains_5753933": {
+            "ResponseQuality_Contains_SLA": {
               "passed": true,
               "details": "Present"
             },
-            "ResponseQuality_DoesNotContain_which_feature": {
-              "passed": true,
-              "details": "Correctly absent"
-            },
-            "ResponseQuality_DoesNotContain_provide": {
-              "passed": true,
-              "details": "Correctly absent"
-            },
             "ResponseQuality_MinimumLength": {
               "passed": true,
-              "details": "Length: 221, Required: 50"
+              "details": "Length: 870, Required: 50"
             }
           },
           "error": null,
-          "executionTimeMs": 15781,
+          "executionTimeMs": 8046,
           "capturedMetadata": {
-            "responseText": "| Feature ID | Title | Hierarchy Valid | Validation Results |\n|------------|-------|-----------------|---------------------|\n| 5753933 | [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant | Yes | None |",
+            "responseText": "I can run an SLA check \u2014 but tool access is limited to the current signed-in user for this session. The system is configured to use visomasu@microsoft.com as the Teams user ID for SLA tool calls, so I cannot directly run a check for user@microsoft.com from here.\n\nOptions:\n1. Run the SLA check now for the current user (visomasu@microsoft.com). Reply \u0022Run for me\u0022 and I\u0027ll fetch the violations.  \n2. If you need a check for user@microsoft.com, either:\n   - Ask that user to request the check while signed in, or\n   - Confirm you have authorization and provide the target user\u0027s Teams user ID and any required consent, and I will attempt the lookup (may be blocked by permissions).\n\nAssumptions \u0026 data gap:\n- Assumes tool policy requires the session user (visomasu@microsoft.com); I cannot impersonate or query other users without their session or explicit authorization.",
             "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
-            "sessionId": "b27f960b-b94e-495a-ae55-80616210cd43"
+            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
           }
-        }
-      ],
-      "metrics": {
-        "toolSelectionAccuracy": 1,
-        "parameterExtractionAccuracy": 1,
-        "contextRetentionScore": 1,
-        "responseQualityScore": 1,
-        "averageExecutionTimeMs": 26360.5,
-        "totalTurns": 2,
-        "passedTurns": 2,
-        "failedTurns": 0
-      }
-    },
-    {
-      "scenarioName": "Simple Tool Selection Test",
-      "passed": true,
-      "overallScore": 1,
-      "executionMode": 0,
-      "dataMode": 0,
-      "executionTimeMs": 24193,
-      "startTime": "0001-01-01T00:00:00+00:00",
-      "endTime": "0001-01-01T00:00:00+00:00",
-      "duration": "00:00:00",
-      "turnResults": [
+        },
         {
-          "turnNumber": 1,
+          "turnNumber": 3,
           "evaluatorName": "Aggregated",
           "success": true,
           "overallScore": 1,
@@ -165,43 +130,43 @@
           "checks": {
             "ToolSelection_CorrectToolSelected": {
               "passed": true,
-              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+              "details": "Expected: WorkItemSlaTool, Actual: WorkItemSlaTool"
             },
             "ToolSelection_CorrectCapabilitySelected": {
               "passed": true,
-              "details": "Expected: GenerateNewsletter or aliases [GetWorkItemTree, WorkItemTree], Actual: GetWorkItemTree"
+              "details": "Expected: CheckSlaViolations or aliases [CheckViolations, CheckSLA, GetViolations], Actual: CheckSlaViolations"
             },
-            "ParameterExtraction_Parameter_workItemId": {
+            "ParameterExtraction_Parameter_teamsUserId": {
               "passed": true,
-              "details": "Correct: 123456"
+              "details": "Correct: \u0022visomasu@microsoft.com\u0022"
             },
-            "ResponseQuality_Contains_123456": {
+            "ResponseQuality_Contains_SLA": {
               "passed": true,
               "details": "Present"
             },
             "ResponseQuality_MinimumLength": {
               "passed": true,
-              "details": "Length: 3997, Required: 50"
+              "details": "Length: 3705, Required: 30"
             }
           },
           "error": null,
-          "executionTimeMs": 24193,
+          "executionTimeMs": 28190,
           "capturedMetadata": {
-            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, SLA violation tracking, and discovering user PR activity.\n\n# [CRM Core] HP Driver Update Initiative Newsletter\n\n## Overview\nThis work item (User Story #123456) is titled \u0022[CRM Core] HP Driver Update\u0022 and is recorded as Closed in Azure DevOps (System.State = Closed). The record contains start (2016-08-31) and target (2016-09-19) dates but no description or acceptance criteria. Based on the title, the objective appears to be delivering an HP driver update within CRM Core to restore or improve device compatibility; this is an inferred business objective and should be validated with the product owner (#118973 is listed as the parent).  \n\n---\n\n## Execution Timelines \u0026 Milestones\n\n| Milestone | Target Date | Status |\n|-----------|-------------|--------|\n| HP Driver Update (User Story #123456) | 2016-09-19 | \u2713 Completed (Closed) |\n\nStatus Legend:\n- \u2713 Completed (Closed/Resolved work items)\n- \u27F3 In Progress (Active work items)\n- \u25EF Upcoming (New work items)\n- \u2717 Blocked (work items flagged High risk)\n\n---\n\n## Outcomes Since Last Newsletter\n\u2022 **Delivered HP driver update to CRM Core (Work Item #123456):** Item is Closed \u2014 indicates the change was completed and delivered to the tracked branch/commit history. Confirmed links include associated commits and branch artifacts (see Dev links on the work item).  \n\u2022 **Test artifacts referenced:** Several test cases/shared steps reference this story (e.g., #635434, #553794, #545486, #602701) \u2014 these indicate testing activity tied to the delivery.  \n\nNote: Business impact (e.g., reduced incidents, user adoption) is not recorded in the work item and should be confirmed with product analytics or support metrics.\n\n---\n\n## Current Milestone Progress\n\n**Current Focus:** No active development \u2014 the primary user story (#123456) is Closed. Recommend focusing on validation (post-deployment monitoring and stakeholder acceptance).  \n\n**Progress:** 100% complete for the tracked user story (1 of 1 items closed).  \n**Next Steps:** \n- Validate production telemetry and support tickets to confirm the expected impact.  \n- Close or reconcile any remaining test cases referenced (#635434, #553794, #545486, #602701).  \n- Confirm parent feature/epic acceptance and release notes with owner of #118973.\n\n---\n\n## Risks \u0026 Mitigation Plan\nNo explicit Medium/High risk flags were present on the work item record for #123456.\n\n- Current status: No significant risks identified at this time. Monitoring continues.\n- Suggested mitigations (proactive):\n  - Monitor support and telemetry for regressions for 2-4 weeks post-deployment.\n  - Ensure release notes and known-issues are communicated to support and customer success.\n  - Validate that dependent areas referenced by \u0022Affects\u0022 links (e.g., #782228, #754754, #782208) report no regressions.\n\n---\n\nAssumptions \u0026 Data Gaps\n- The supplied ID (123456) is a User Story, not a Feature \u2014 user requested a \u0022feature\u0022 but the item type is System.WorkItemType = User Story. Parent is listed as #118973 (please confirm if that is the intended feature/epic).  \n- Missing fields: work item description, acceptance criteria, owner, actual/completion date, release/release train, and business outcome metrics. These gaps limit confirmation of customer impact and deployment scope.  \n- Related artifacts and test case IDs were inferred from the work item relations returned by Azure DevOps (relations include parent #118973 and test/shared-step references #635434, #553794, #545486, #602701; affects links include #782228, #754754, #782208).\n\nSources: Azure DevOps work item #123456 (relations: parent #118973; test refs #635434, #553794, #545486, #602701; affects #782228, #754754, #782208).  \n\nIf you want a newsletter scoped to the parent feature/epic (#118973) or a full hierarchy (depth \u003E3) so we can report across all child features/stories, tell me which work item ID to use and I will retrieve and summarize it.",
+            "responseText": "Summary (quick)\n- SLA check found 264 violations across your team; you are listed as a manager with 11 direct reports. Source: SLA run for visomasu@microsoft.com.\n- Immediate observation: you have many long-overdue items \u2014 several tasks and features exceed SLA by hundreds of days. Top overdue items are shown below.\n\nTop overdue items (highest DaysSinceUpdate)\n| Work Item | Title (short) | Type | Days since update | SLA threshold | Overdue by | Link |\n|-----------:|---------------|------|------------------:|--------------:|-----------:|------|\n| 2877867 | Make the onebranch builds as required for telephony service | Task | 1262 | 5 | 1257 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/2877867 |\n| 3014575 | [CommonInfra Nuget Update][SecurityCompliance] Uptake latest common Infra nuget | Task | 1103 | 5 | 1098 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3014575 |\n| 3127199 | [Doc][Voice] Teams residency DFD - Transfer and consult doc update | Task | 1044 | 5 | 1039 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3127199 |\n| 3367044 | Evaluate if the AddParticipantsWorkflowV2 if required in case of Warm Transfer complete | Task | 1001 | 5 | 996 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3367044 |\n| 3516801 | [OCMon Dashboard] V29 Initialize call for voice channel | Task | 916 | 5 | 911 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3516801 |\n| 3516798 | [OCMon Dashboard] V09 Agent can place an outbound call to a customer | Task | 856 | 5 | 851 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3516798 |\n\nUrgent production/quality risks to review\n- Bug 4528211 \u2014 \u0022Agent Monitor seeing 99.46% reliability...\u0022 (Bug, DaysSinceUpdate 400, SLA 2). High-risk operational impact; recommend urgent triage (see #4528211).\n- Bugs and production-impact items appear in the list (e.g., #4439974, #4390140). These should be prioritized above long-running documentation/tasks if they affect customers.\n\nRecommended immediate actions\n1. Triage meeting: run a 30\u201360 minute triage for the top 10 overdue items (start with the oldest production-impact bugs). Suggested owners: current assignees or rotate to on-call SRE/product leads.\n2. Quick fixes: for items that are stale but low effort (documentation, small tasks) \u2014 close or reassign within 48 hours to reduce noise.\n3. Escalation: escalate critical bugs (e.g., #4528211, #4439974, #4390140) to product/SRE with target remediation dates.\n4. Hygiene: set or confirm ownership and update the work item comment/status to reset SLA tracking where appropriate.\n5. Automation: I can register you for daily SLA notifications or create a curated filter/dashboard showing only items overdue \u003E30 days or production bugs \u2014 tell me which and I\u2019ll set it up.\n\nAssumptions \u0026 data gaps\n- Data source: WorkItem SLA check for visomasu@microsoft.com (tool output). I used DaysSinceUpdate and SlaThresholdDays to rank urgency. Example IDs: #2877867, #3014575, #3127199, #3367044, #3516801, #3516798, #4528211.\n- Missing from the SLA output: assigned owner, priority/business impact, and current iteration \u2014 I inferred urgency solely from SLA breach duration.\n- Some long-standing items may be intentionally inactive (backlog/epics kept open). Recommend confirming business priority before reprioritizing or closing.\n\nNext step options (pick one)\n- I can create a prioritized list of the top 25 items with current assignees and suggested owners for a triage session.  \n- I can register you for daily SLA violation emails for your team (automated).  \n- I can generate a short escalation note for the top production-impact bugs to send to the SRE/product leads.\n\nWhich would you like me to do?",
             "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
-            "sessionId": "3524e6a5-c8ed-4f54-9369-7d22c74ad312"
+            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
           }
         }
       ],
       "metrics": {
         "toolSelectionAccuracy": 1,
-        "parameterExtractionAccuracy": 1,
+        "parameterExtractionAccuracy": 0.6666666666666666,
         "contextRetentionScore": 1,
         "responseQualityScore": 1,
-        "averageExecutionTimeMs": 24193,
-        "totalTurns": 1,
-        "passedTurns": 1,
-        "failedTurns": 0
+        "averageExecutionTimeMs": 18008.333333333332,
+        "totalTurns": 3,
+        "passedTurns": 2,
+        "failedTurns": 1
       }
     }
   ]

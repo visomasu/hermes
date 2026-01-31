@@ -21,6 +21,18 @@ class Program
         Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
         Console.WriteLine();
 
+        // Parse CLI arguments
+        string? scenarioFilter = null;
+        if (args.Length > 0)
+        {
+            if (args[0] == "--help" || args[0] == "-h")
+            {
+                ShowHelp();
+                return 0;
+            }
+            scenarioFilter = args[0];
+        }
+
         // Setup DI
         var services = new ServiceCollection();
         ConfigureServices(services);
@@ -33,8 +45,15 @@ class Program
 
             Console.WriteLine("Loading scenarios from Scenarios/Definitions/...");
             var scenariosPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Scenarios", "Definitions");
-            var scenarioFiles = Directory.GetFiles(scenariosPath, "*.yml");
 
+            // Apply filter if specified
+            var searchPattern = scenarioFilter != null ? $"*{scenarioFilter}*.yml" : "*.yml";
+            var scenarioFiles = Directory.GetFiles(scenariosPath, searchPattern);
+
+            if (scenarioFilter != null)
+            {
+                Console.WriteLine($"Filter: '{scenarioFilter}'");
+            }
             Console.WriteLine($"Found {scenarioFiles.Length} scenario file(s)");
             Console.WriteLine();
 
@@ -173,5 +192,36 @@ class Program
         services.AddSingleton<ConsoleReporter>();
         services.AddSingleton<JsonMetricsReporter>();
         services.AddSingleton<MarkdownReporter>();
+    }
+
+    private static void ShowHelp()
+    {
+        Console.WriteLine("Usage: dotnet run [scenario-filter]");
+        Console.WriteLine();
+        Console.WriteLine("Arguments:");
+        Console.WriteLine("  scenario-filter    Optional filter to run specific scenarios (pattern match)");
+        Console.WriteLine();
+        Console.WriteLine("Options:");
+        Console.WriteLine("  -h, --help        Show this help message");
+        Console.WriteLine();
+        Console.WriteLine("Examples:");
+        Console.WriteLine("  dotnet run                      # Run all scenarios");
+        Console.WriteLine("  dotnet run sla                  # Run scenarios matching '*sla*.yml'");
+        Console.WriteLine("  dotnet run newsletter           # Run scenarios matching '*newsletter*.yml'");
+        Console.WriteLine("  dotnet run error-handling       # Run specific scenario");
+        Console.WriteLine();
+        Console.WriteLine("Available scenarios:");
+        var scenariosPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Scenarios", "Definitions");
+        if (Directory.Exists(scenariosPath))
+        {
+            var files = Directory.GetFiles(scenariosPath, "*.yml")
+                .Select(f => Path.GetFileNameWithoutExtension(f))
+                .OrderBy(f => f);
+            foreach (var file in files)
+            {
+                Console.WriteLine($"  - {file}");
+            }
+        }
+        Console.WriteLine();
     }
 }
