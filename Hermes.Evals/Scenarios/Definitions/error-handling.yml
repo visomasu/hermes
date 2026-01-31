@@ -1,0 +1,79 @@
+# Error Handling
+# Tests how Hermes handles invalid inputs and error conditions
+
+name: "Error Handling and Edge Cases"
+description: "Tests graceful error handling for invalid work item IDs and missing parameters"
+executionMode: "RestApi"
+dataMode: "Real"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+
+# Scoring weights
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Invalid work item ID (should handle gracefully)
+  - turnNumber: 1
+    input: "generate a newsletter for feature 99999999"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetWorkItemTree"
+        allowedAliases:
+          - "GenerateNewsletter"
+
+      parameterExtraction:
+        expectedParameters:
+          workItemId: 99999999
+        requiredParameters:
+          - "workItemId"
+
+      responseQuality:
+        mustContain:
+          - "99999999"
+        mustNotContain:
+          - "Exception"
+          - "null reference"
+        minLength: 30
+
+  # Turn 2: Ambiguous request (should ask for clarification)
+  - turnNumber: 2
+    input: "validate the hierarchy"
+    expectations:
+      responseQuality:
+        mustContain:
+          - "?"
+        mustNotContain:
+          - "Exception"
+        minLength: 20
+
+  # Turn 3: Provide the missing information
+  - turnNumber: 3
+    input: "work item 5753933"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetParentHierarchy"
+        allowedAliases:
+          - "GetFullHierarchy"
+
+      parameterExtraction:
+        expectedParameters:
+          workItemId: 5753933
+        requiredParameters:
+          - "workItemId"
+
+      responseQuality:
+        mustContain:
+          - "5753933"
+        minLength: 50

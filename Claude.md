@@ -118,6 +118,26 @@ Hermes.Tests/                  # xUnit + Moq tests
 - **Private methods:** Prefix with underscore: `_ValidateEntity()`, `_BuildWorkItemTreeAsync()`
 - **Async methods:** Suffix with `Async`: `CreateAsync()`, `ReadAsync()`
 
+### Constructors
+
+- **ILogger parameter:** Always place `ILogger<T>` as the **FIRST** parameter in constructor parameter lists
+  - ✅ `public MyClass(ILogger<MyClass> logger, IDependency dependency, string config)`
+  - ❌ `public MyClass(IDependency dependency, string config, ILogger<MyClass> logger)`
+- **Rationale:** Consistent ordering improves code readability and follows the principle of "infrastructure dependencies first"
+- **Examples:**
+  ```csharp
+  public HermesOrchestrator(
+      ILogger<HermesOrchestrator> logger,  // ← Logger first
+      string endpoint,
+      string apiKey,
+      IEnumerable<IAgentTool> agentTools,
+      IHermesInstructionsRepository instructionsRepository)
+  {
+      _logger = logger;
+      // ...
+  }
+  ```
+
 ### Namespaces
 
 - `Hermes.{Layer}.{Component}` (e.g., `Hermes.Storage.Repositories.ConversationHistory`)

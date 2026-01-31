@@ -8,6 +8,7 @@ using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using OpenAI;
 using System.Security.Cryptography;
 using System.Text;
@@ -29,6 +30,7 @@ namespace Hermes.Orchestrator
         private readonly IAgentPromptComposer _agentPromptComposer;
         private readonly IWaitingPhraseGenerator _phraseGenerator;
         private readonly IConversationContextSelector _contextSelector;
+        private readonly ILogger<HermesOrchestrator> _logger;
 
         private readonly List<AITool> _tools = new();
         private readonly Dictionary<string, AIAgent> _agentCache = new();
@@ -47,10 +49,12 @@ namespace Hermes.Orchestrator
         /// <param name="agentTools">An optional list of agent tools to register with the agent.</param>
         /// <param name="instructionsRepository">Repository for fetching agent instructions.</param>
         /// <param name="conversationHistoryRepository">Repository for persisting conversation history across turns.</param>
+        /// <param name="logger">Logger instance.</param>
         /// <param name="agentPromptComposer">Component responsible for composing agent prompts from instruction files.</param>
         /// <param name="phraseGenerator">Generator for creating fun waiting phrases.</param>
         /// <param name="contextSelector">Selector for choosing relevant conversation context based on semantic similarity.</param>
         public HermesOrchestrator(
+            ILogger<HermesOrchestrator> logger,
             string endpoint,
             string apiKey,
             IEnumerable<IAgentTool> agentTools,
@@ -65,6 +69,7 @@ namespace Hermes.Orchestrator
             _agentPromptComposer = agentPromptComposer;
             _phraseGenerator = phraseGenerator;
             _contextSelector = contextSelector;
+            _logger = logger;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -76,6 +81,7 @@ namespace Hermes.Orchestrator
         /// This bypasses the internal AzureOpenAIClient creation logic and uses the provided agent instance.
         /// </summary>
         public HermesOrchestrator(
+            ILogger<HermesOrchestrator> logger,
             AIAgent agent,
             string endpoint,
             string apiKey,
@@ -91,6 +97,7 @@ namespace Hermes.Orchestrator
             _agentPromptComposer = agentPromptComposer;
             _phraseGenerator = phraseGenerator;
             _contextSelector = contextSelector;
+            _logger = logger;
             _endpoint = endpoint;
             _apiKey = apiKey;
 
@@ -180,7 +187,26 @@ namespace Hermes.Orchestrator
                         var progressMessage = _GetToolProgressMessage(tool.Name, operation);
                         _currentProgressCallback?.Invoke(progressMessage);
 
-                        return await tool.ExecuteAsync(operation, input).ConfigureAwait(false);
+                        // Truncate input for logging if too long
+                        var truncatedInput = input != null && input.Length > 500
+                            ? input[..500] + "..."
+                            : input ?? "";
+
+                        // Log tool invocation with structured data including input
+                        _logger.LogInformation(
+                            "[ToolInvocation] Tool={ToolName} Operation={Operation} Input={Input}",
+                            tool.Name,
+                            operation,
+                            truncatedInput);
+
+                        var result = await tool.ExecuteAsync(operation, input).ConfigureAwait(false);
+
+                        _logger.LogInformation(
+                            "[ToolResult] Tool={ToolName} Operation={Operation} Success=true",
+                            tool.Name,
+                            operation);
+
+                        return result;
                     }),
                     options: options);
 
@@ -231,6 +257,12 @@ namespace Hermes.Orchestrator
                 userId = parts[0];
                 actualSessionId = parts[1];
             }
+
+            _logger.LogInformation(
+                "[OrchestrationStart] SessionId={SessionId} UserId={UserId} QueryLength={QueryLength}",
+                actualSessionId,
+                userId ?? "none",
+                query?.Length ?? 0);
 
             var agent = await GetAgentAsync().ConfigureAwait(false);
 

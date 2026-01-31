@@ -20,6 +20,9 @@ namespace Integrations.AzureDevOps
 		private readonly string _project;
 		private readonly VssConnection _connection;
 
+		// Azure DevOps API limit for GetWorkItems batch request
+		private const int MaxWorkItemsBatchSize = 200;
+
 		// Mandatory fields: Id, Title, Description, Relations
 		private static readonly IEnumerable<string> MandatoryFields = new[]
 		{
@@ -424,9 +427,17 @@ namespace Integrations.AzureDevOps
 				}
 
 				var ids = queryResult.WorkItems.Select(w => w.Id).ToList();
-				var workItems = await client.GetWorkItemsAsync(ids, expand: WorkItemExpand.All);
 
-				var filteredResults = workItems.Select(workItem => new
+				// Batch work item IDs into chunks of MaxWorkItemsBatchSize to avoid Azure DevOps API limit
+				var allWorkItems = new List<WorkItem>();
+				for (int i = 0; i < ids.Count; i += MaxWorkItemsBatchSize)
+				{
+					var batchIds = ids.Skip(i).Take(MaxWorkItemsBatchSize).ToList();
+					var batchWorkItems = await client.GetWorkItemsAsync(batchIds, expand: WorkItemExpand.All);
+					allWorkItems.AddRange(batchWorkItems);
+				}
+
+				var filteredResults = allWorkItems.Select(workItem => new
 				{
 					id = workItem.Id,
 					rev = workItem.Rev,

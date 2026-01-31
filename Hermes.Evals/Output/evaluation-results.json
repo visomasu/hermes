@@ -1,0 +1,173 @@
+{
+  "summary": {
+    "totalScenarios": 1,
+    "passedScenarios": 0,
+    "failedScenarios": 1,
+    "totalTurns": 3,
+    "successRate": 0,
+    "overallScore": 0.9
+  },
+  "metrics": {
+    "toolSelectionAccuracy": 1,
+    "parameterExtractionAccuracy": 0.6666666666666666,
+    "contextRetentionScore": 1,
+    "responseQualityScore": 1
+  },
+  "performance": {
+    "averageExecutionTimeMs": 18008.333333333332,
+    "p95ExecutionTimeMs": 28190,
+    "p99ExecutionTimeMs": 28190
+  },
+  "scenarioResults": [
+    {
+      "scenarioName": "SLA Violation Checks",
+      "passed": false,
+      "overallScore": 0.9,
+      "executionMode": 0,
+      "dataMode": 1,
+      "executionTimeMs": 54026,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: WorkItemSlaTool, Actual: WorkItemSlaTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: CheckSlaViolations or aliases [CheckSLA, GetSlaViolations, ShowSlaViolations], Actual: CheckSlaViolations"
+            },
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": true,
+              "details": "Correct: \u0022visomasu@microsoft.com\u0022"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 1 context item(s): lastSlaCheck"
+            },
+            "ResponseQuality_Contains_SLA": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 2393, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 17789,
+          "capturedMetadata": {
+            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, SLA violation tracking, and discovering user PR activity.\n\nSummary\n- Source: WorkItem SLA check for visomasu@microsoft.com (tool result). Key findings: 264 SLA violations across your team; you are a manager with 11 direct reports. (Tool: CheckSlaViolations)\n- Immediate risk: multiple long-open bugs/tasks that have exceeded SLA by months (some \u003E400 days). These are actionable escalations that need triage now.\n\nTop urgent violations (samples)\n| Work Item | Type | Days since update | SLA threshold | Link |\n|-----------|------|-------------------:|---------------:|------|\n| 4528211 | Bug | 400 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4528211 |\n| 4439974 | Bug | 428 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4439974 |\n| 4390140 | Bug | 438 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4390140 |\n| 4400845 | Task | 480 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4400845 |\n| 4400787 | Task | 480 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4400787 |\n| 2877867 | Task | 1,262 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/2877867 |\n\nRecommended next steps\n1. Triage workshop (30\u201345 min): review the items above and assign owners or close-as-obsolete. Start with Bugs #4528211, #4439974, #4390140 due to low SLA thresholds and long staleness.\n2. Quick wins: identify and close stale tasks (e.g., #2877867) or convert to backlog items with updated owner/dates.\n3. Prevent recurrence: enable automated SLA notifications for the owning teams (I can register you\u2014see capability: \u0022Register for SLA notifications\u0022).\n\nAssumptions \u0026 data gaps\n- The SLA report includes DaysSinceUpdate and SLA thresholds but does not include severity, current assignee, or business impact fields \u2014 I inferred urgency from DaysSinceUpdate vs threshold.\n- This is an aggregated team-level export; if you want a per-direct-report breakdown or a paginated full list, I can produce that on request.\n\nDo you want:\n- A full paginated export of your 264 violations, or\n- I register you for daily SLA notifications, or\n- I create a prioritized triage list of top 20 items with owners and suggested actions?\n\n(Examples cited above: work items #4528211, #4439974, #4390140 \u2014 source: SLA check tool output.)",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
+            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": false,
+          "overallScore": 0.7000000000000001,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 0,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: WorkItemSlaTool, Actual: WorkItemSlaTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: CheckSlaViolations or aliases [CheckViolations, CheckSLA, GetViolations], Actual: CheckSlaViolations"
+            },
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": false,
+              "details": "Expected: \u0022user@microsoft.com\u0022, Actual: \u0022visomasu@microsoft.com\u0022"
+            },
+            "ResponseQuality_Contains_SLA": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 870, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 8046,
+          "capturedMetadata": {
+            "responseText": "I can run an SLA check \u2014 but tool access is limited to the current signed-in user for this session. The system is configured to use visomasu@microsoft.com as the Teams user ID for SLA tool calls, so I cannot directly run a check for user@microsoft.com from here.\n\nOptions:\n1. Run the SLA check now for the current user (visomasu@microsoft.com). Reply \u0022Run for me\u0022 and I\u0027ll fetch the violations.  \n2. If you need a check for user@microsoft.com, either:\n   - Ask that user to request the check while signed in, or\n   - Confirm you have authorization and provide the target user\u0027s Teams user ID and any required consent, and I will attempt the lookup (may be blocked by permissions).\n\nAssumptions \u0026 data gap:\n- Assumes tool policy requires the session user (visomasu@microsoft.com); I cannot impersonate or query other users without their session or explicit authorization.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
+            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
+          }
+        },
+        {
+          "turnNumber": 3,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: WorkItemSlaTool, Actual: WorkItemSlaTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: CheckSlaViolations or aliases [CheckViolations, CheckSLA, GetViolations], Actual: CheckSlaViolations"
+            },
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": true,
+              "details": "Correct: \u0022visomasu@microsoft.com\u0022"
+            },
+            "ResponseQuality_Contains_SLA": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 3705, Required: 30"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 28190,
+          "capturedMetadata": {
+            "responseText": "Summary (quick)\n- SLA check found 264 violations across your team; you are listed as a manager with 11 direct reports. Source: SLA run for visomasu@microsoft.com.\n- Immediate observation: you have many long-overdue items \u2014 several tasks and features exceed SLA by hundreds of days. Top overdue items are shown below.\n\nTop overdue items (highest DaysSinceUpdate)\n| Work Item | Title (short) | Type | Days since update | SLA threshold | Overdue by | Link |\n|-----------:|---------------|------|------------------:|--------------:|-----------:|------|\n| 2877867 | Make the onebranch builds as required for telephony service | Task | 1262 | 5 | 1257 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/2877867 |\n| 3014575 | [CommonInfra Nuget Update][SecurityCompliance] Uptake latest common Infra nuget | Task | 1103 | 5 | 1098 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3014575 |\n| 3127199 | [Doc][Voice] Teams residency DFD - Transfer and consult doc update | Task | 1044 | 5 | 1039 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3127199 |\n| 3367044 | Evaluate if the AddParticipantsWorkflowV2 if required in case of Warm Transfer complete | Task | 1001 | 5 | 996 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3367044 |\n| 3516801 | [OCMon Dashboard] V29 Initialize call for voice channel | Task | 916 | 5 | 911 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3516801 |\n| 3516798 | [OCMon Dashboard] V09 Agent can place an outbound call to a customer | Task | 856 | 5 | 851 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3516798 |\n\nUrgent production/quality risks to review\n- Bug 4528211 \u2014 \u0022Agent Monitor seeing 99.46% reliability...\u0022 (Bug, DaysSinceUpdate 400, SLA 2). High-risk operational impact; recommend urgent triage (see #4528211).\n- Bugs and production-impact items appear in the list (e.g., #4439974, #4390140). These should be prioritized above long-running documentation/tasks if they affect customers.\n\nRecommended immediate actions\n1. Triage meeting: run a 30\u201360 minute triage for the top 10 overdue items (start with the oldest production-impact bugs). Suggested owners: current assignees or rotate to on-call SRE/product leads.\n2. Quick fixes: for items that are stale but low effort (documentation, small tasks) \u2014 close or reassign within 48 hours to reduce noise.\n3. Escalation: escalate critical bugs (e.g., #4528211, #4439974, #4390140) to product/SRE with target remediation dates.\n4. Hygiene: set or confirm ownership and update the work item comment/status to reset SLA tracking where appropriate.\n5. Automation: I can register you for daily SLA notifications or create a curated filter/dashboard showing only items overdue \u003E30 days or production bugs \u2014 tell me which and I\u2019ll set it up.\n\nAssumptions \u0026 data gaps\n- Data source: WorkItem SLA check for visomasu@microsoft.com (tool output). I used DaysSinceUpdate and SlaThresholdDays to rank urgency. Example IDs: #2877867, #3014575, #3127199, #3367044, #3516801, #3516798, #4528211.\n- Missing from the SLA output: assigned owner, priority/business impact, and current iteration \u2014 I inferred urgency solely from SLA breach duration.\n- Some long-standing items may be intentionally inactive (backlog/epics kept open). Recommend confirming business priority before reprioritizing or closing.\n\nNext step options (pick one)\n- I can create a prioritized list of the top 25 items with current assignees and suggested owners for a triage session.  \n- I can register you for daily SLA violation emails for your team (automated).  \n- I can generate a short escalation note for the top production-impact bugs to send to the SRE/product leads.\n\nWhich would you like me to do?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
+            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 0.6666666666666666,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 1,
+        "averageExecutionTimeMs": 18008.333333333332,
+        "totalTurns": 3,
+        "passedTurns": 2,
+        "failedTurns": 1
+      }
+    }
+  ]
+}

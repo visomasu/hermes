@@ -837,5 +837,162 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 					It.IsAny<CancellationToken>()),
 				Times.Never);
 		}
+
+		[Fact]
+		public async Task CheckViolationsForEmailAsync_DynamicIterationReturnsValid_UsesDynamicIteration()
+		{
+			// Arrange
+			const string fallbackIteration = "OneCRM\\FY26\\Q3\\Sprint1";
+			const string dynamicIteration = "OneCRM\\FY26\\Q3\\Sprint2";
+			const string teamName = "Test Team";
+
+			_configuration.TeamName = teamName;
+			_configuration.IterationPath = fallbackIteration;
+
+			// Mock GetCurrentIterationPathAsync to return a valid dynamic iteration
+			_azureDevOpsClientMock
+				.Setup(c => c.GetCurrentIterationPathAsync(teamName, It.IsAny<CancellationToken>()))
+				.ReturnsAsync(dynamicIteration);
+
+			_azureDevOpsClientMock
+				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
+					"test@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					dynamicIteration, // Expect dynamic iteration to be used
+					It.IsAny<IEnumerable<string>?>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync("{\"count\":0,\"value\":[]}");
+
+			var evaluator = CreateEvaluator();
+
+			// Act
+			var result = await evaluator.CheckViolationsForEmailAsync("test@example.com");
+
+			// Assert
+			Assert.Empty(result);
+
+			// Verify GetCurrentIterationPathAsync was called
+			_azureDevOpsClientMock.Verify(
+				c => c.GetCurrentIterationPathAsync(teamName, It.IsAny<CancellationToken>()),
+				Times.Once);
+
+			// Verify GetWorkItemsByAssignedUserAsync was called with the DYNAMIC iteration
+			_azureDevOpsClientMock.Verify(
+				c => c.GetWorkItemsByAssignedUserAsync(
+					"test@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					dynamicIteration,
+					It.IsAny<IEnumerable<string>?>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()),
+				Times.Once);
+		}
+
+		[Fact]
+		public async Task CheckViolationsForEmailAsync_DynamicIterationReturnsNull_UsesFallbackIteration()
+		{
+			// Arrange
+			const string fallbackIteration = "OneCRM\\FY26\\Q3\\Sprint1";
+			const string teamName = "Test Team";
+
+			_configuration.TeamName = teamName;
+			_configuration.IterationPath = fallbackIteration;
+
+			// Mock GetCurrentIterationPathAsync to return null (no matching iteration)
+			_azureDevOpsClientMock
+				.Setup(c => c.GetCurrentIterationPathAsync(teamName, It.IsAny<CancellationToken>()))
+				.ReturnsAsync((string?)null);
+
+			_azureDevOpsClientMock
+				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
+					"test@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					fallbackIteration, // Expect fallback iteration to be used
+					It.IsAny<IEnumerable<string>?>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync("{\"count\":0,\"value\":[]}");
+
+			var evaluator = CreateEvaluator();
+
+			// Act
+			var result = await evaluator.CheckViolationsForEmailAsync("test@example.com");
+
+			// Assert
+			Assert.Empty(result);
+
+			// Verify GetCurrentIterationPathAsync was called
+			_azureDevOpsClientMock.Verify(
+				c => c.GetCurrentIterationPathAsync(teamName, It.IsAny<CancellationToken>()),
+				Times.Once);
+
+			// Verify GetWorkItemsByAssignedUserAsync was called with the FALLBACK iteration
+			_azureDevOpsClientMock.Verify(
+				c => c.GetWorkItemsByAssignedUserAsync(
+					"test@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					fallbackIteration,
+					It.IsAny<IEnumerable<string>?>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()),
+				Times.Once);
+		}
+
+		[Fact]
+		public async Task CheckViolationsForEmailAsync_DynamicIterationThrowsException_UsesFallbackIteration()
+		{
+			// Arrange
+			const string fallbackIteration = "OneCRM\\FY26\\Q3\\Sprint1";
+			const string teamName = "Test Team";
+
+			_configuration.TeamName = teamName;
+			_configuration.IterationPath = fallbackIteration;
+
+			// Mock GetCurrentIterationPathAsync to throw an exception
+			_azureDevOpsClientMock
+				.Setup(c => c.GetCurrentIterationPathAsync(teamName, It.IsAny<CancellationToken>()))
+				.ThrowsAsync(new Exception("Azure DevOps API error"));
+
+			_azureDevOpsClientMock
+				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
+					"test@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					fallbackIteration, // Expect fallback iteration to be used
+					It.IsAny<IEnumerable<string>?>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()))
+				.ReturnsAsync("{\"count\":0,\"value\":[]}");
+
+			var evaluator = CreateEvaluator();
+
+			// Act
+			var result = await evaluator.CheckViolationsForEmailAsync("test@example.com");
+
+			// Assert
+			Assert.Empty(result);
+
+			// Verify GetCurrentIterationPathAsync was called (and threw exception)
+			_azureDevOpsClientMock.Verify(
+				c => c.GetCurrentIterationPathAsync(teamName, It.IsAny<CancellationToken>()),
+				Times.Once);
+
+			// Verify GetWorkItemsByAssignedUserAsync was still called with the FALLBACK iteration
+			_azureDevOpsClientMock.Verify(
+				c => c.GetWorkItemsByAssignedUserAsync(
+					"test@example.com",
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<IEnumerable<string>>(),
+					fallbackIteration,
+					It.IsAny<IEnumerable<string>?>(),
+					It.IsAny<IEnumerable<string>>(),
+					It.IsAny<CancellationToken>()),
+				Times.Once);
+		}
 	}
 }

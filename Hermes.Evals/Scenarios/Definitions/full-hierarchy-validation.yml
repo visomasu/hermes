@@ -1,0 +1,73 @@
+# Full Hierarchy Validation
+# Tests validating complete work item hierarchy (parents + children)
+
+name: "Full Hierarchy Validation"
+description: "Tests full hierarchy validation including children and descendants"
+executionMode: "RestApi"
+dataMode: "Real"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+
+# Scoring weights
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Request full hierarchy validation
+  - turnNumber: 1
+    input: "validate the full hierarchy for feature 5753933 including all children"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetFullHierarchy"
+        allowedAliases:
+          - "GetParentHierarchy"
+          - "ValidateHierarchy"
+
+      parameterExtraction:
+        expectedParameters:
+          workItemId: 5753933
+        requiredParameters:
+          - "workItemId"
+
+      contextRetention:
+        shouldRemember:
+          - key: "lastValidatedItem"
+            value: "5753933"
+
+      responseQuality:
+        mustContain:
+          - "5753933"
+        minLength: 100
+
+  # Turn 2: Parent-only validation for same item (context)
+  - turnNumber: 2
+    input: "now show me just the parent chain for that item"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetParentHierarchy"
+        allowedAliases:
+          - "GetFullHierarchy"
+
+      contextRetention:
+        verifyContextUsage:
+          - contextKey: "lastValidatedItem"
+            usedInParameter: "workItemId"
+
+      responseQuality:
+        mustContain:
+          - "5753933"
+        mustNotContain:
+          - "which item"
+          - "work item ID"
+        minLength: 50

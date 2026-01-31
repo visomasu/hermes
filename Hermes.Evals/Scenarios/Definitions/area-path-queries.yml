@@ -1,0 +1,69 @@
+# Area Path Queries
+# Tests querying work items by area path with pagination
+
+name: "Area Path Work Item Queries"
+description: "Tests retrieving work items by area path with filtering and pagination"
+executionMode: "RestApi"
+dataMode: "Real"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+
+# Scoring weights
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Query work items by area path
+  - turnNumber: 1
+    input: "show me all features in area path CRM.Solutions.CRMExtensions_TSA"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetWorkItemsByAreaPath"
+        allowedAliases:
+          - "GetByAreaPath"
+          - "QueryByAreaPath"
+
+      parameterExtraction:
+        expectedParameters:
+          areaPath: "CRM.Solutions.CRMExtensions_TSA"
+        requiredParameters:
+          - "areaPath"
+
+      contextRetention:
+        shouldRemember:
+          - key: "lastAreaPath"
+            value: "CRM.Solutions.CRMExtensions_TSA"
+
+      responseQuality:
+        mustContain:
+          - "CRM.Solutions.CRMExtensions_TSA"
+        minLength: 100
+
+  # Turn 2: Request next page (context retention)
+  - turnNumber: 2
+    input: "show me the next page"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetWorkItemsByAreaPath"
+
+      contextRetention:
+        verifyContextUsage:
+          - contextKey: "lastAreaPath"
+            usedInParameter: "areaPath"
+
+      responseQuality:
+        mustNotContain:
+          - "which area"
+          - "specify area path"
+        minLength: 50

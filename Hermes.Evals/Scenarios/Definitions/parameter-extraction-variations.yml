@@ -1,0 +1,112 @@
+# Parameter Extraction Variations
+# Tests natural language flexibility in parameter extraction
+
+name: "Parameter Extraction Variations"
+description: "Tests LLM's ability to extract parameters from various natural language phrasings"
+executionMode: "RestApi"
+dataMode: "Real"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+
+# Scoring weights
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Explicit work item ID format
+  - turnNumber: 1
+    input: "generate newsletter for work item ID 5753933"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetWorkItemTree"
+        allowedAliases:
+          - "GenerateNewsletter"
+
+      parameterExtraction:
+        expectedParameters:
+          workItemId: 5753933
+        requiredParameters:
+          - "workItemId"
+
+      responseQuality:
+        mustContain:
+          - "5753933"
+        minLength: 100
+
+  # Turn 2: Casual phrasing with hashtag
+  - turnNumber: 2
+    input: "show me the parent hierarchy for #5753933"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetParentHierarchy"
+        allowedAliases:
+          - "GetFullHierarchy"
+
+      parameterExtraction:
+        expectedParameters:
+          workItemId: 5753933
+        requiredParameters:
+          - "workItemId"
+
+      responseQuality:
+        mustContain:
+          - "5753933"
+        minLength: 50
+
+  # Turn 3: Abbreviated time period
+  - turnNumber: 3
+    input: "PR activity for testuser@microsoft.com last 2 weeks"
+    expectations:
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "DiscoverUserActivity"
+        allowedAliases:
+          - "GetUserPullRequestActivity"
+          - "GetUserActivity"
+
+      parameterExtraction:
+        expectedParameters:
+          userEmail: "testuser@microsoft.com"
+          days: 14
+        requiredParameters:
+          - "userEmail"
+          - "days"
+
+      responseQuality:
+        mustContain:
+          - "pull request"
+        minLength: 50
+
+  # Turn 4: Colloquial phrasing
+  - turnNumber: 4
+    input: "sign me up for those SLA alerts"
+    expectations:
+      toolSelection:
+        expectedTool: "UserManagementTool"
+        expectedCapability: "RegisterSlaNotifications"
+        allowedAliases:
+          - "RegisterSLA"
+          - "RegisterForSlaNotifications"
+
+      parameterExtraction:
+        expectedParameters:
+          teamsUserId: "testuser@microsoft.com"
+        requiredParameters:
+          - "teamsUserId"
+
+      responseQuality:
+        mustContain:
+          - "registered"
+          - "SLA"
+        minLength: 30

@@ -111,6 +111,7 @@ namespace Hermes.DI
                 var contextSelector = ctx.Resolve<IConversationContextSelector>();
 
                 return new HermesOrchestrator(
+                    ctx.Resolve<ILogger<HermesOrchestrator>>(),
                     endpoint,
                     apiKey,
                     new IAgentTool[] { azureDevOpsTool, userManagementTool, workItemSlaTool },

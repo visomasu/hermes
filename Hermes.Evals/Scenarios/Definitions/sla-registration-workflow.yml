@@ -1,0 +1,107 @@
+# SLA Registration Workflow
+# Tests the complete SLA notification workflow: register → check → unregister
+
+name: "SLA Registration Workflow"
+description: "Tests user registration for SLA notifications, checking violations, and unregistering"
+executionMode: "RestApi"
+dataMode: "Real"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+
+# Scoring weights
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Register for SLA notifications
+  - turnNumber: 1
+    input: "register me for SLA notifications"
+    expectations:
+      toolSelection:
+        expectedTool: "UserManagementTool"
+        expectedCapability: "RegisterSlaNotifications"
+        allowedAliases:
+          - "RegisterSLA"
+          - "RegisterForSlaNotifications"
+
+      parameterExtraction:
+        expectedParameters:
+          teamsUserId: "testuser@microsoft.com"
+        requiredParameters:
+          - "teamsUserId"
+
+      contextRetention:
+        shouldRemember:
+          - key: "slaRegistered"
+            value: "true"
+
+      responseQuality:
+        mustContain:
+          - "registered"
+          - "SLA"
+        mustNotContain:
+          - "error"
+          - "failed"
+        minLength: 50
+
+  # Turn 2: Check SLA violations (should use remembered context)
+  - turnNumber: 2
+    input: "check my SLA violations"
+    expectations:
+      toolSelection:
+        expectedTool: "WorkItemSlaTool"
+        expectedCapability: "CheckSlaViolations"
+        allowedAliases:
+          - "CheckSLA"
+          - "GetSlaViolations"
+
+      parameterExtraction:
+        expectedParameters:
+          teamsUserId: "testuser@microsoft.com"
+        requiredParameters:
+          - "teamsUserId"
+
+      contextRetention:
+        shouldRemember:
+          - key: "lastSlaCheck"
+            value: "completed"
+
+      responseQuality:
+        mustContain:
+          - "SLA"
+        minLength: 50
+
+  # Turn 3: Unregister from SLA notifications
+  - turnNumber: 3
+    input: "unregister me from SLA notifications"
+    expectations:
+      toolSelection:
+        expectedTool: "UserManagementTool"
+        expectedCapability: "UnregisterSlaNotifications"
+        allowedAliases:
+          - "UnregisterSLA"
+          - "RemoveSlaNotifications"
+
+      parameterExtraction:
+        expectedParameters:
+          teamsUserId: "testuser@microsoft.com"
+        requiredParameters:
+          - "teamsUserId"
+
+      responseQuality:
+        mustContain:
+          - "unregistered"
+          - "SLA"
+        mustNotContain:
+          - "error"
+          - "failed"
+        minLength: 30

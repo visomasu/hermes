@@ -125,8 +125,17 @@ namespace Hermes.Domain.WorkItemSla
 			{
 				try
 				{
-					iterationPath = await _azureDevOpsClient.GetCurrentIterationPathAsync(_configuration.TeamName, cancellationToken);
-					_logger.LogDebug("Dynamically determined current iteration: {IterationPath}", iterationPath ?? "none");
+					var currentIteration = await _azureDevOpsClient.GetCurrentIterationPathAsync(_configuration.TeamName, cancellationToken);
+					if (!string.IsNullOrWhiteSpace(currentIteration))
+					{
+						iterationPath = currentIteration;
+						_logger.LogDebug("Dynamically determined current iteration: {IterationPath}", iterationPath);
+					}
+					else
+					{
+						_logger.LogDebug("No current iteration found for team {TeamName}, using configured fallback: {IterationPath}",
+							_configuration.TeamName, iterationPath ?? "none");
+					}
 				}
 				catch (Exception ex)
 				{

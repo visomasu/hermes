@@ -1,0 +1,99 @@
+# Newsletter Generation with Follow-up Hierarchy Validation
+# This scenario tests context retention when user requests newsletter then validates hierarchy
+
+name: "Newsletter Generation with Follow-up Hierarchy Validation"
+description: "Tests context retention when user requests newsletter then validates hierarchy"
+executionMode: "RestApi"
+dataMode: "Mock"
+
+# Setup configuration
+setup:
+  userId: "testuser@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+  mockData:
+    workItems:
+      - id: 5753933
+        title: "Example Feature"
+        type: "Feature"
+        state: "Active"
+        areaPath: "MyProject\\Team A"
+        iterationPath: "MyProject\\Sprint 1"
+        assignedTo: "user@microsoft.com"
+        fields:
+          "System.WorkItemType": "Feature"
+          "System.Title": "Example Feature"
+          "System.State": "Active"
+
+# Scoring weights (optional - defaults used if not specified)
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+# Stop on first failure
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Generate newsletter for a feature
+  - turnNumber: 1
+    input: "generate a newsletter for feature 5753933"
+    expectations:
+      # Tool Selection (30% weight)
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GenerateNewsletter"
+        allowedAliases:
+          - "GetWorkItemTree"
+          - "GetTree"
+          - "WorkItemTree"
+
+      # Parameter Extraction (30% weight)
+      parameterExtraction:
+        expectedParameters:
+          workItemId: 5753933
+        requiredParameters:
+          - "workItemId"
+
+      # Context Retention (25% weight) - Store feature ID for next turn
+      contextRetention:
+        shouldRemember:
+          - key: "lastFeatureId"
+            value: "5753933"
+          - key: "lastOperation"
+            value: "newsletter"
+
+      # Response Quality (15% weight)
+      responseQuality:
+        mustContain:
+          - "5753933"
+        minLength: 100
+        structure:
+          - "Progress"
+
+  # Turn 2: Validate hierarchy using context from turn 1
+  - turnNumber: 2
+    input: "now validate the parent hierarchy for that feature"
+    expectations:
+      # Tool Selection
+      toolSelection:
+        expectedTool: "AzureDevOpsTool"
+        expectedCapability: "GetParentHierarchy"
+        allowedAliases:
+          - "GetFullHierarchy"
+
+      # Context Retention - Verify the LLM used the remembered feature ID
+      contextRetention:
+        verifyContextUsage:
+          - contextKey: "lastFeatureId"
+            usedInParameter: "workItemId"
+
+      # Response Quality
+      responseQuality:
+        mustContain:
+          - "5753933"
+        mustNotContain:
+          - "which feature"
+          - "provide"
+        minLength: 50

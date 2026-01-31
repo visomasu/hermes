@@ -1,0 +1,97 @@
+# SLA Violation Checks
+# Tests on-demand SLA violation checking for different user types
+
+name: "SLA Violation Checks"
+description: "Tests immediate SLA violation checks without registration requirement"
+executionMode: "RestApi"
+dataMode: "Real"
+
+# Setup configuration
+setup:
+  userId: "visomasu@microsoft.com"
+  sessionId: ""  # Will be auto-generated
+
+# Scoring weights
+scoring:
+  toolSelection: 0.30
+  parameterExtraction: 0.30
+  contextRetention: 0.25
+  responseQuality: 0.15
+
+stopOnFailure: false
+
+# Conversation turns
+turns:
+  # Turn 1: Check SLA violations (unregistered user)
+  - turnNumber: 1
+    input: "check my SLA violations"
+    expectations:
+      toolSelection:
+        expectedTool: "WorkItemSlaTool"
+        expectedCapability: "CheckSlaViolations"
+        allowedAliases:
+          - "CheckSLA"
+          - "GetSlaViolations"
+          - "ShowSlaViolations"
+
+      parameterExtraction:
+        expectedParameters:
+          teamsUserId: "visomasu@microsoft.com"
+        requiredParameters:
+          - "teamsUserId"
+
+      contextRetention:
+        shouldRemember:
+          - key: "lastSlaCheck"
+            value: "completed"
+
+      responseQuality:
+        mustContain:
+          - "SLA"
+        minLength: 50
+
+  # Turn 2: Check for specific user (should override context)
+  - turnNumber: 2
+    input: "check SLA violations for user@microsoft.com"
+    expectations:
+      toolSelection:
+        expectedTool: "WorkItemSlaTool"
+        expectedCapability: "CheckSlaViolations"
+        allowedAliases:
+          - "CheckViolations"
+          - "CheckSLA"
+          - "GetViolations"
+
+      parameterExtraction:
+        expectedParameters:
+          teamsUserId: "user@microsoft.com"
+        requiredParameters:
+          - "teamsUserId"
+
+      responseQuality:
+        mustContain:
+          - "SLA"
+        minLength: 50
+
+  # Turn 3: Ask for own violations again (context retention)
+  - turnNumber: 3
+    input: "what about my violations?"
+    expectations:
+      toolSelection:
+        expectedTool: "WorkItemSlaTool"
+        expectedCapability: "CheckSlaViolations"
+        allowedAliases:
+          - "CheckViolations"
+          - "CheckSLA"
+          - "GetViolations"
+
+      parameterExtraction:
+        expectedParameters:
+          teamsUserId: "visomasu@microsoft.com"
+        requiredParameters:
+          - "teamsUserId"
+
+      responseQuality:
+        mustContain:
+          - "SLA"
+        minLength: 30

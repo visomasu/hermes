@@ -8,8 +8,29 @@ using Microsoft.Agents.Hosting.AspNetCore;
 using Microsoft.Agents.Storage;
 using Microsoft.Extensions.Http;
 using Quartz;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog for file logging (required for Hermes.Evals)
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".hermes",
+            "logs",
+            "hermes-.log"),
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // DEVELOPMENT ONLY: Disable SSL certificate validation for local testing
 if (builder.Environment.IsDevelopment())
@@ -111,4 +132,17 @@ var incomingRoute = app.MapPost("/api/messages", async (HttpRequest request, Htt
     await adapter.ProcessAsync(request, response, agent, cancellationToken);
 });
 
-app.Run();
+try
+{
+    Log.Information("Starting Hermes application");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Hermes application terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
