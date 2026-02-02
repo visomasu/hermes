@@ -18,7 +18,7 @@ public class ConversationRunner
     private readonly HttpClient _httpClient;
     private readonly EvaluatorOrchestrator _evaluatorOrchestrator;
     private readonly ILogger<ConversationRunner> _logger;
-    private readonly string _logFilePath;
+    private readonly string? _logFilePathOverride;
 
     // Session state for multi-turn conversations
     private string? _sessionId;
@@ -34,12 +34,46 @@ public class ConversationRunner
         _evaluatorOrchestrator = evaluatorOrchestrator;
         _logger = logger;
 
-        // Default log file path if not provided
-        _logFilePath = logFilePath ?? Path.Combine(
+        // Store override if provided, otherwise dynamically find most recent log file each time
+        _logFilePathOverride = logFilePath;
+    }
+
+    /// <summary>
+    /// Finds the most recent Hermes log file in the default log directory.
+    /// </summary>
+    private string _FindMostRecentLogFile()
+    {
+        var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".hermes",
-            "logs",
-            $"hermes-{DateTime.Now:yyyyMMdd}.log");
+            "logs");
+
+        if (!Directory.Exists(logDir))
+        {
+            _logger.LogWarning("Hermes log directory not found: {LogDir}. Creating it.", logDir);
+            Directory.CreateDirectory(logDir);
+
+            // Return expected path even if directory didn't exist
+            return Path.Combine(logDir, $"hermes-{DateTime.Now:yyyyMMdd}.log");
+        }
+
+        // Find most recently modified log file matching pattern
+        var logFiles = Directory.GetFiles(logDir, "hermes-*.log")
+            .OrderByDescending(f => File.GetLastWriteTime(f))
+            .ToList();
+
+        if (logFiles.Any())
+        {
+            var mostRecent = logFiles.First();
+            Console.WriteLine($"[ConversationRunner] Using most recent log file: {mostRecent}");
+            _logger.LogInformation("Using most recent log file: {LogFile}", mostRecent);
+            return mostRecent;
+        }
+
+        // No log files found, return expected path for today
+        var expectedPath = Path.Combine(logDir, $"hermes-{DateTime.Now:yyyyMMdd}.log");
+        _logger.LogWarning("No existing log files found. Expected log file: {LogFile}", expectedPath);
+        return expectedPath;
     }
 
     /// <summary>
@@ -103,6 +137,15 @@ public class ConversationRunner
 
                 _logger.LogInformation("Turn {TurnNumber} completed: Success={Success}, Score={Score:F2}, Time={TimeMs}ms",
                     turn.TurnNumber, turnResult.Success, turnResult.OverallScore, turnResult.ExecutionTimeMs);
+
+                // Add delay between turns to avoid Azure OpenAI rate limiting
+                // Skip delay after last turn
+                if (turn.TurnNumber < scenario.Turns.Count)
+                {
+                    var delayMs = 1000; // 1 second delay between turns
+                    _logger.LogDebug("Waiting {DelayMs}ms before next turn to avoid rate limiting", delayMs);
+                    await Task.Delay(delayMs, cancellationToken);
+                }
 
                 // Stop on failure if configured
                 if (!turnResult.Success && scenario.StopOnFailure)
@@ -182,6 +225,10 @@ public class ConversationRunner
         var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
         _logger.LogDebug("Received response: {ResponseLength} characters", responseContent.Length);
 
+        // Wait for Serilog to flush logs to disk before parsing
+        // This prevents a race condition where we read the log file before it's been written
+        await Task.Delay(500, cancellationToken);
+
         // Parse response to extract metadata
         var capturedMetadata = await _ExtractMetadataFromRestApiResponseAsync(responseContent, response);
 
@@ -216,10 +263,13 @@ public class ConversationRunner
         string responseContent,
         HttpResponseMessage httpResponse)
     {
+        // Dynamically find most recent log file (in case Serilog rolled to a new file)
+        var logFilePath = _logFilePathOverride ?? _FindMostRecentLogFile();
+
         var metadata = new Dictionary<string, object>
         {
             ["responseText"] = responseContent,
-            ["logFilePath"] = _logFilePath,
+            ["logFilePath"] = logFilePath,
             ["sessionId"] = _sessionId ?? "session-1"
         };
 
@@ -265,7 +315,7 @@ public class ConversationRunner
         }
 
         _logger.LogDebug("Captured metadata for evaluation: ResponseLength={ResponseLength}, LogPath={LogPath}, SessionId={SessionId}",
-            responseContent.Length, _logFilePath, metadata["sessionId"]);
+            responseContent.Length, logFilePath, metadata["sessionId"]);
 
         return Task.FromResult(metadata);
     }

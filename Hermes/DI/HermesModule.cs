@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using Hermes.Orchestrator;
 using Hermes.Orchestrator.Context;
+using Hermes.Orchestrator.Intent;
 using Hermes.Orchestrator.Models;
 using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
@@ -41,7 +42,7 @@ namespace Hermes.DI
             builder.RegisterModule(new IntegrationsModule(_configuration, _environment));
 
             // Register AgentToolsModule for tools-related dependencies
-            builder.RegisterModule(new AgentToolsModule());
+            builder.RegisterModule(new AgentToolsModule(_configuration));
 
             // Register TeamsModule for Teams channel-related dependencies
             builder.RegisterModule(new TeamsModule(_configuration, _environment));
@@ -83,6 +84,16 @@ namespace Hermes.DI
                 .As<IConversationContextSelector>()
                 .SingleInstance();
 
+            // Register model selector for per-operation model routing
+            builder.RegisterType<ModelSelector>()
+                .As<IModelSelector>()
+                .SingleInstance();
+
+            // Register intent classifier for user query classification
+            builder.RegisterType<IntentClassifier>()
+                .As<IIntentClassifier>()
+                .SingleInstance();
+
             // Register HermesOrchestrator and pass only AzureDevOpsTool
             builder.Register(ctx =>
             {
@@ -109,6 +120,8 @@ namespace Hermes.DI
                 var conversationHistoryRepository = ctx.Resolve<IConversationHistoryRepository>();
                 var phraseGenerator = ctx.Resolve<IWaitingPhraseGenerator>();
                 var contextSelector = ctx.Resolve<IConversationContextSelector>();
+                var modelSelector = ctx.Resolve<IModelSelector>();
+                var intentClassifier = ctx.Resolve<IIntentClassifier>();
 
                 return new HermesOrchestrator(
                     ctx.Resolve<ILogger<HermesOrchestrator>>(),
@@ -119,7 +132,9 @@ namespace Hermes.DI
                     conversationHistoryRepository,
                     ctx.Resolve<IAgentPromptComposer>(),
                     phraseGenerator,
-                    contextSelector);
+                    contextSelector,
+                    modelSelector,
+                    intentClassifier);
             }).As<IAgentOrchestrator>().SingleInstance();
         }
     }

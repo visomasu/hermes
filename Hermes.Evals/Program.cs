@@ -135,7 +135,7 @@ class Program
         // HttpClient for REST API mode
         services.AddHttpClient("HermesApi", client =>
         {
-            client.BaseAddress = new Uri("http://localhost:3978");
+            client.BaseAddress = new Uri("http://localhost:3979");
             client.Timeout = TimeSpan.FromMinutes(2);
         });
 

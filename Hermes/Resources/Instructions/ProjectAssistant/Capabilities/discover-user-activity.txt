@@ -4,25 +4,57 @@ Discover and summarize user activity across Azure DevOps and integrated services
 
 **Required:**
 - **User email:** Identify the user's email address (e.g., "john.doe@company.com", "what did user@example.com work on", "my activity" → use current user's email if known)
+- **Pronouns/References:** "their activity", "what did they work on", "for them" → Extract user email from conversation context (look for userEmail in recent tool invocations)
 - If no email provided: Ask "Please provide the email address of the user whose activity you want to discover."
 
 **Optional parameters:**
-- **Time period:** "last 7 days", "past 30 days", "last month", "this week" → map to `daysBack`
+- **Time period:** "last 7 days", "past 30 days", "last month", "this week" → map to `days` parameter
   - Default: 7 days
+  - Extract number from phrases: "last 30 days" → days=30, "past week" → days=7
+
+**CRITICAL: Always call tools**
+- **ALWAYS** call DiscoverUserActivity to retrieve user activity data
+- If a pronoun is used ("their activity"), extract the userEmail from conversation context and call the tool
+- For follow-up queries about the same user, reuse the userEmail parameter from the previous tool call
 
 ## Tool Call Format
 
-**IMPORTANT:** Use exactly this operation name and input format:
+**Recommended operation name:** `DiscoverUserActivity`
 
 ```
-AzureDevOpsTool.Execute("DiscoverUserActivity", {"userEmail": "user@example.com", "daysBack": 14})
+AzureDevOpsTool.Execute("DiscoverUserActivity", {"userEmail": "user@example.com", "days": 7})
 ```
 
-**Input schema (only these two fields):**
+**Input schema:**
 - `userEmail` (string, required): The user's email address
-- `daysBack` (int, optional): Number of days to look back, default 7
+  - Accepts aliases: `email`, `author`, `user`
+- `days` (int, optional): Number of days to look back, default 7
+  - Accepts aliases: `daysBack`
 
-**Do NOT include any other fields** like `activityTypes`, `scope`, `pageSize`, etc. - they are not supported.
+**Common parameter extraction patterns:**
+```
+"last 7 days"       → {"days": 7}
+"past 30 days"      → {"days": 30}
+"last month"        → {"days": 30}
+"this week"         → {"days": 7}
+"last 2 weeks"      → {"days": 14}
+```
+
+**Example tool calls:**
+```
+// With explicit days parameter
+AzureDevOpsTool.Execute("DiscoverUserActivity", {"userEmail": "john.doe@company.com", "days": 30})
+
+// Using context for user (from previous turn)
+AzureDevOpsTool.Execute("DiscoverUserActivity", {"userEmail": "user@microsoft.com", "days": 7})
+
+// Default 7 days (parameter omitted)
+AzureDevOpsTool.Execute("DiscoverUserActivity", {"userEmail": "jane.smith@company.com"})
+```
+
+**IMPORTANT:**
+- Always extract time period from user query ("last X days" → `days` parameter)
+- Do NOT include unsupported fields like `activityTypes`, `scope`, `pageSize`
 
 ## Output Format
 

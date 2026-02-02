@@ -19,9 +19,26 @@ setup:
         areaPath: "MyProject\\Team A"
         iterationPath: "MyProject\\Sprint 1"
         assignedTo: "user@microsoft.com"
+        relations:
+          - type: "Child"
+            id: 5753934
         fields:
           "System.WorkItemType": "Feature"
           "System.Title": "Example Feature"
+          "System.State": "Active"
+      - id: 5753934
+        title: "Example User Story"
+        type: "User Story"
+        state: "Active"
+        areaPath: "MyProject\\Team A"
+        iterationPath: "MyProject\\Sprint 1"
+        assignedTo: "user@microsoft.com"
+        relations:
+          - type: "Parent"
+            id: 5753933
+        fields:
+          "System.WorkItemType": "User Story"
+          "System.Title": "Example User Story"
           "System.State": "Active"
 
 # Scoring weights (optional - defaults used if not specified)

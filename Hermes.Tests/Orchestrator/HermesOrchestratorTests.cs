@@ -1,5 +1,7 @@
 using Hermes.Orchestrator;
 using Hermes.Orchestrator.Context;
+using Hermes.Orchestrator.Intent;
+using Hermes.Orchestrator.Models;
 using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.ConversationHistory;
@@ -47,7 +49,9 @@ namespace Hermes.Tests.Orchestrator
 				new Mock<IConversationHistoryRepository>().Object,
 				new Mock<IAgentPromptComposer>().Object,
 				phraseGeneratorMock.Object,
-				contextSelectorMock.Object);
+				contextSelectorMock.Object,
+				new Mock<IModelSelector>().Object,
+				new Mock<IIntentClassifier>().Object);
 
 			// Assert
 			Assert.NotNull(orchestrator);
@@ -110,7 +114,9 @@ namespace Hermes.Tests.Orchestrator
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
 				phraseGeneratorMock.Object,
-				contextSelectorMock.Object);
+				contextSelectorMock.Object,
+				new Mock<IModelSelector>().Object,
+				new Mock<IIntentClassifier>().Object);
 
 			// Act
 			var response = await orchestrator.OrchestrateAsync("session-1", "What is the status of feature123?");
@@ -179,7 +185,9 @@ namespace Hermes.Tests.Orchestrator
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
 				phraseGeneratorMock.Object,
-				contextSelectorMock.Object);
+				contextSelectorMock.Object,
+				new Mock<IModelSelector>().Object,
+				new Mock<IIntentClassifier>().Object);
 
 			var sessionId = "history-session";
 			var query = "History test query";
@@ -261,7 +269,9 @@ namespace Hermes.Tests.Orchestrator
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
 				phraseGeneratorMock.Object,
-				contextSelectorMock.Object);
+				contextSelectorMock.Object,
+				new Mock<IModelSelector>().Object,
+				new Mock<IIntentClassifier>().Object);
 
 			// Act
 			await orchestrator.OrchestrateAsync("session-with-history", "New question");
@@ -324,7 +334,9 @@ namespace Hermes.Tests.Orchestrator
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
 				phraseGeneratorMock.Object,
-				contextSelectorMock.Object);
+				contextSelectorMock.Object,
+				new Mock<IModelSelector>().Object,
+				new Mock<IIntentClassifier>().Object);
 
 			var capturedPhrases = new List<string>();
 			Action<string> progressCallback = phrase => capturedPhrases.Add(phrase);
@@ -389,7 +401,9 @@ namespace Hermes.Tests.Orchestrator
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
 				phraseGeneratorMock.Object,
-				contextSelectorMock.Object);
+				contextSelectorMock.Object,
+				new Mock<IModelSelector>().Object,
+				new Mock<IIntentClassifier>().Object);
 
 			// Act - call with null callback (tests backward compatibility)
 			var response = await orchestrator.OrchestrateAsync("test-session", "Test query", null);
@@ -447,7 +461,9 @@ namespace Hermes.Tests.Orchestrator
 				historyRepoMock.Object,
 				new Mock<IAgentPromptComposer>().Object,
 				phraseGeneratorMock.Object,
-				contextSelectorMock.Object);
+				contextSelectorMock.Object,
+				new Mock<IModelSelector>().Object,
+				new Mock<IIntentClassifier>().Object);
 
 			// Act - call the old method without progress callback
 			var response = await orchestrator.OrchestrateAsync("test-session", "Test query");

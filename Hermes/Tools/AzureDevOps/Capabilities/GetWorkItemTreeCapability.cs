@@ -11,6 +11,7 @@ namespace Hermes.Tools.AzureDevOps.Capabilities
 	{
 		private readonly IAzureDevOpsWorkItemClient _client;
 		private readonly int _defaultDepth = 2;
+		private readonly int _maxConcurrentFetches;
 
 		// Static mapping of work item type to fields (mirrors AzureDevOpsTool behavior)
 		private static readonly Dictionary<string, List<string>> FieldsByType = new()
@@ -20,9 +21,10 @@ namespace Hermes.Tools.AzureDevOps.Capabilities
 			{ "Task", new List<string> { "System.Id", "System.Title", "System.State", "System.WorkItemType", "System.Description", "System.AssignedTo", "Custom.TaskField1", "Microsoft.VSTS.Scheduling.StartDate", "Microsoft.VSTS.Scheduling.TargetDate", "Microsoft.VSTS.Scheduling.FinishDate" } }
 		};
 
-		public GetWorkItemTreeCapability(IAzureDevOpsWorkItemClient client)
+		public GetWorkItemTreeCapability(IAzureDevOpsWorkItemClient client, int maxConcurrentFetches = 5)
 		{
 			_client = client;
+			_maxConcurrentFetches = maxConcurrentFetches;
 		}
 
 		/// <inheritdoc />
@@ -48,17 +50,38 @@ namespace Hermes.Tools.AzureDevOps.Capabilities
 				return rootWorkItem;
 			}
 
-			var childNodes = new List<JsonElement>();
+			// Collect all child IDs first
+			var childIds = new List<int>();
 			foreach (var relationElement in relationsElement.EnumerateArray())
 			{
 				if (!IsChildRelation(relationElement) || !TryGetChildIdFromRelation(relationElement, out var childId))
 				{
 					continue;
 				}
-
-				var childNode = await BuildWorkItemTreeAsync(childId, remainingDepth - 1);
-				childNodes.Add(childNode);
+				childIds.Add(childId);
 			}
+
+			// Fetch all children in parallel with throttling
+			if (childIds.Count == 0)
+			{
+				return CreateTreeNode(rootWorkItem, Array.Empty<JsonElement>());
+			}
+
+			var semaphore = new SemaphoreSlim(_maxConcurrentFetches);
+			var childTasks = childIds.Select(async childId =>
+			{
+				await semaphore.WaitAsync();
+				try
+				{
+					return await BuildWorkItemTreeAsync(childId, remainingDepth - 1);
+				}
+				finally
+				{
+					semaphore.Release();
+				}
+			}).ToArray();
+
+			var childNodes = await Task.WhenAll(childTasks);
 
 			return CreateTreeNode(rootWorkItem, childNodes);
 		}

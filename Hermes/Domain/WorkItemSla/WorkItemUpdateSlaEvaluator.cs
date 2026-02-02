@@ -1,3 +1,4 @@
+using Hermes.Common;
 using Hermes.Domain.WorkItemSla.Models;
 using Hermes.Notifications.Infra;
 using Hermes.Notifications.WorkItemSla;
@@ -22,6 +23,9 @@ namespace Hermes.Domain.WorkItemSla
 		private readonly WorkItemUpdateSlaConfiguration _configuration;
 		private readonly WorkItemUpdateSlaMessageComposer _messageComposer;
 		private readonly ILogger<WorkItemUpdateSlaEvaluator> _logger;
+
+		// Cache for current iteration path (reused across all checks in a single evaluation run)
+		private AsyncLazy<string?>? _currentIterationCache;
 
 		public WorkItemUpdateSlaEvaluator(
 			IUserConfigurationRepository userConfigRepo,
@@ -48,6 +52,37 @@ namespace Hermes.Domain.WorkItemSla
 			var stopwatch = Stopwatch.StartNew();
 			var summary = new SlaNotificationRunSummary();
 
+			// Initialize iteration path cache for this evaluation run
+			// This must happen BEFORE parallel email processing to avoid race conditions
+			_currentIterationCache = null;
+			if (!string.IsNullOrWhiteSpace(_configuration.TeamName))
+			{
+				_currentIterationCache = new AsyncLazy<string?>(async () =>
+				{
+					try
+					{
+						var currentIteration = await _azureDevOpsClient.GetCurrentIterationPathAsync(_configuration.TeamName, cancellationToken);
+						if (!string.IsNullOrWhiteSpace(currentIteration))
+						{
+							_logger.LogDebug("Dynamically determined current iteration: {IterationPath}", currentIteration);
+							return currentIteration;
+						}
+						else
+						{
+							_logger.LogDebug("No current iteration found for team {TeamName}, using configured fallback: {IterationPath}",
+								_configuration.TeamName, _configuration.IterationPath);
+							return null;
+						}
+					}
+					catch (Exception ex)
+					{
+						_logger.LogWarning(ex, "Failed to get current iteration for team {TeamName}, using configured path: {IterationPath}",
+							_configuration.TeamName, _configuration.IterationPath);
+						return null;
+					}
+				});
+			}
+
 			try
 			{
 				// Check if SLA notifications are enabled
@@ -68,26 +103,42 @@ namespace Hermes.Domain.WorkItemSla
 
 				_logger.LogInformation("Processing {Count} registered users for SLA violations", registeredUsers.Count);
 
-				// Process each user
-				foreach (var userConfig in registeredUsers)
+				// Process users in parallel batches
+				var batchSize = _configuration.UserProcessingBatchSize;
+				for (int i = 0; i < registeredUsers.Count; i += batchSize)
 				{
-					// Check if we've hit the max notifications limit
+					// Check if we've hit the max notifications limit before starting next batch
 					if (summary.NotificationsSent >= _configuration.MaxNotificationsPerRun)
 					{
 						_logger.LogWarning("Reached max notifications per run ({Max}), stopping evaluation", _configuration.MaxNotificationsPerRun);
 						break;
 					}
 
-					summary.UsersProcessed++;
+					var batch = registeredUsers.Skip(i).Take(batchSize).ToList();
+					var batchTasks = batch.Select(async userConfig =>
+					{
+						try
+						{
+							await _ProcessUserAsync(userConfig, summary, cancellationToken);
+							return (Success: true, Error: (Exception?)null);
+						}
+						catch (Exception ex)
+						{
+							_logger.LogError(ex, "Error processing user {TeamsUserId}", userConfig.TeamsUserId);
+							return (Success: false, Error: ex);
+						}
+					}).ToArray();
 
-					try
+					var results = await Task.WhenAll(batchTasks);
+
+					// Update summary with batch results (sequential, thread-safe)
+					foreach (var result in results)
 					{
-						await _ProcessUserAsync(userConfig, summary, cancellationToken);
-					}
-					catch (Exception ex)
-					{
-						summary.Errors++;
-						_logger.LogError(ex, "Error processing user {TeamsUserId}", userConfig.TeamsUserId);
+						summary.UsersProcessed++;
+						if (!result.Success)
+						{
+							summary.Errors++;
+						}
 					}
 				}
 			}
@@ -120,27 +171,22 @@ namespace Hermes.Domain.WorkItemSla
 			var workItemTypes = _configuration.SlaRules.Keys.ToList();
 
 			// Determine iteration path (dynamic current iteration or static path)
+			// Use cached value (initialized in EvaluateAndNotifyAsync) to avoid redundant API calls
 			string? iterationPath = _configuration.IterationPath;
-			if (!string.IsNullOrWhiteSpace(_configuration.TeamName))
+			if (_currentIterationCache != null)
 			{
 				try
 				{
-					var currentIteration = await _azureDevOpsClient.GetCurrentIterationPathAsync(_configuration.TeamName, cancellationToken);
+					var currentIteration = await _currentIterationCache.Value;
 					if (!string.IsNullOrWhiteSpace(currentIteration))
 					{
 						iterationPath = currentIteration;
-						_logger.LogDebug("Dynamically determined current iteration: {IterationPath}", iterationPath);
-					}
-					else
-					{
-						_logger.LogDebug("No current iteration found for team {TeamName}, using configured fallback: {IterationPath}",
-							_configuration.TeamName, iterationPath ?? "none");
 					}
 				}
 				catch (Exception ex)
 				{
-					_logger.LogWarning(ex, "Failed to get current iteration for team {TeamName}, using configured path: {IterationPath}",
-						_configuration.TeamName, _configuration.IterationPath);
+					_logger.LogWarning(ex, "Failed to get current iteration from cache, using configured path: {IterationPath}",
+						_configuration.IterationPath);
 					// Fall back to configured iteration path
 				}
 			}

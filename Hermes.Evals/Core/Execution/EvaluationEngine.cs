@@ -61,6 +61,15 @@ public class EvaluationEngine : IEvaluationEngine
             {
                 var result = await RunScenarioAsync(scenario, cancellationToken);
                 results.Add(result);
+
+                // Add delay between scenarios to avoid Azure OpenAI rate limiting
+                // Skip delay after last scenario
+                if (results.Count < scenarioList.Count)
+                {
+                    var delayMs = 2000; // 2 second delay between scenarios
+                    _logger.LogDebug("Waiting {DelayMs}ms before next scenario to avoid rate limiting", delayMs);
+                    await Task.Delay(delayMs, cancellationToken);
+                }
             }
             catch (Exception ex)
             {

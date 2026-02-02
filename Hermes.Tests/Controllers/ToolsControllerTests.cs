@@ -16,14 +16,16 @@ namespace Hermes.Tests.Controllers
 	{
 		private static Mock<AzureDevOpsTool> CreateMockTool()
 		{
+			var mockLogger = new Mock<ILogger<AzureDevOpsTool>>();
 			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
 			var mockTreeCapability = new Mock<IAgentToolCapability<GetWorkItemTreeCapabilityInput>>();
 			var mockAreaPathCapability = new Mock<IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput>>();
 			var mockParentHierarchyCapability = new Mock<IAgentToolCapability<GetParentHierarchyCapabilityInput>>();
 			var mockFullHierarchyCapability = new Mock<IAgentToolCapability<GetFullHierarchyCapabilityInput>>();
 			var mockDiscoverUserActivityCapability = new Mock<IAgentToolCapability<DiscoverUserActivityCapabilityInput>>();
+			var mockGenerateNewsletterCapability = new Mock<IAgentToolCapability<GenerateNewsletterCapabilityInput>>();
 
-			return new Mock<AzureDevOpsTool>(MockBehavior.Default, mockClient.Object, mockTreeCapability.Object, mockAreaPathCapability.Object, mockParentHierarchyCapability.Object, mockFullHierarchyCapability.Object, mockDiscoverUserActivityCapability.Object);
+			return new Mock<AzureDevOpsTool>(MockBehavior.Default, mockLogger.Object, mockClient.Object, mockTreeCapability.Object, mockAreaPathCapability.Object, mockParentHierarchyCapability.Object, mockFullHierarchyCapability.Object, mockDiscoverUserActivityCapability.Object, mockGenerateNewsletterCapability.Object);
 		}
 
 		[Fact]

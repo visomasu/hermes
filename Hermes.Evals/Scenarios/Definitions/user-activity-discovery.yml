@@ -33,6 +33,15 @@ turns:
           - "GetUserPullRequestActivity"
           - "GetUserActivity"
           - "DiscoverPRActivity"
+          - "GetPullRequestsByUser"
+          - "GetUserPullRequests"
+          - "GetPRsByUser"
+          - "GetPullRequests"
+          - "UserActivity"
+          - "DiscoverActivity"
+          - "GetUserPRActivity"
+          - "GetPRActivity"
+          - "GetPullRequestActivity"
 
       parameterExtraction:
         expectedParameters:
@@ -61,6 +70,19 @@ turns:
       toolSelection:
         expectedTool: "AzureDevOpsTool"
         expectedCapability: "DiscoverUserActivity"
+        allowedAliases:
+          - "GetUserPullRequestActivity"
+          - "GetUserActivity"
+          - "DiscoverPRActivity"
+          - "GetPullRequestsByUser"
+          - "GetUserPullRequests"
+          - "GetPRsByUser"
+          - "GetPullRequests"
+          - "UserActivity"
+          - "DiscoverActivity"
+          - "GetUserPRActivity"
+          - "GetPRActivity"
+          - "GetPullRequestActivity"
 
       parameterExtraction:
         expectedParameters:
@@ -72,6 +94,10 @@ turns:
         verifyContextUsage:
           - contextKey: "lastUserQueried"
             usedInParameter: "userEmail"
+            alternativeParameters:
+              - "author"
+              - "email"
+              - "user"
 
       responseQuality:
         mustContain:

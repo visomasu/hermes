@@ -16,13 +16,16 @@ namespace Hermes.Tests.Tools.AzureDevOps
 		{
 			var gitClientMock = new Mock<IAzureDevOpsGitClient>();
 			var discoverLoggerMock = new Mock<ILogger<DiscoverUserActivityCapability>>();
+			var newsletterLoggerMock = new Mock<ILogger<GenerateNewsletterCapability>>();
 			var toolLoggerMock = new Mock<ILogger<AzureDevOpsTool>>();
+			var modelSelectorMock = new Mock<Hermes.Orchestrator.Models.IModelSelector>();
 			var treeCapability = new GetWorkItemTreeCapability(clientMock.Object);
 			var areaPathCapability = new GetWorkItemsByAreaPathCapability(clientMock.Object);
 			var parentHierarchyCapability = new GetParentHierarchyCapability(clientMock.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
 			var discoverUserActivityCapability = new DiscoverUserActivityCapability(gitClientMock.Object, discoverLoggerMock.Object);
-			return new AzureDevOpsTool(toolLoggerMock.Object, clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
+			var generateNewsletterCapability = new GenerateNewsletterCapability(treeCapability, modelSelectorMock.Object, newsletterLoggerMock.Object);
+			return new AzureDevOpsTool(toolLoggerMock.Object, clientMock.Object, treeCapability, areaPathCapability, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability, generateNewsletterCapability);
 		}
 
 		private static readonly List<string> FeatureFields = new() {
@@ -48,7 +51,8 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			Assert.Contains("GetParentHierarchy", tool.Capabilities);
 			Assert.Contains("GetFullHierarchy", tool.Capabilities);
 			Assert.Contains("DiscoverUserActivity", tool.Capabilities);
-			Assert.Contains("Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy, DiscoverUserActivity]", tool.GetMetadata());
+			Assert.Contains("GenerateNewsletter", tool.Capabilities);
+			Assert.Contains("Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy, DiscoverUserActivity, GenerateNewsletter]", tool.GetMetadata());
 		}
 
 		[Fact]
@@ -65,14 +69,17 @@ namespace Hermes.Tests.Tools.AzureDevOps
 			var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
 			var gitClientMock = new Mock<IAzureDevOpsGitClient>();
 			var loggerMock = new Mock<ILogger<DiscoverUserActivityCapability>>();
+			var newsletterLoggerMock = new Mock<ILogger<GenerateNewsletterCapability>>();
+			var modelSelectorMock = new Mock<Hermes.Orchestrator.Models.IModelSelector>();
 			var treeCapability = new GetWorkItemTreeCapability(mockClient.Object);
 			var areaPathCapabilityMock = new Mock<IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput>>();
 
 			var parentHierarchyCapability = new GetParentHierarchyCapability(mockClient.Object);
 			var fullHierarchyCapability = new GetFullHierarchyCapability(parentHierarchyCapability, treeCapability);
 			var discoverUserActivityCapability = new DiscoverUserActivityCapability(gitClientMock.Object, loggerMock.Object);
+			var generateNewsletterCapability = new GenerateNewsletterCapability(treeCapability, modelSelectorMock.Object, newsletterLoggerMock.Object);
 			var toolLoggerMock = new Mock<ILogger<AzureDevOpsTool>>();
-			var tool = new AzureDevOpsTool(toolLoggerMock.Object, mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability);
+			var tool = new AzureDevOpsTool(toolLoggerMock.Object, mockClient.Object, treeCapability, areaPathCapabilityMock.Object, parentHierarchyCapability, fullHierarchyCapability, discoverUserActivityCapability, generateNewsletterCapability);
 			var inputJson = JsonSerializer.Serialize(new { areaPath = "Project\\Team\\Area" });
 			var expectedResult = "[]";
 

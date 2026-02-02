@@ -1,0 +1,59 @@
+Query work items by Azure DevOps area path with pagination and filtering.
+
+## Trigger
+User requests: "show me features in area path", "list work items in [area]", "query area path", "get items from [area path]"
+
+## Process
+
+**1. Extract Area Path**
+Parse area path from user input. Area paths use backslash separators (e.g., "CRM.Solutions.CRMExtensions_TSA" or "Project\\Team\\Subteam").
+
+Common formats:
+- Dot-separated: "CRM.Solutions.CRMExtensions_TSA"
+- Backslash-separated: "OneCRM\\UCP\\Authentication"
+- Natural language: "in the authentication area" → "OneCRM\\UCP\\Authentication"
+
+**2. Determine Filters (Optional)**
+- Work item types: "features" → ["Feature"], "user stories" → ["User Story"]
+- Page number: "next page" → increment from context, default: 1
+- Page size: "show 10 items" → 10, default: 5
+
+**3. Call Tool**
+```
+AzureDevOpsTool.Execute("GetWorkItemsByAreaPath", {
+  "areaPath": "CRM.Solutions.CRMExtensions_TSA",
+  "workItemTypes": ["Feature"],
+  "pageNumber": 1,
+  "pageSize": 5
+})
+```
+
+**4. Format Response**
+Present results as a table:
+
+| ID | Title | State | Type |
+|----|-------|-------|------|
+| 123 | Feature A | Active | Feature |
+| 456 | Feature B | Resolved | Feature |
+
+Include pagination info: "Showing page 1 of 3 (5 items per page)"
+
+## Context Retention
+
+When user requests "next page" or "previous page", use the area path from the previous query.
+
+Store in context:
+- `lastAreaPath`: Area path from current query
+- `lastPageNumber`: Current page number
+
+## Important Notes
+
+- Area paths are case-sensitive in Azure DevOps
+- Empty results may indicate invalid area path or no work items assigned
+- Default page size is 5 to avoid overwhelming output
+- Supports filtering by multiple work item types simultaneously
+
+## Related Capabilities
+
+- **GetWorkItemTree**: Retrieve hierarchical structure for a specific work item
+- **GetFullHierarchy**: Validate parent-child relationships
