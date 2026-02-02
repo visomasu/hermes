@@ -1,31 +1,969 @@
 {
   "summary": {
-    "totalScenarios": 1,
-    "passedScenarios": 0,
-    "failedScenarios": 1,
-    "totalTurns": 3,
-    "successRate": 0,
-    "overallScore": 0.9
+    "totalScenarios": 9,
+    "passedScenarios": 9,
+    "failedScenarios": 0,
+    "totalTurns": 22,
+    "successRate": 1,
+    "overallScore": 0.9877314814814816
   },
   "metrics": {
     "toolSelectionAccuracy": 1,
-    "parameterExtractionAccuracy": 0.6666666666666666,
+    "parameterExtractionAccuracy": 0.9861111111111112,
     "contextRetentionScore": 1,
-    "responseQualityScore": 1
+    "responseQualityScore": 0.9459876543209877
   },
   "performance": {
-    "averageExecutionTimeMs": 18008.333333333332,
-    "p95ExecutionTimeMs": 28190,
-    "p99ExecutionTimeMs": 28190
+    "averageExecutionTimeMs": 17321.272727272728,
+    "p95ExecutionTimeMs": 54748,
+    "p99ExecutionTimeMs": 65091
   },
   "scenarioResults": [
     {
-      "scenarioName": "SLA Violation Checks",
-      "passed": false,
-      "overallScore": 0.9,
+      "scenarioName": "Area Path Work Item Queries",
+      "passed": true,
+      "overallScore": 1,
       "executionMode": 0,
       "dataMode": 1,
-      "executionTimeMs": 54026,
+      "executionTimeMs": 32863,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetWorkItemsByAreaPath or aliases [GetByAreaPath, QueryByAreaPath], Actual: GetWorkItemsByAreaPath"
+            },
+            "ParameterExtraction_Parameter_areaPath": {
+              "passed": true,
+              "details": "Correct: \u0022CRM.Solutions.CRMExtensions_TSA\u0022"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 1 context item(s): lastAreaPath"
+            },
+            "ResponseQuality_Contains_CRM_Solutions_CRMExtensions_TS": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 1268, Required: 100"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 19796,
+          "capturedMetadata": {
+            "responseText": "I attempted to retrieve Features in area path CRM.Solutions.CRMExtensions_TSA, but the Azure DevOps query failed.\n\nWhat I tried\n- Called GetWorkItemsByAreaPath for areaPath = \u0022CRM.Solutions.CRMExtensions_TSA\u0022, workItemTypes = [\u0022Feature\u0022], fields = [System.Id, System.Title, System.State, System.WorkItemType, System.AreaPath], pageNumber=1, pageSize=50. Result: Error: \u0022Function failed.\u0022\n- Retried with pageSize=5. Result: Error: \u0022Function failed.\u0022\n\nAssumptions / data gaps\n- Assumes area path string is exactly correct and accessible to your account.\n- Assumes the calling service has permission to read work items in that area path.\n- No work item data was returned due to the tool error \u2014 I cannot validate counts or list items until the query succeeds.\n\nRecommended next steps (choose one)\n1. Retry now \u2014 I will re-run the same query (pageSize=50) immediately.  \n2. Confirm area path spelling or provide an alternative area path to query.  \n3. Broaden query to include additional work item types (e.g., Feature \u002B Epic) or increase pageSize/pageNumber for paging.  \n4. If you suspect a permissions or service issue, ask your Azure DevOps admin to confirm API access for testuser@microsoft.com; I can retry after they verify.\n\nWhich option would you like me to take?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "b43fd556-1202-47bc-acca-8b692fec5d76"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetWorkItemsByAreaPath, Actual: GetWorkItemsByAreaPath"
+            },
+            "ContextRetention_ContextUsed_lastAreaPath": {
+              "passed": true,
+              "details": "Context \u0027lastAreaPath\u0027=\u0022CRM.Solutions.CRMExtensions_TSA\u0022 correctly used in parameter \u0027areaPath\u0027"
+            },
+            "ResponseQuality_DoesNotContain_which_area": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_specify_area_path": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 1112, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 12060,
+          "capturedMetadata": {
+            "responseText": "I attempted to load page 2 of Features for area path CRM.Solutions.CRMExtensions_TSA but the Azure DevOps query failed.\n\nWhat I ran\n- GetWorkItemsByAreaPath for areaPath = \u0022CRM.Solutions.CRMExtensions_TSA\u0022, workItemTypes = [\u0022Feature\u0022], fields = [System.Id, System.Title, System.State, System.WorkItemType, System.AreaPath], pageNumber = 2, pageSize = 5.\n- Result: Error: \u0022Function failed.\u0022\n\nAssumptions / data gaps\n- The area path string is correct and accessible to testuser@microsoft.com.\n- There may be a transient Azure DevOps service or permission issue preventing the query.\n- No work item data for page 2 is available until the query succeeds.\n\nRecommended next steps (pick one)\n1. Retry page 2 now (I will re-run the same query).  \n2. Retry page 1 (pageNumber=1) to verify whether paging or only page 2 fails.  \n3. Increase pageSize (e.g., pageSize=50, pageNumber=1) to avoid paging.  \n4. Confirm area path spelling or provide a different area path to query.  \n5. Ask your Azure DevOps admin to confirm API/read permissions for testuser@microsoft.com, then retry.\n\nWhich option would you like me to take?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "b43fd556-1202-47bc-acca-8b692fec5d76"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 1,
+        "averageExecutionTimeMs": 15928,
+        "totalTurns": 2,
+        "passedTurns": 2,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "Error Handling and Edge Cases",
+      "passed": true,
+      "overallScore": 0.9833333333333334,
+      "executionMode": 0,
+      "dataMode": 1,
+      "executionTimeMs": 24374,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetWorkItemTree or aliases [GenerateNewsletter], Actual: GenerateNewsletter"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 99999999"
+            },
+            "ResponseQuality_Contains_99999999": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_DoesNotContain_Exception": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_null_reference": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 213, Required: 30"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 2234,
+          "capturedMetadata": {
+            "responseText": "I encountered an issue generating the newsletter for feature #99999999. Please verify that the work item exists, is accessible, and has sufficient child items or data. Let me know if you\u0027d like further assistance!",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "e8df4e0f-d7db-4da2-994a-5aec6c44b08c"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 0.95,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 0.6666666666666666
+          },
+          "checks": {
+            "ResponseQuality_Contains__": {
+              "passed": false,
+              "details": "Missing required text: \u0027?\u0027"
+            },
+            "ResponseQuality_DoesNotContain_Exception": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 226, Required: 20"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 2247,
+          "capturedMetadata": {
+            "responseText": "Please provide either an Azure DevOps work item ID (or IDs) to validate its hierarchy, or an area path to analyze. For example:\n- \u0022Validate hierarchy for work item 123456.\u0022\n- \u0022Check the hierarchy in area path ProjectX\\\\TeamA.\u0022",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "e8df4e0f-d7db-4da2-994a-5aec6c44b08c"
+          }
+        },
+        {
+          "turnNumber": 3,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetParentHierarchy or aliases [GetFullHierarchy], Actual: GetParentHierarchy"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 5753933"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 978, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 17875,
+          "capturedMetadata": {
+            "responseText": "| Feature ID | Title | Hierarchy Valid | Validation Results |\n|------------|-------|-----------------|---------------------|\n| 5753933 | [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant | No | Parent chain contains two consecutive \u0027Feature\u0027 items: Epic (#5973477) \u2192 Feature (#6031833) \u2192 Feature (#5753933) \u2014 standard model expects distinct Product Feature then Engineering Feature. Parent #5638813 has work item type \u0027Initiatives\u0027 (plural) which differs from expected \u0027Initiative\u0027. |\n\n| Assumption / Limitation | Details |\n|-------------------------|---------|\n| Validation limited to parent chain | Only ancestors returned by GetParentHierarchy were evaluated (pageNumber=1). Children/descendants were not checked. |\n| Work item type naming ambiguity | Organization uses generic \u0022Feature\u0022 (both potential product and engineering levels); validator cannot infer which \u0027Feature\u0027 represents Product vs Engineering without explicit type or naming convention. |",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "e8df4e0f-d7db-4da2-994a-5aec6c44b08c"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 0.8888888888888888,
+        "averageExecutionTimeMs": 7452,
+        "totalTurns": 3,
+        "passedTurns": 3,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "Full Hierarchy Validation",
+      "passed": true,
+      "overallScore": 0.98125,
+      "executionMode": 0,
+      "dataMode": 1,
+      "executionTimeMs": 8763,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetFullHierarchy or aliases [GetParentHierarchy, ValidateHierarchy], Actual: GetFullHierarchy"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 5753933"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 1 context item(s): lastValidatedItem"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 580, Required: 100"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 4087,
+          "capturedMetadata": {
+            "responseText": "Below is the validation of the full hierarchy for feature **#5753933**, including all parent and child work items:\n\n| Feature ID | Title | Hierarchy Valid | Validation Results |\n|------------|-------|-----------------|---------------------|\n| 5753933 | [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant | No | Missing Product Feature between Epic (#5973477) and Engineering Feature (#6031833) |\n\nSeveral children and tasks are present under this feature, but the hierarchy from parent to direct feature has a skipped link missing the **Product Feature** level.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "aa86811b-57a3-48c9-bd2e-b59d15ef5d1c"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 0.9624999999999999,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 0.75
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetParentHierarchy or aliases [GetFullHierarchy], Actual: GetParentHierarchy"
+            },
+            "ContextRetention_ContextUsed_lastValidatedItem": {
+              "passed": true,
+              "details": "Context \u0027lastValidatedItem\u0027=\u00225753933\u0022 correctly used in parameter \u0027workItemId\u0027"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_DoesNotContain_which_item": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_work_item_ID": {
+              "passed": false,
+              "details": "Incorrectly present: \u0027work item ID\u0027"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 676, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 3668,
+          "capturedMetadata": {
+            "responseText": "Here is the parent chain for feature **#5753933**:\n\n| Work Item ID | Title | Work Item Type |\n|--------------|-------|----------------|\n| 5580404 | Fundamentals - QoS - Quality of Service [FY26] | Objective |\n| 5638813 | [FY26] [QoS][Contact Center] Reliability - 99.99% reliability | Initiative |\n| 5973477 | [FY26][Authentication \u0026 Anti-Fraud] Fundamentals \u0026 Operations | Epic |\n| 6031833 | [FY26][Engineering] Engineering Productivity | Feature |\n| 5753933 | [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant | Feature |\n\nThe hierarchy sequence from parent to child skips the **Product Feature** level between the Epic (#5973477) and Feature (#6031833).",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "aa86811b-57a3-48c9-bd2e-b59d15ef5d1c"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 0.875,
+        "averageExecutionTimeMs": 3877.5,
+        "totalTurns": 2,
+        "passedTurns": 2,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "Newsletter Generation with Follow-up Hierarchy Validation",
+      "passed": true,
+      "overallScore": 0.975,
+      "executionMode": 0,
+      "dataMode": 0,
+      "executionTimeMs": 70383,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 0.95,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 0.6666666666666666
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GenerateNewsletter or aliases [GetWorkItemTree, GetTree, WorkItemTree], Actual: GenerateNewsletter"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 5753933"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 2 context item(s): lastFeatureId, lastOperation"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": false,
+              "details": "Missing required text: \u00275753933\u0027"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 4218, Required: 100"
+            },
+            "ResponseQuality_Section_Progress": {
+              "passed": true,
+              "details": "Present"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 65091,
+          "capturedMetadata": {
+            "responseText": "# Executive Project Update: Project Hermes \u2013 Automated ADO Reporting Assistant  \n\n## Overview  \nProject Hermes aims to streamline organizational reporting by automating the generation of status updates and newsletters using Azure DevOps (ADO) work item data. The initiative includes integration with Microsoft Teams to support real-time queries, enhancing efficiency and collaboration. Currently, the project is active and progressing toward key milestones, with a low-risk assessment.  \n\n---\n\n## Execution Timelines \u0026 Milestones  \n\n| **Milestone**                                | **Start Date**    | **Target Date**  | **Finish Date**   | **Status**        |  \n|----------------------------------------------|-------------------|------------------|-------------------|-------------------|  \n| Orchestration Layer for Hermes (User Story 5754128) | 2025-10-06        | 2025-11-21       | 2025-11-28        | Completed         |  \n| Work Item Tree Retrieval Capability (User Story 5754134) | 2025-10-01        | 2025-10-31       | 2025-11-28        | Completed         |  \n| LLM Integration for Work Item Summarization (User Story 5754135) | 2025-12-15        | 2025-12-31       | 2025-12-31        | Completed         |  \n| Scheduled Notifications for SLA Violations (User Story 6028024) | Active           | 2026-03-15       | TBD               | In Progress       |  \n\n### Current Milestone  \n**Scheduled Notifications for SLA Violations (User Story 6028024)**:  \n- Progress: 60% complete  \n- Key Deliverables: SLA evaluation core infrastructure (Task 6028027 - Completed), user registration feature for SLA notifications (Task 6028028 - Pending).  \n- Expected Completion: 2026-03-15  \n\n### Next Milestone  \n**Public Preview Launch**: Target Date: 2026-02-15  \n\n---\n\n## Outcomes Since Last Newsletter  \n\n- **Performance Optimization for Hermes Response Times (User Story 5979455)**: Improved system efficiency for newsletter generation and hierarchy validation.  \n- **Memory Integration for Multi-Turn Conversations (User Story 5975070)**: Enabled Hermes to maintain session state, adding robust functionality for seamless user interaction.  \n- **Proactive Notification Infrastructure (User Story 6028020)**: Built foundational capability for Hermes to send proactive updates via Microsoft Teams, enhancing user communication.  \n- **Typing Indicator Support (User Story 5979452)**: Implemented typing indicators to improve end-user experience and clarity during agent response preparation.  \n\n---\n\n## Current Sprint Progress  \n\n### Active Work Items  \n- **Scheduled Notifications for SLA Violations (User Story 6028024)**:  \n  - Core SLA evaluator completed (Task 6028027).  \n  - User registration for SLA notifications implementation underway (Task 6028028).  \n\n- **Support for Multiple ADO Projects (User Story 6034604)**: Initial planning phase initiated.  \n\n### Completion Percentage  \n- Current Sprint Progress: 70%  \n\n### Next Steps  \n- Complete registration functionality for SLA notifications.  \n- Initiate testing and validation of SLA notification infrastructure.  \n- Finalize support for multiple ADO projects (User Story 6034604).  \n\n---\n\n## Risks \u0026 Mitigation Plan  \n\n| **Risk**               | **Impact** | **Mitigation Plan**            |  \n|-------------------------|------------|---------------------------------|  \n| Resource availability   | Low        | Cross-training team members.   |  \n\n---\n\n## Recommendations  \n\n1. **Stakeholder Engagement for Public Preview:** Ensure alignment with stakeholders on the public preview launch scheduled for 2026-02-15.  \n2. **Cross-team Collaboration:** Finalize resource allocation for active work items to ensure timely delivery of milestones.  \n3. **Monitor SLA Notifications:** Track progress closely to address potential delays in completing the user registration feature.  \n\n---\n\nFor more details, refer to the [Project Hermes Documentation](https://microsoft.sharepoint.com/:w:/t/DCC-CallIntelligenceControlOperationsCICO/EWN5_pvOPjBEi4E6NaIs740BwBULAJJ-7NEhof_6rtk5Mg?e=fJnNNp).  \n\n---  \nThis newsletter provides a snapshot of progress and actionable insights for leadership consideration. For further inquiries, please reach out to the project team.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "f1f396a1-51e8-418e-99da-2ce7b672e5c6"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetParentHierarchy or aliases [GetFullHierarchy], Actual: GetParentHierarchy"
+            },
+            "ContextRetention_ContextUsed_lastFeatureId": {
+              "passed": true,
+              "details": "Context \u0027lastFeatureId\u0027=\u00225753933\u0022 correctly used in parameter \u0027workItemId\u0027"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_DoesNotContain_which_feature": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_provide": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 854, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 4285,
+          "capturedMetadata": {
+            "responseText": "| Feature ID | Title                                                                | Hierarchy Valid | Validation Results                                                          |\n|------------|----------------------------------------------------------------------|-----------------|------------------------------------------------------------------------------|\n| 5753933    | [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant| Yes             | None                                                                         |\n\n### Observations\n- The hierarchy follows the standard structure: Objective \u2192 Initiative \u2192 Epic \u2192 Product Feature \u2192 Engineering Feature.  \n- No issues such as missing levels or unexpected work item types detected.  \n\nThe parent chain of Feature 5753933 is valid and adheres to the organizational hierarchy.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "f1f396a1-51e8-418e-99da-2ce7b672e5c6"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 0.8333333333333333,
+        "averageExecutionTimeMs": 34688,
+        "totalTurns": 2,
+        "passedTurns": 2,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "Parameter Extraction Variations",
+      "passed": true,
+      "overallScore": 0.95,
+      "executionMode": 0,
+      "dataMode": 1,
+      "executionTimeMs": 97323,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetWorkItemTree or aliases [GenerateNewsletter], Actual: GenerateNewsletter"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 5753933"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 4057, Required: 100"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 54748,
+          "capturedMetadata": {
+            "responseText": "# Executive Newsletter: Project Hermes - Automated Azure DevOps Reporting Assistant\n\n## Overview\nProject Hermes aims to streamline organizational reporting by automating status updates and newsletters using Azure DevOps (ADO) work item data. The solution integrates with Microsoft Teams to enable ad-hoc queries and initiative health tracking. As of now, the project is **Active** and progressing toward its targeted General Availability (GA) date of **March 15, 2026**.\n\n## Execution Timelines \u0026 Milestones\n| **Milestone**               | **Start Date**  | **Target Date**  | **Finish Date** | **Status**                |\n|-----------------------------|-----------------|------------------|-----------------|--------------------------|\n| Project Kickoff             | October 1, 2025| March 15, 2026   | N/A             | **In Progress**           |\n| Private Preview             | January 15, 2026| January 16, 2026 | N/A             | Completed (User Story 5979455) |\n| Public Preview              | February 15, 2026| February 15, 2026| N/A             | Upcoming                  |\n| General Availability (GA)   | N/A             | March 15, 2026   | N/A             | Upcoming                  |\n\n### Current Milestone: Private Preview  \n- **Progress:** 100% completed. Key performance optimizations implemented.  \n- **Next Milestone:** Public Preview, targeted for February 15, 2026.  \n\n---\n\n## Outcomes Since Last Newsletter\n- **Performance Optimization:** Improved Hermes response times for newsletter generation and hierarchy validation (**User Story 5979455**).  \n- **Proactive Notification Infrastructure:** Built a scalable system for delivering proactive updates via Teams (**User Story 6028020**).  \n- **Work Item Retrieval:** Enhanced ADO integration to retrieve hierarchical work item data for reporting purposes (**User Story 5754134**).  \n- **Multi-Turn Conversations:** Delivered memory capabilities for maintaining session state in Hermes conversations (**User Story 5975070**).  \n\n---\n\n## Current Sprint Progress\n### Active Work Items  \n- **Feature 5753933:** Project Hermes overall initiative is **Active**.  \n- **User Story 6028024:** Scheduled notifications for SLA violations are in progress, with core evaluator infrastructure completed (**Task 6028027**).  \n\n### Completion Percentage  \n- **Current Milestone:** Private Preview is **100% complete**.  \n- **Next Steps:** Finalize SLA violation sign-up capability (**Task 6028028**, **New**).  \n\n### Upcoming Deliverables  \n- Public Preview preparations, including SLA notifications and multi-project ADO support (**User Story 6034604**).\n\n---\n\n## Risks \u0026 Mitigation Plan\n| **Risk**                                   | **Impact**      | **Mitigation Strategy**                      | **Owner**            |\n|-------------------------------------------|-----------------|---------------------------------------------|----------------------|\n| Resource Availability                     | Low             | Cross-training team members                 | Vignesh Somasundaram |\n| Integration Complexity                    | Low             | Additional QA cycles planned                | Vignesh Somasundaram |\n| SLA Notification Scalability              | Medium          | Introduce registration workflows            | Vignesh Somasundaram |\n\n---\n\n## Recommendations  \n1. **Executive Decision Needed:** Confirm SLA notification registration capability scope for Public Preview.  \n2. **Stakeholder Engagement:** Ensure cross-functional teams are aligned for GA readiness.  \n3. **Focus Areas:** Continue monitoring integration scalability and resource availability risks to ensure delivery timelines remain on track.  \n\n---\n\nThis newsletter consolidates the progress, risks, and actionable insights for Project Hermes. For further details, refer to the [Project Hermes Reference Document](https://microsoft.sharepoint.com/:w:/t/DCC-CallIntelligenceControlOperationsCICO/EWN5_pvOPjBEi4E6NaIs740BwBULAJJ-7NEhof_6rtk5Mg?e=fJnNNp).  \n\nThank you for your continued support and collaboration.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "75581bf1-f984-45cf-8d8f-3285719bf395"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GetParentHierarchy or aliases [GetFullHierarchy], Actual: GetParentHierarchy"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 5753933"
+            },
+            "ResponseQuality_Contains_5753933": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 1083, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 4059,
+          "capturedMetadata": {
+            "responseText": "| Feature ID | Title                                                                            | Work Item Type  | Hierarchy Level |\n|------------|----------------------------------------------------------------------------------|-----------------|------------------|\n| 5580404    | Fundamentals - QoS - Quality of Service [FY26]                                 | Objective       | Parent           |\n| 5638813    | [FY26] [QoS][Contact Center] Reliability - 99.99% reliability                   | Initiatives     | Parent           |\n| 5973477    | [FY26][Authentication \u0026 Anti-Fraud] Fundamentals \u0026 Operations                  | Epic            | Parent           |\n| 6031833    | [FY26][Engineering] Engineering Productivity                                    | Feature         | Parent           |\n| 5753933    | [CICO][Hack/Build] Project Hermes - Automated ADO Reporting Assistant           | Feature         | Current Item     |\n\nThis table represents the parent hierarchy for work item **#5753933**. Let me know if you need further analysis or validation for this structure!",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "75581bf1-f984-45cf-8d8f-3285719bf395"
+          }
+        },
+        {
+          "turnNumber": 3,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 0.85,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 0.5,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: DiscoverUserActivity or aliases [GetUserPullRequestActivity, GetUserActivity], Actual: GetUserActivity"
+            },
+            "ParameterExtraction_Parameter_userEmail": {
+              "passed": false,
+              "details": "Parameter missing from tool call"
+            },
+            "ParameterExtraction_Parameter_days": {
+              "passed": true,
+              "details": "Correct: 14"
+            },
+            "ParameterExtraction_Required_userEmail": {
+              "passed": false,
+              "details": "Required parameter missing"
+            },
+            "ResponseQuality_Contains_pull_request": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 2397, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 21117,
+          "capturedMetadata": {
+            "responseText": "I called Azure DevOps to retrieve pull request activity for testuser@microsoft.com (last 14 days).\n\nSummary\n- No pull requests in the returned activity list are authored by testuser@microsoft.com. The API response contains many PRs created by other actors (GitHub Copilot, Dependabot, named engineers).  \n- Likely causes: testuser has no PRs in that window, or the account uses a different email/identity in ADO. (See Assumptions / Next steps below.)\n\nSample recent PRs from the returned dataset\n| PR ID | Title (short) | Created By | Created Date (UTC) | Repository |\n|-------|---------------|------------|--------------------:|-----------|\n| 1504725 | [WIP] Upgrade eslint in the project due to fix CG issues | GitHub Copilot | 2026-02-02T00:11:56Z | CRM.OmniChannel.C1Provisioning |\n| 1504705 | Add GetTableOntology custom action to allow Users/UX to get the Entity Ontology data | Harish Kumar Agarwal | 2026-02-01T23:17:01Z | CDS.Platform.Extensions |\n| 1504699 | [Next Presence] Next Presence CcaaS API | Abdul Aziz | 2026-02-01T22:27:54Z | CRM.OmniChannel.C1Provisioning |\n| 1504696 | Add AppInsights telemetry for conversation priority increase | Divyansh Chowdhary | 2026-02-01T20:44:31Z | CRM.Omnichannel |\n| 1504691 | Bump Dynamics.Solutions.Tools.CoreBuild from 2.0.139 to 2.0.140 | Dependabot | 2026-02-01T18:38:24Z | CRM.Solutions.Scm.InventoryService |\n\nAssumptions and data gaps\n- The Azure DevOps call returned organization PR activity for the period; it did not return any items authored by testuser@microsoft.com. I assume either (a) testuser made no PRs in the 14-day window, or (b) testuser\u2019s ADO identity uses a different email/alias.  \n- If you expect PRs to exist, the data gap is likely an identity-mapping issue or a filter mismatch.\n\nRecommended next steps\n1. Confirm whether testuser@microsoft.com is the correct ADO identity (sometimes different AAD alias or display name is used).  \n2. If you want a full extract of all returned PRs (CSV) or the complete list from the API result, I can produce it.  \n3. To re-run a focused search, tell me which of the following you prefer: (a) expand timeframe (last 30/60 days), (b) search by display name or ADO alias, or (c) return the full activity list as a table/file.\n\nIf you want me to re-run with an adjusted filter (different email/alias or longer window), tell me the identifier or timeframe and I\u2019ll call the tool again.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "75581bf1-f984-45cf-8d8f-3285719bf395"
+          }
+        },
+        {
+          "turnNumber": 4,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 0.95,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 0.6666666666666666
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: UserManagementTool, Actual: UserManagementTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: RegisterSlaNotifications or aliases [RegisterSLA, RegisterForSlaNotifications], Actual: RegisterSlaNotifications"
+            },
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": true,
+              "details": "Correct: \u0022testuser@microsoft.com\u0022"
+            },
+            "ResponseQuality_Contains_registered": {
+              "passed": false,
+              "details": "Missing required text: \u0027registered\u0027"
+            },
+            "ResponseQuality_Contains_SLA": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 1217, Required: 30"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 14366,
+          "capturedMetadata": {
+            "responseText": "I attempted to register you (testuser@microsoft.com) for SLA notifications.\n\nResult\n- Registration failed. Azure returned: {\u0022success\u0022:false,\u0022message\u0022:\u0022An error occurred during registration. Please try again later.\u0022}\n\nAssumptions / data gaps\n- The response is a generic failure; there are no additional diagnostics in the API reply.\n- Possible causes (not confirmed): transient service outage, permissions/tenant restrictions for the account, or a temporary backend error.\n- I used the Teams user ID from your session: testuser@microsoft.com. If you use a different alias in Teams/Azure AD, registration may need that value.\n\nRecommended next steps (choose one)\n1) Retry registration now \u2014 I will call the registration tool again and report the result. (If you want this, reply \u201CRetry now\u201D.)\n2) Confirm Teams/Azure AD identity \u2014 reply with the exact teams user id/alias to try (e.g., first.last@contoso.com) if different from testuser@microsoft.com.\n3) Run an immediate on-demand SLA check for your work items while we resolve registration \u2014 I can run that and send a report.\n4) Escalate to platform support \u2014 I will include the error text and timestamp so admins can investigate.\n\nWhich option do you want me to take?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "75581bf1-f984-45cf-8d8f-3285719bf395"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 0.875,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 0.9166666666666666,
+        "averageExecutionTimeMs": 23572.5,
+        "totalTurns": 4,
+        "passedTurns": 4,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "Simple Tool Selection Test",
+      "passed": true,
+      "overallScore": 1,
+      "executionMode": 0,
+      "dataMode": 0,
+      "executionTimeMs": 8738,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: GenerateNewsletter or aliases [GetWorkItemTree, WorkItemTree], Actual: GenerateNewsletter"
+            },
+            "ParameterExtraction_Parameter_workItemId": {
+              "passed": true,
+              "details": "Correct: 123456"
+            },
+            "ResponseQuality_Contains_123456": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 2348, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 8738,
+          "capturedMetadata": {
+            "responseText": "# Executive Project Status Newsletter  \n\n**Project Name:** CRM Core - HP Driver Update  \n**Work Item ID:** 123456  \n\n---\n\n## 1. Overview  \nThe CRM Core HP Driver Update project aimed to deliver updated driver capabilities for enhanced system compatibility and performance. The work item has been successfully completed and marked as \u201CClosed,\u201D reflecting the finalization of all project deliverables. This update ensures improved hardware integration and reduced operational risks.\n\n---\n\n## 2. Execution Timelines \u0026 Milestones  \n\n| **Milestone**           | **Start Date**       | **Target Date**      | **Status**         | **Completion** |\n|--------------------------|----------------------|----------------------|--------------------|----------------|\n| Project Initiation       | August 31, 2016     | September 19, 2016   | Completed          | 100%           |\n\nNext milestone: No further deliverables are planned, as the project has been finalized.\n\n---\n\n## 3. Outcomes Since Last Newsletter  \n\n- **Finalization of HP Driver Update**: Enabled improved system compatibility, streamlining operational workflows and increasing performance reliability.  \n- **Resolution of Dependencies**: All affected systems were updated successfully, ensuring seamless integration across hardware platforms.  \n\n---\n\n## 4. Current Sprint Progress  \n\n- **Sprint Status**: Closed  \n- **Work Items Closed**:  \n  - HP Driver Update [ID: 123456] (Primary deliverable)  \n- **Completion Percentage**: 100%  \n- **Next Steps**: No further sprint deliverables; project is complete.  \n\n---\n\n## 5. Risks \u0026 Mitigation Plan  \n\n| **Risk Description**         | **Impact** | **Mitigation Strategy** | **Owner**         |\n|-------------------------------|------------|--------------------------|-------------------|\n| Hardware compatibility gaps   | Low        | Implementation of updated drivers has resolved risks. | Development Team |\n\n---\n\n## 6. Recommendations  \n\n- **Operational Review**: Stakeholders should monitor system performance post-update to confirm improvements and address any arising anomalies.  \n- **Strategic Opportunities**: Consider leveraging lessons from this project to streamline future CRM system updates and minimize downtime during hardware integrations.\n\n---\n\nFor additional information or follow-up actions, please reach out to the project team.  ",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "f3aefa16-5da6-4de3-8a1f-85cc99c30533"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 1,
+        "averageExecutionTimeMs": 8738,
+        "totalTurns": 1,
+        "passedTurns": 1,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "SLA Registration Workflow",
+      "passed": true,
+      "overallScore": 1,
+      "executionMode": 0,
+      "dataMode": 1,
+      "executionTimeMs": 38506,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: UserManagementTool, Actual: UserManagementTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: RegisterSlaNotifications or aliases [RegisterSLA, RegisterForSlaNotifications], Actual: RegisterSlaNotifications"
+            },
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": true,
+              "details": "Correct: \u0022visomasu@microsoft.com\u0022"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 1 context item(s): slaRegistered"
+            },
+            "ResponseQuality_Contains_registered": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_Contains_SLA": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_DoesNotContain_error": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_failed": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 333, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 7384,
+          "capturedMetadata": {
+            "responseText": "Registration complete \u2014 you\u0027re signed up for daily SLA notifications.\n\nDetails:\n- User: visomasu@microsoft.com\n- Status: Registered successfully\n- Scope: Your work items \u002B your team (13 direct reports)\n- Delivery: Daily SLA reports\n\nWe are supposed to call tool first then present. The user has successfully registered. Keep concise.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "2291060b-9ff2-4296-a7c7-c63b0f4eb3b2"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: WorkItemSlaTool, Actual: WorkItemSlaTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: CheckSlaViolations or aliases [CheckSLA, GetSlaViolations], Actual: CheckSlaViolations"
+            },
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": true,
+              "details": "Correct: \u0022visomasu@microsoft.com\u0022"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 1 context item(s): lastSlaCheck"
+            },
+            "ResponseQuality_Contains_SLA": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 3663, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 19520,
+          "capturedMetadata": {
+            "responseText": "Calling SLA check for visomasu@microsoft.com \u2014 retrieving current violations...\n\nSummary\n- Found 10 SLA violations across your team (isManager: true, direct reports: 13).\n- Owner group returned: jdebroin@microsoft.com (all listed violations attributed there).\n- Breakdown: 4 User Stories (compliance-related), 6 Tasks (Synthetic/License tests).\n\nViolations (snapshot)\n| Work Item ID | Title | Type | Days since update | SLA threshold (days) | URL |\n|--------------:|-------|------|------------------:|---------------------:|-----|\n| 6017445 | [Compliance][SDL] SDL Follow-up | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/6017445 |\n| 6017444 | [Compliance][BCDR] BCDR Follow-up | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/6017444 |\n| 5625230 | [Cleanup][GDPR] Identify and cleanup legacy data | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/5625230 |\n| 3265713 | [Policy Enforcer][PPS sync] PowerPlatform Settings should not be out of sync for more than X days | User Story | 14 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3265713 |\n| 4089043 | [Synthetic][License] Phase 2 - 3993560: Verify that CCaaS API call create should fail with no entitlement | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089043 |\n| 4089045 | [Synthetic][License] Phase 2 - 3993565: Verify CCaaS API call create should fail with partial entitlement(Failure scenario) | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089045 |\n| 4089046 | [Synthetic][License] Phase 2 - 3993566: Verify CCaaS API call create should fail with partial entitlement(Success scenario) | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089046 |\n| 4089085 | [Synthetic][License] Phase 2 - 4040193: Verify CCaaS API should return correct error for get entitled channel for voice channel where it is not enabled | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089085 |\n| 4089099 | [Synthetic][License] Phase 2 - 4040179: Verify CCaaS API update call should fail for channel with no entitlement | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089099 |\n| 4089109 | [Synthetic][License] Phase 3 - 3963822: Verify trial orgs update fails with correct error code | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089109 |\n\nRecommended next actions (business-focused)\n- Immediate triage for synthetic license tasks (#4089043, #4089045, #4089046, #4089085, #4089099, #4089109): 15 days stale vs 5-day SLA \u2192 risk to testing/validation timelines; ask owner to update status or reassign within 24\u201348 hours.\n- Address compliance user stories (#6017445, #6017444, #5625230, #3265713): 13\u201314 days stale vs 7-day SLA \u2192 potential regulatory/compliance exposure; request a short status update and next-steps by end of sprint.\n- If owners are blocked, escalate to product/engineering leads to avoid downstream schedule impact.\n\nAssumptions \u0026 data gaps\n- Snapshot returned by the SLA service at time of check; no explicit timestamp included in the result.\n- Payload lists violations grouped under jdebroin@microsoft.com \u2014 assignment details for each item (e.g., alternate owners, priority) were not provided.\n- No severity/impact metadata provided; recommendation prioritization is based on SLA age and item type.\n\nIf you want, I can:\n- Open a focused export (CSV) of these 10 items.\n- Notify the item owners with a templated Slack/Teams alert.\n- Re-run and include assigned-to and area path for prioritization.\n\nWhich action would you like next?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "2291060b-9ff2-4296-a7c7-c63b0f4eb3b2"
+          }
+        },
+        {
+          "turnNumber": 3,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: UserManagementTool, Actual: UserManagementTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: UnregisterSlaNotifications or aliases [UnregisterSLA, RemoveSlaNotifications], Actual: UnregisterSlaNotifications"
+            },
+            "ParameterExtraction_Parameter_teamsUserId": {
+              "passed": true,
+              "details": "Correct: \u0022visomasu@microsoft.com\u0022"
+            },
+            "ResponseQuality_Contains_unregistered": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_Contains_SLA": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_DoesNotContain_error": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_failed": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 784, Required: 30"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 9594,
+          "capturedMetadata": {
+            "responseText": "Unregistration confirmed \u2014 you have been removed from SLA notification delivery.\n\n- Result: \u2705 Unregistered successfully for Teams user visomasu@microsoft.com (per system response).\n- Effect: You will no longer receive the daily SLA violation notifications sent to that Teams account. Existing historical notifications are not deleted.\n- Next steps (if needed): To re-enable, say \u201Cregister me for SLA notifications\u201D and I\u2019ll register you (I\u2019ll call the registration tool). I can also run a one\u2011off SLA check or export current violations before you re-register.\n\nAssumptions / data gaps\n- This action used your Teams user ID (visomasu@microsoft.com) and applies to notifications tied to that identity; other notification channels (email, third\u2011party integrations) are not verified here.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "2291060b-9ff2-4296-a7c7-c63b0f4eb3b2"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 1,
+        "averageExecutionTimeMs": 12166,
+        "totalTurns": 3,
+        "passedTurns": 3,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "SLA Violation Checks",
+      "passed": true,
+      "overallScore": 1,
+      "executionMode": 0,
+      "dataMode": 1,
+      "executionTimeMs": 63945,
       "startTime": "0001-01-01T00:00:00+00:00",
       "endTime": "0001-01-01T00:00:00+00:00",
       "duration": "00:00:00",
@@ -64,25 +1002,25 @@
             },
             "ResponseQuality_MinimumLength": {
               "passed": true,
-              "details": "Length: 2393, Required: 50"
+              "details": "Length: 4723, Required: 50"
             }
           },
           "error": null,
-          "executionTimeMs": 17789,
+          "executionTimeMs": 27647,
           "capturedMetadata": {
-            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, SLA violation tracking, and discovering user PR activity.\n\nSummary\n- Source: WorkItem SLA check for visomasu@microsoft.com (tool result). Key findings: 264 SLA violations across your team; you are a manager with 11 direct reports. (Tool: CheckSlaViolations)\n- Immediate risk: multiple long-open bugs/tasks that have exceeded SLA by months (some \u003E400 days). These are actionable escalations that need triage now.\n\nTop urgent violations (samples)\n| Work Item | Type | Days since update | SLA threshold | Link |\n|-----------|------|-------------------:|---------------:|------|\n| 4528211 | Bug | 400 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4528211 |\n| 4439974 | Bug | 428 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4439974 |\n| 4390140 | Bug | 438 | 2 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4390140 |\n| 4400845 | Task | 480 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4400845 |\n| 4400787 | Task | 480 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4400787 |\n| 2877867 | Task | 1,262 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/2877867 |\n\nRecommended next steps\n1. Triage workshop (30\u201345 min): review the items above and assign owners or close-as-obsolete. Start with Bugs #4528211, #4439974, #4390140 due to low SLA thresholds and long staleness.\n2. Quick wins: identify and close stale tasks (e.g., #2877867) or convert to backlog items with updated owner/dates.\n3. Prevent recurrence: enable automated SLA notifications for the owning teams (I can register you\u2014see capability: \u0022Register for SLA notifications\u0022).\n\nAssumptions \u0026 data gaps\n- The SLA report includes DaysSinceUpdate and SLA thresholds but does not include severity, current assignee, or business impact fields \u2014 I inferred urgency from DaysSinceUpdate vs threshold.\n- This is an aggregated team-level export; if you want a per-direct-report breakdown or a paginated full list, I can produce that on request.\n\nDo you want:\n- A full paginated export of your 264 violations, or\n- I register you for daily SLA notifications, or\n- I create a prioritized triage list of top 20 items with owners and suggested actions?\n\n(Examples cited above: work items #4528211, #4439974, #4390140 \u2014 source: SLA check tool output.)",
-            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
-            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
+            "responseText": "I\u0027m Hermes\u0027 project assistant. I can help you with status newsletters, Azure DevOps hierarchy validation, querying work items by area path, SLA violation tracking, and discovering user PR activity.\n\nSummary\n- Found 10 SLA violations across your team (manager: yes; direct reports: 13). Source: SLA check for visomasu@microsoft.com.\n- Immediate business risk: delayed compliance and synthetic test work may block releases or cause regulatory exposure if not updated. See items cited inline (#6017445, #4089043, etc.).\n\nViolations (action-focused)\n| Item (ID / Title) | Type | Days since update | SLA threshold (days) | Link | Recommended immediate action |\n|---|---:|---:|---:|---|---|\n| #6017445 \u2014 [Compliance][SDL] SDL Follow-up | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/6017445 | Owner (jdebroin@microsoft.com): Update status \u0026 next steps within 48h; mark blockers. |\n| #6017444 \u2014 [Compliance][BCDR] BCDR Follow-up | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/6017444 | Same as above \u2014 confirm remediation plan within 48h. |\n| #5625230 \u2014 [Cleanup][GDPR] Identify and cleanup legacy data | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/5625230 | Owner: confirm scope \u0026 schedule; escalate if additional resources required. |\n| #3265713 \u2014 [Policy Enforcer][PPS sync] Policy Enforcer: PowerPlatform Settings should not be out of sync for more than X days | User Story | 14 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3265713 | High priority \u2014 assess impact on customers; assign hotfix owner if blocking. |\n| #4089043 \u2014 [Synthetic][License] Phase 2 - 3993560: Verify that CCaaS API call create should fail with no entitlement | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089043 | Tests stale \u2014 re-run or reassign immediately; may block release gating. |\n| #4089045 \u2014 [Synthetic][License] Phase 2 - 3993565: Verify CCaaS API call create should fail with partial entitlement(Failure scenario) | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089045 | Same as above \u2014 restore CI/test ownership. |\n| #4089046 \u2014 [Synthetic][License] Phase 2 - 3993566: Verify CCaaS API call create should fail with partial entitlement(Success scenario) | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089046 | Same as above \u2014 priority remediation. |\n| #4089085 \u2014 [Synthetic][License] Phase 2 - 4040193: Verify CCaaS API should return correct error for get entitled channel for voice channel where it is not enabled | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089085 | Same as above \u2014 tests impacting licensing validation. |\n| #4089099 \u2014 [Synthetic][License] Phase 2 - 4040179: Verify CCaaS API update call should fail for channel with no entitlement | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089099 | Same as above \u2014 coordinate with QA lead. |\n| #4089109 \u2014 [Synthetic][License] Phase 3 - 3963822: Verify trial orgs update fails with correct error code | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089109 | Same as above \u2014 high risk for trials/regression. |\n\nRecommended immediate plan (next 72 hours)\n1. Owners update items within 48 hours with current status, next steps, and expected resolution date (start with #4089043\u2013#4089109 and #3265713). These are \u003E2x SLA and most likely to cause release/test gating. (Cite examples: #4089043, #3265713.)\n2. Manager triage within 72 hours to reassign or escalate resource needs for synthetic tests and compliance follow-ups.\n3. If items block a release or regulatory commitment, label them \u0022SLA-Escalation\u0022 and request an expedited working session with QA/Compliance owners.\n\nAssumptions \u0026 data gaps\n- The SLA report was returned grouped under jdebroin@microsoft.com; the tool output did not include explicit \u0022Assigned To\u0022 fields or business priority \u2014 I assume jdebroin@microsoft.com is the responsible owner for these items. (Work items: #6017445, #4089043, etc.)\n- I do not have linked PR/Build status or exact sprint assignments \u2014 that data would help prioritize impact on upcoming releases.\n- No automatic reassign/notification was performed; this is a visibility report only.\n\nWould you like me to:\n- Send a templated escalation email/Teams message to jdebroin@microsoft.com and the item owners summarizing required actions (I can draft and send if you authorize), or\n- Register you for daily SLA notifications so you receive these reports automatically?\n\nIf you want the escalation drafted, tell me which items to include (or say \u0022include all 10\u0022) and whether to CC specific stakeholders.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "06e5a4c1-c2a6-4b33-8b4c-9672ceacd4ed"
           }
         },
         {
           "turnNumber": 2,
           "evaluatorName": "Aggregated",
-          "success": false,
-          "overallScore": 0.7000000000000001,
+          "success": true,
+          "overallScore": 1,
           "scores": {
             "toolSelection": 1,
-            "parameterExtraction": 0,
+            "parameterExtraction": 1,
             "contextRetention": 1,
             "responseQuality": 1
           },
@@ -96,8 +1034,8 @@
               "details": "Expected: CheckSlaViolations or aliases [CheckViolations, CheckSLA, GetViolations], Actual: CheckSlaViolations"
             },
             "ParameterExtraction_Parameter_teamsUserId": {
-              "passed": false,
-              "details": "Expected: \u0022user@microsoft.com\u0022, Actual: \u0022visomasu@microsoft.com\u0022"
+              "passed": true,
+              "details": "Correct: \u0022user@microsoft.com\u0022"
             },
             "ResponseQuality_Contains_SLA": {
               "passed": true,
@@ -105,15 +1043,15 @@
             },
             "ResponseQuality_MinimumLength": {
               "passed": true,
-              "details": "Length: 870, Required: 50"
+              "details": "Length: 901, Required: 50"
             }
           },
           "error": null,
-          "executionTimeMs": 8046,
+          "executionTimeMs": 12645,
           "capturedMetadata": {
-            "responseText": "I can run an SLA check \u2014 but tool access is limited to the current signed-in user for this session. The system is configured to use visomasu@microsoft.com as the Teams user ID for SLA tool calls, so I cannot directly run a check for user@microsoft.com from here.\n\nOptions:\n1. Run the SLA check now for the current user (visomasu@microsoft.com). Reply \u0022Run for me\u0022 and I\u0027ll fetch the violations.  \n2. If you need a check for user@microsoft.com, either:\n   - Ask that user to request the check while signed in, or\n   - Confirm you have authorization and provide the target user\u0027s Teams user ID and any required consent, and I will attempt the lookup (may be blocked by permissions).\n\nAssumptions \u0026 data gap:\n- Assumes tool policy requires the session user (visomasu@microsoft.com); I cannot impersonate or query other users without their session or explicit authorization.",
-            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
-            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
+            "responseText": "I attempted to check SLA violations for user@microsoft.com.\n\nTool call\n- Operation: WorkItemSlaTool.CheckSlaViolations\n- Input: {\u0022teamsUserId\u0022:\u0022user@microsoft.com\u0022}\n- Result: {\u0022success\u0022:false,\u0022message\u0022:\u0022An error occurred while checking violations. Please try again.\u0022}\n\nLikely causes / data gaps\n- The Teams user ID may be invalid or not onboarded to the SLA service.\n- Possible transient service error or permission issue when querying SLA data.\n- I can\u0027t access assigned work items for that user until the check succeeds.\n\nRecommended next steps (pick one)\n1. Retry the SLA check for user@microsoft.com now \u2014 I can run it again on your command.  \n2. Run the SLA check for your current user (visomasu@microsoft.com) instead \u2014 quick alternative if you want immediate results.  \n3. Provide a different Teams user ID or confirm the exact email/Teams ID to query.  \n\nWhich option would you like me to run?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "06e5a4c1-c2a6-4b33-8b4c-9672ceacd4ed"
           }
         },
         {
@@ -146,27 +1084,152 @@
             },
             "ResponseQuality_MinimumLength": {
               "passed": true,
-              "details": "Length: 3705, Required: 30"
+              "details": "Length: 3478, Required: 30"
             }
           },
           "error": null,
-          "executionTimeMs": 28190,
+          "executionTimeMs": 21638,
           "capturedMetadata": {
-            "responseText": "Summary (quick)\n- SLA check found 264 violations across your team; you are listed as a manager with 11 direct reports. Source: SLA run for visomasu@microsoft.com.\n- Immediate observation: you have many long-overdue items \u2014 several tasks and features exceed SLA by hundreds of days. Top overdue items are shown below.\n\nTop overdue items (highest DaysSinceUpdate)\n| Work Item | Title (short) | Type | Days since update | SLA threshold | Overdue by | Link |\n|-----------:|---------------|------|------------------:|--------------:|-----------:|------|\n| 2877867 | Make the onebranch builds as required for telephony service | Task | 1262 | 5 | 1257 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/2877867 |\n| 3014575 | [CommonInfra Nuget Update][SecurityCompliance] Uptake latest common Infra nuget | Task | 1103 | 5 | 1098 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3014575 |\n| 3127199 | [Doc][Voice] Teams residency DFD - Transfer and consult doc update | Task | 1044 | 5 | 1039 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3127199 |\n| 3367044 | Evaluate if the AddParticipantsWorkflowV2 if required in case of Warm Transfer complete | Task | 1001 | 5 | 996 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3367044 |\n| 3516801 | [OCMon Dashboard] V29 Initialize call for voice channel | Task | 916 | 5 | 911 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3516801 |\n| 3516798 | [OCMon Dashboard] V09 Agent can place an outbound call to a customer | Task | 856 | 5 | 851 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3516798 |\n\nUrgent production/quality risks to review\n- Bug 4528211 \u2014 \u0022Agent Monitor seeing 99.46% reliability...\u0022 (Bug, DaysSinceUpdate 400, SLA 2). High-risk operational impact; recommend urgent triage (see #4528211).\n- Bugs and production-impact items appear in the list (e.g., #4439974, #4390140). These should be prioritized above long-running documentation/tasks if they affect customers.\n\nRecommended immediate actions\n1. Triage meeting: run a 30\u201360 minute triage for the top 10 overdue items (start with the oldest production-impact bugs). Suggested owners: current assignees or rotate to on-call SRE/product leads.\n2. Quick fixes: for items that are stale but low effort (documentation, small tasks) \u2014 close or reassign within 48 hours to reduce noise.\n3. Escalation: escalate critical bugs (e.g., #4528211, #4439974, #4390140) to product/SRE with target remediation dates.\n4. Hygiene: set or confirm ownership and update the work item comment/status to reset SLA tracking where appropriate.\n5. Automation: I can register you for daily SLA notifications or create a curated filter/dashboard showing only items overdue \u003E30 days or production bugs \u2014 tell me which and I\u2019ll set it up.\n\nAssumptions \u0026 data gaps\n- Data source: WorkItem SLA check for visomasu@microsoft.com (tool output). I used DaysSinceUpdate and SlaThresholdDays to rank urgency. Example IDs: #2877867, #3014575, #3127199, #3367044, #3516801, #3516798, #4528211.\n- Missing from the SLA output: assigned owner, priority/business impact, and current iteration \u2014 I inferred urgency solely from SLA breach duration.\n- Some long-standing items may be intentionally inactive (backlog/epics kept open). Recommend confirming business priority before reprioritizing or closing.\n\nNext step options (pick one)\n- I can create a prioritized list of the top 25 items with current assignees and suggested owners for a triage session.  \n- I can register you for daily SLA violation emails for your team (automated).  \n- I can generate a short escalation note for the top production-impact bugs to send to the SRE/product leads.\n\nWhich would you like me to do?",
-            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260130.log",
-            "sessionId": "0001c191-b4d5-486a-bdec-f1131086b825"
+            "responseText": "Calling SLA check for visomasu@microsoft.com \u2014 completed.\n\nSummary\n- Result: 10 SLA violations found across your team; you are listed as a manager with 13 direct reports.\n- All 10 violations are assigned to jdebroin@microsoft.com (see table below).\n- No violations were returned that are assigned directly to you (visomasu@microsoft.com).\n\nViolations (owner: jdebroin@microsoft.com)\n| Work Item ID | Title | Type | Days Since Update | SLA Threshold (days) | Link |\n|--------------:|-------|------|------------------:|---------------------:|------|\n| 6017445 | [Compliance][SDL] SDL Follow-up | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/6017445 |\n| 6017444 | [Compliance][BCDR] BCDR Follow-up | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/6017444 |\n| 5625230 | [Cleanup][GDPR] Identify and cleanup legacy data | User Story | 13 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/5625230 |\n| 3265713 | [Policy Enforcer][PPS sync] Policy Enforcer: PowerPlatform Settings should not be out of sync for more than X days | User Story | 14 | 7 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/3265713 |\n| 4089043 | [Synthetic][License] Phase 2 - 3993560: Verify that CCaaS API call create should fail with no entitlement | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089043 |\n| 4089045 | [Synthetic][License] Phase 2 - 3993565: Verify CCaaS API call create should fail with partial entitlement(Failure scenario) | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089045 |\n| 4089046 | [Synthetic][License] Phase 2 - 3993566: Verify CCaaS API call create should fail with partial entitlement(Success scenario) | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089046 |\n| 4089085 | [Synthetic][License] Phase 2 - 4040193: Verify CCaaS API should return correct error for get entitled channel for voice channel where it is not enabled | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089085 |\n| 4089099 | [Synthetic][License] Phase 2 - 4040179: Verify CCaaS API update call should fail for channel with no entitlement | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089099 |\n| 4089109 | [Synthetic][License] Phase 3 - 3963822: Verify trial orgs update fails with correct error code | Task | 15 | 5 | https://dev.azure.com/dynamicscrm/OneCRM/_workitems/edit/4089109 |\n\nRecommendations (short)\n- Ask jdebroin@microsoft.com to update or triage the highest-age items first (e.g., #4089043, #4089045\u2013#4089109 at 15 days). These also have the tightest SLA thresholds (5 days).\n- If you want, I can trigger an automated reminder to jdebroin@microsoft.com for these items or generate a short status note you can send \u2014 tell me which action you prefer.\n- Re-run the SLA check after updates; I can re-check on demand.\n\nAssumptions and data gaps\n- Data reflects the SLA check run now and only includes violations returned by the SLA service for your team.\n- The tool groups violations by assignee; there were no violations assigned to visomasu@microsoft.com in this result.\n- If you want violations for all teams or a different user, provide that Teams user ID and I\u2019ll run the check.\n\nWould you like me to (a) send a reminder to jdebroin@microsoft.com for these items, (b) re-run the check for a different user or scope, or (c) prepare a short status note you can send?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "06e5a4c1-c2a6-4b33-8b4c-9672ceacd4ed"
           }
         }
       ],
       "metrics": {
         "toolSelectionAccuracy": 1,
-        "parameterExtractionAccuracy": 0.6666666666666666,
+        "parameterExtractionAccuracy": 1,
         "contextRetentionScore": 1,
         "responseQualityScore": 1,
-        "averageExecutionTimeMs": 18008.333333333332,
+        "averageExecutionTimeMs": 20643.333333333332,
         "totalTurns": 3,
+        "passedTurns": 3,
+        "failedTurns": 0
+      }
+    },
+    {
+      "scenarioName": "User Activity Discovery",
+      "passed": true,
+      "overallScore": 1,
+      "executionMode": 0,
+      "dataMode": 1,
+      "executionTimeMs": 49274,
+      "startTime": "0001-01-01T00:00:00+00:00",
+      "endTime": "0001-01-01T00:00:00+00:00",
+      "duration": "00:00:00",
+      "turnResults": [
+        {
+          "turnNumber": 1,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: DiscoverUserActivity or aliases [GetUserPullRequestActivity, GetUserActivity, DiscoverPRActivity, GetPullRequestsByUser, GetUserPullRequests, GetPRsByUser, GetPullRequests, UserActivity, DiscoverActivity, GetUserPRActivity, GetPRActivity, GetPullRequestActivity], Actual: GetPullRequestsByUser"
+            },
+            "ParameterExtraction_Parameter_userEmail": {
+              "passed": true,
+              "details": "Correct: \u0022user@microsoft.com\u0022"
+            },
+            "ParameterExtraction_Parameter_days": {
+              "passed": true,
+              "details": "Correct: 30"
+            },
+            "ContextRetention_ContextStored": {
+              "passed": true,
+              "details": "Stored 2 context item(s): lastUserQueried, lastDaysPeriod"
+            },
+            "ResponseQuality_Contains_pull_request": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 4725, Required: 100"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 27263,
+          "capturedMetadata": {
+            "responseText": "(Calling Azure DevOps for pull request activity \u2014 results below)\n\nExecutive summary\n- I retrieved pull request activity for user@microsoft.com over the last 30 days. The tool returned a set of recently created PRs; below are the 10 most recent items and high\u2011level observations. (Source: AzureDevOps GetPullRequestsByUser response \u2014 see PR IDs in table.)\n- Quick observation: many recent PRs are automated security or dependency updates (Dependabot) and AutoCopilot generated PRs \u2014 these increase review volume and may require prioritization (e.g., #1504725, #1504691, #1504712).\n\n10 most\u2011recent pull requests (most recent first)\n| PR ID | Title (truncated) | Repository | Created (UTC) | Status | Link |\n|-------|-------------------|------------|---------------:|--------|------|\n| 1504725 | [WIP] Upgrade eslint in the project due to fix CG issues | CRM.OmniChannel.C1Provisioning | 2026-02-02T00:11:56Z | Active | https://dev.azure.com/.../pullRequests/1504725 |\n| 1504724 | [WIP] Upgrade fast-xml-parser in the project due to fix CG issues | CRM.CS.ModernAdmin | 2026-02-02T00:06:41Z | Active | https://dev.azure.com/.../pullRequests/1504724 |\n| 1504723 | [WIP] Upgrade eslint in the project due to fix CG issues | CRM.Solutions.InboxView | 2026-02-02T00:06:39Z | Active | https://dev.azure.com/.../pullRequests/1504723 |\n| 1504722 | [WIP] Upgrade eslint in the project due to fix CG issues | CRM.Solutions.Analytics | 2026-02-02T00:06:32Z | Active | https://dev.azure.com/.../pullRequests/1504722 |\n| 1504721 | [WIP] Upgrade fast-xml-parser in the project due to fix CG issues | CRM.Omnichannel.ProductivityTools | 2026-02-02T00:06:31Z | Active | https://dev.azure.com/.../pullRequests/1504721 |\n| 1504720 | [WIP] Upgrade eslint in the project due to fix CG issues | CRM.Solutions.ServiceIntelligence | 2026-02-02T00:05:44Z | Active | https://dev.azure.com/.../pullRequests/1504720 |\n| 1504719 | [WIP] Upgrade fast-xml-parser in the project due to fix CG issues | CRM.Solutions.ServiceManagement | 2026-02-02T00:05:44Z | Active | https://dev.azure.com/.../pullRequests/1504719 |\n| 1504717 | [WIP] Upgrade eslint in the project due to fix CG issues | CRM.Solutions.InboxView | 2026-02-02T00:01:49Z | Active | https://dev.azure.com/.../pullRequests/1504717 |\n| 1504716 | [WIP] Upgrade eslint in the project due to fix CG issues | CRM.Solutions.CustomControlsExtended | 2026-02-02T00:01:40Z | Active | https://dev.azure.com/.../pullRequests/1504716 |\n| 1504715 | [WIP] Upgrade eslint in the project due to fix CG issues | CRM.Solutions.Analytics | 2026-02-02T00:01:39Z | Active | https://dev.azure.com/.../pullRequests/1504715 |\n\nKey observations and business impact\n- Security \u0026 dependency activity: Multiple Dependabot and security PRs are present (examples: #1504691, #1504687, #1504678). These reduce security risk but need timely review and merge to protect customers.\n- Auto-generated PRs: Several AutoCopilot PRs (e.g., #1504725, #1504724) are appearing \u2014 useful for fast remediation but can increase reviewer load and require validation to avoid regressions.\n- Scope: PRs touch multiple product areas (Omnichannel, Solutions, Analytics) \u2014 cross\u2011team coordination may be needed for changes that affect shared components.\n\nRisks and recommended mitigations\n- Risk: Review backlog from high volume of automated PRs \u2192 Mitigation: prioritize security PRs and batch non\u2011urgent dependency bumps; consider temporary triage rules. (Cite examples: #1504691, #1504725)\n- Risk: Auto-generated changes slipping into main without adequate testing \u2192 Mitigation: enforce required reviewers and CI gating on those repositories.\n\nAssumptions and data gaps\n- The tool returned PRs labeled in the \u0022created\u0022 collection. I observed multiple different createdBy values in the result set; if you intended \u0022PRs created by user@microsoft.com\u0022 vs \u0022PRs where user@microsoft.com participated (reviewer, assignee, or author)\u0022, please confirm \u2014 some returned items show other creators (e.g., GitHub Copilot, Dependabot, other users).\n- Missing details: reviewer/approval status, merge/merge conflicts, lines changed, and whether PRs are assigned to the target user. I can re-run with those fields if you want full audit (includes reviewer and merge status).\n\nNext steps (quick options \u2014 pick one)\n- I can export the full PR list (all items) including reviewers, merged/closed status, and lines changed.\n- I can filter to show only PRs authored by user@microsoft.com, or only those where user@microsoft.com is a reviewer/assignee.\n- I can produce a short report prioritizing security PRs and blocking items for the release.\n\nWhich follow-up would you like? If you want a filtered view (author vs reviewer), tell me which and I\u2019ll re-run the query.",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "8bd8c363-00ea-47a5-b1a1-9e841ba9d405"
+          }
+        },
+        {
+          "turnNumber": 2,
+          "evaluatorName": "Aggregated",
+          "success": true,
+          "overallScore": 1,
+          "scores": {
+            "toolSelection": 1,
+            "parameterExtraction": 1,
+            "contextRetention": 1,
+            "responseQuality": 1
+          },
+          "checks": {
+            "ToolSelection_CorrectToolSelected": {
+              "passed": true,
+              "details": "Expected: AzureDevOpsTool, Actual: AzureDevOpsTool"
+            },
+            "ToolSelection_CorrectCapabilitySelected": {
+              "passed": true,
+              "details": "Expected: DiscoverUserActivity or aliases [GetUserPullRequestActivity, GetUserActivity, DiscoverPRActivity, GetPullRequestsByUser, GetUserPullRequests, GetPRsByUser, GetPullRequests, UserActivity, DiscoverActivity, GetUserPRActivity, GetPRActivity, GetPullRequestActivity], Actual: GetPullRequestsByUser"
+            },
+            "ParameterExtraction_Parameter_days": {
+              "passed": true,
+              "details": "Correct: 7"
+            },
+            "ContextRetention_ContextUsed_lastUserQueried": {
+              "passed": true,
+              "details": "Context \u0027lastUserQueried\u0027=\u0022user@microsoft.com\u0022 correctly used in parameter \u0027userEmail\u0027"
+            },
+            "ResponseQuality_Contains_pull_request": {
+              "passed": true,
+              "details": "Present"
+            },
+            "ResponseQuality_DoesNotContain_which_user": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_DoesNotContain_specify_a_user": {
+              "passed": true,
+              "details": "Correctly absent"
+            },
+            "ResponseQuality_MinimumLength": {
+              "passed": true,
+              "details": "Length: 3776, Required: 50"
+            }
+          },
+          "error": null,
+          "executionTimeMs": 21006,
+          "capturedMetadata": {
+            "responseText": "(Queried Azure DevOps for pull request activity for user@microsoft.com over the last 7 days \u2014 results below; source: GetPullRequestsByUser)\n\nExecutive summary\n- The query returned a list of recent pull requests created in the last 7 days (see table). There is a high volume of automated PRs (GitHub Copilot and Dependabot) alongside developer-authored changes. Example automated items: #1504725 (Copilot), #1504691 (Dependabot).\n- Note: many returned PRs are NOT authored by user@microsoft.com \u2014 the feed includes automated and cross-team activity. If you intended only PRs authored by user@microsoft.com or only PRs where they are a reviewer/participant, I can re-run with that filter.\n\nTop 10 most-recent PRs (most recent first)\n| PR ID | Title (truncated) | Repository | Created (UTC) | Status |\n|-------|-------------------|------------|---------------:|--------|\n| 1504725 | [WIP] [AutoCopilot PR] Upgrade eslint | CRM.OmniChannel.C1Provisioning | 2026-02-02T00:11:56Z | Active |\n| 1504724 | [WIP] [AutoCopilot PR] Upgrade fast-xml-parser | CRM.CS.ModernAdmin | 2026-02-02T00:06:41Z | Active |\n| 1504723 | [WIP] [AutoCopilot PR] Upgrade eslint | CRM.Solutions.InboxView | 2026-02-02T00:06:39Z | Active |\n| 1504722 | [WIP] [AutoCopilot PR] Upgrade eslint | CRM.Solutions.Analytics | 2026-02-02T00:06:32Z | Active |\n| 1504721 | [WIP] [AutoCopilot PR] Upgrade fast-xml-parser | CRM.Omnichannel.ProductivityTools | 2026-02-02T00:06:31Z | Active |\n| 1504720 | [WIP] [AutoCopilot PR] Upgrade eslint | CRM.Solutions.ServiceIntelligence | 2026-02-02T00:05:44Z | Active |\n| 1504719 | [WIP] [AutoCopilot PR] Upgrade fast-xml-parser | CRM.Solutions.ServiceManagement | 2026-02-02T00:05:44Z | Active |\n| 1504717 | [WIP] [AutoCopilot PR] Upgrade eslint | CRM.Solutions.InboxView | 2026-02-02T00:01:49Z | Active |\n| 1504716 | [WIP] [AutoCopilot PR] Upgrade eslint | CRM.Solutions.CustomControlsExtended | 2026-02-02T00:01:40Z | Active |\n| 1504715 | [WIP] [AutoCopilot PR] Upgrade eslint | CRM.Solutions.Analytics | 2026-02-02T00:01:39Z | Active |\n\nKey observations and business impact\n- Automated security \u0026 dependency work dominates the feed. Dependabot and Copilot PRs address vulnerabilities and dependency drift (examples: #1504691, #1504678, #1504725). Prompt review/merge reduces customer risk from known vulnerabilities.\n- Cross-team surface area: PRs touch multiple product areas (Omnichannel, Analytics, Solutions). Uncoordinated merges could risk regressions in shared components or CI capacity.\n- Signal vs. noise: high volume of automated PRs increases reviewer workload and can obscure priority human-authored work.\n\nTop risks and recommended mitigations\n- Risk: Review backlog delaying security merges \u2192 Mitigation: prioritize Dependabot and labeled-security PRs (#1504678, #1504663); create triage rules to auto-assign security reviewers.\n- Risk: Auto-generated Copilot changes merged without sufficient verification \u2192 Mitigation: enforce required reviewers and CI gating for Copilot branches (#1504725 series).\n\nAssumptions and data gaps\n- The returned list includes PRs created in the 7-day window but not filtered to \u0022authored by user@microsoft.com\u0022 vs \u0022involving user@microsoft.com\u0022 \u2014 many items are authored by Copilot, Dependabot, or other engineers (examples: #1504725, #1504696).\n- Missing fields not in this export: reviewer list \u0026 approvals, merge/merge-conflict status, lines changed, and assignment to the user. I can re-run including those fields on request.\n\nNext steps (pick one)\n- Filter to only PRs authored by user@microsoft.com (recommended if you want their authored work).\n- Filter to PRs where user@microsoft.com is a reviewer or assignee.\n- Export full list including reviewer/approval status and diff metrics for audit.\n\nWhich option do you want?",
+            "logFilePath": "C:\\Users\\visomasu\\.hermes\\logs\\hermes-20260201.log",
+            "sessionId": "8bd8c363-00ea-47a5-b1a1-9e841ba9d405"
+          }
+        }
+      ],
+      "metrics": {
+        "toolSelectionAccuracy": 1,
+        "parameterExtractionAccuracy": 1,
+        "contextRetentionScore": 1,
+        "responseQualityScore": 1,
+        "averageExecutionTimeMs": 24134.5,
+        "totalTurns": 2,
         "passedTurns": 2,
-        "failedTurns": 1
+        "failedTurns": 0
       }
     }
   ]

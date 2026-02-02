@@ -42,7 +42,7 @@ namespace Hermes.Tools.UserManagement
 		public string Name => "UserManagementTool";
 
 		/// <inheritdoc/>
-		public string Description => "Provides user management capabilities such as registering for SLA notifications and managing user preferences.";
+		public string Description => "Provides user management capabilities such as registering for SLA notifications and managing user preferences. INPUT MUST BE JSON: For RegisterSlaNotifications use {\"teamsUserId\": \"user@example.com\"}, for UnregisterSlaNotifications use {\"teamsUserId\": \"user@example.com\"}.";
 
 		/// <inheritdoc/>
 		public IReadOnlyList<string> Capabilities => new[]

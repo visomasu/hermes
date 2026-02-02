@@ -5,7 +5,7 @@
     {
       "id": "newsletter-generation",
       "name": "Newsletter Generation",
-      "description": "Generate, refine, and maintain newsletter content based on data and features from the Hermes system, including summarizing recent changes, surfacing key metrics, and formatting content for communication channels such as email or Teams."
+      "description": "Generate executive-level newsletters from Azure DevOps features or epics. Includes project overview, execution timelines, milestones, outcomes, progress tracking, and risk assessment. Uses gpt-4o for high-quality synthesis."
     },
     {
       "id": "parent-hierarchy-validator",
@@ -31,6 +31,11 @@
       "id": "discover-user-activity",
       "name": "Discover User Activity",
       "description": "Discover and summarize user pull request activity over past n days."
+    },
+    {
+      "id": "get-work-items-by-area-path",
+      "name": "GetWorkItemsByAreaPath",
+      "description": "Query Azure DevOps work items by area path with pagination and optional filtering by work item type. Useful for exploring work items in specific teams or project areas."
     }
   ]
 }

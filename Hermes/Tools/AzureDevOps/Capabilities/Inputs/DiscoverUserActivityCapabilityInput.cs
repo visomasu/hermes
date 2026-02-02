@@ -20,5 +20,45 @@ namespace Hermes.Tools.AzureDevOps.Capabilities.Inputs
 		/// </summary>
 		[JsonPropertyName("daysBack")]
 		public int DaysBack { get; init; } = 7;
+
+		/// <summary>
+		/// Alias for DaysBack. Accepts "days" as an alternative parameter name.
+		/// </summary>
+		[JsonPropertyName("days")]
+		public int Days
+		{
+			get => DaysBack;
+			init => DaysBack = value > 0 ? value : DaysBack;
+		}
+
+		/// <summary>
+		/// Alias for UserEmail. Accepts "author" as an alternative parameter name.
+		/// </summary>
+		[JsonPropertyName("author")]
+		public string Author
+		{
+			get => UserEmail;
+			init => UserEmail = !string.IsNullOrWhiteSpace(value) ? value : UserEmail;
+		}
+
+		/// <summary>
+		/// Alias for UserEmail. Accepts "email" as an alternative parameter name.
+		/// </summary>
+		[JsonPropertyName("email")]
+		public string Email
+		{
+			get => UserEmail;
+			init => UserEmail = !string.IsNullOrWhiteSpace(value) ? value : UserEmail;
+		}
+
+		/// <summary>
+		/// Alias for UserEmail. Accepts "user" as an alternative parameter name.
+		/// </summary>
+		[JsonPropertyName("user")]
+		public string User
+		{
+			get => UserEmail;
+			init => UserEmail = !string.IsNullOrWhiteSpace(value) ? value : UserEmail;
+		}
 	}
 }

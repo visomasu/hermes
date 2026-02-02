@@ -63,5 +63,12 @@ namespace Hermes.Notifications.WorkItemSla
 		/// Useful for development/testing. Should be false in production.
 		/// </summary>
 		public bool BypassGates { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the batch size for parallel user processing.
+		/// Higher values process more users concurrently but may increase load.
+		/// Set to 1 to disable batch processing (sequential).
+		/// </summary>
+		public int UserProcessingBatchSize { get; set; } = 5;
 	}
 }

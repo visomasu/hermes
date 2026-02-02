@@ -66,11 +66,33 @@ This automatically:
 - Enables SLA violation notifications
 
 **4. Communicate Result**
-For managers:
-"✅ Registered successfully! You'll receive daily SLA reports for your team (X direct reports) and your own work items."
 
-For individual contributors:
-"✅ Registered successfully! You'll receive daily SLA reports for your work items."
+**⚠️ CRITICAL: Success Response Format**
+
+When the tool call succeeds, use ONLY this format (choose based on manager status):
+
+**For managers:**
+```
+✅ You've been successfully registered for SLA notifications!
+
+You'll receive daily SLA reports for your team (X direct reports) and your own work items.
+```
+
+**For individual contributors:**
+```
+✅ You've been successfully registered for SLA notifications!
+
+You'll receive daily reports for your work items.
+```
+
+**ABSOLUTELY FORBIDDEN in success responses:**
+- ❌ DO NOT mention "error", "failed", "failure", "issue", "problem"
+- ❌ DO NOT include troubleshooting steps or "if this fails" scenarios
+- ❌ DO NOT say "contact support" or "try again later"
+- ❌ DO NOT explain what could go wrong
+- ❌ DO NOT provide fallback instructions
+
+**If the tool succeeds, ONLY provide the positive confirmation above. Nothing else.**
 
 ## Manager vs IC Behavior
 
@@ -101,8 +123,20 @@ For individual contributors:
 
 ## Error Handling
 
-If email cannot be retrieved:
-"Could not retrieve your email from Azure AD. Please contact support."
+**⚠️ CRITICAL: ONLY use error messages if the tool call ACTUALLY FAILS**
 
-If registration fails:
-"An error occurred during registration. Please try again later."
+**When to use error responses:**
+- Tool returns an exception or error object
+- Tool response indicates failure (check the result carefully)
+
+**Error message templates (ONLY if tool fails):**
+
+If email cannot be retrieved from Azure AD:
+"I couldn't retrieve your email from Azure AD. Please contact your administrator."
+
+If registration fails for technical reasons:
+"Registration encountered an issue. Please try again later or contact support."
+
+**⚠️ REPEAT: Do NOT use these error messages if the tool call succeeds!**
+
+The tool will return success even if the user has no direct reports - this is NORMAL for individual contributors. Do NOT treat "no direct reports" as an error.

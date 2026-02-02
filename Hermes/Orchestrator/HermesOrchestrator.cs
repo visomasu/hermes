@@ -1,6 +1,8 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
 using Hermes.Orchestrator.Context;
+using Hermes.Orchestrator.Intent;
+using Hermes.Orchestrator.Models;
 using Hermes.Orchestrator.PhraseGen;
 using Hermes.Orchestrator.Prompts;
 using Hermes.Storage.Repositories.HermesInstructions;
@@ -10,6 +12,7 @@ using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -30,6 +33,8 @@ namespace Hermes.Orchestrator
         private readonly IAgentPromptComposer _agentPromptComposer;
         private readonly IWaitingPhraseGenerator _phraseGenerator;
         private readonly IConversationContextSelector _contextSelector;
+        private readonly IModelSelector _modelSelector;
+        private readonly IIntentClassifier _intentClassifier;
         private readonly ILogger<HermesOrchestrator> _logger;
 
         private readonly List<AITool> _tools = new();
@@ -40,6 +45,12 @@ namespace Hermes.Orchestrator
 
         // Current progress callback for the active orchestration (used by tool wrappers).
         private Action<string>? _currentProgressCallback;
+
+        // Current intent for the active orchestration (used for performance logging).
+        private string? _currentIntent;
+
+        // Current session ID for the active orchestration (used for tool invocation logging).
+        private string? _currentSessionId;
 
         /// <summary>
         /// Initializes a new instance of the HermesOrchestrator class using the specified endpoint and API key.
@@ -53,6 +64,8 @@ namespace Hermes.Orchestrator
         /// <param name="agentPromptComposer">Component responsible for composing agent prompts from instruction files.</param>
         /// <param name="phraseGenerator">Generator for creating fun waiting phrases.</param>
         /// <param name="contextSelector">Selector for choosing relevant conversation context based on semantic similarity.</param>
+        /// <param name="modelSelector">Selector for choosing appropriate LLM models based on operation type.</param>
+        /// <param name="intentClassifier">Classifier for determining user intent from natural language queries.</param>
         public HermesOrchestrator(
             ILogger<HermesOrchestrator> logger,
             string endpoint,
@@ -62,13 +75,17 @@ namespace Hermes.Orchestrator
             IConversationHistoryRepository conversationHistoryRepository,
             IAgentPromptComposer agentPromptComposer,
             IWaitingPhraseGenerator phraseGenerator,
-            IConversationContextSelector contextSelector)
+            IConversationContextSelector contextSelector,
+            IModelSelector modelSelector,
+            IIntentClassifier intentClassifier)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
             _agentPromptComposer = agentPromptComposer;
             _phraseGenerator = phraseGenerator;
             _contextSelector = contextSelector;
+            _modelSelector = modelSelector;
+            _intentClassifier = intentClassifier;
             _logger = logger;
             _endpoint = endpoint;
             _apiKey = apiKey;
@@ -90,13 +107,17 @@ namespace Hermes.Orchestrator
             IConversationHistoryRepository conversationHistoryRepository,
             IAgentPromptComposer agentPromptComposer,
             IWaitingPhraseGenerator phraseGenerator,
-            IConversationContextSelector contextSelector)
+            IConversationContextSelector contextSelector,
+            IModelSelector modelSelector,
+            IIntentClassifier intentClassifier)
         {
             _instructionsRepository = instructionsRepository;
             _conversationHistoryRepository = conversationHistoryRepository;
             _agentPromptComposer = agentPromptComposer;
             _phraseGenerator = phraseGenerator;
             _contextSelector = contextSelector;
+            _modelSelector = modelSelector;
+            _intentClassifier = intentClassifier;
             _logger = logger;
             _endpoint = endpoint;
             _apiKey = apiKey;
@@ -112,13 +133,17 @@ namespace Hermes.Orchestrator
 
         /// <summary>
         /// Creates the AI agent with instructions from the prompt composer for the given instruction type.
+        /// Uses the model selector to determine the appropriate model for default orchestration.
         /// </summary>
-        private async Task<AIAgent> CreateAgentAsync(string instructionText)
+        private async Task<AIAgent> CreateAgentAsync(string instructionText, string intent)
         {
-            var chatClient = new AzureOpenAIClient(
-                new Uri(_endpoint),
-                new AzureCliCredential())
-                    .GetChatClient("gpt-5-mini");
+            // Use intent-based model selection for optimized performance per operation type
+            var chatClient = _modelSelector.GetChatClientForOperation(intent);
+
+            _logger.LogDebug(
+                "Creating AIAgent with intent '{Intent}' using model '{Model}'",
+                intent,
+                _modelSelector.GetModelForOperation(intent));
 
             return chatClient.CreateAIAgent(
                 instructions: instructionText,
@@ -130,14 +155,27 @@ namespace Hermes.Orchestrator
         /// Gets the agent, creating it lazily if not already created.
         /// Checks if instructions have changed and recreates the agent if necessary.
         /// If a test agent was provided via the test-only constructor, it will be returned from the cache.
+        /// Uses intent classification to select the appropriate model for the query.
         /// </summary>
-        private async Task<AIAgent> GetAgentAsync()
+        /// <param name="userQuery">The user's query, used for intent classification</param>
+        private async Task<AIAgent> GetAgentAsync(string userQuery)
         {
             // If a test agent has been injected via the alternate constructor, return it.
             if (_agentCache.TryGetValue("TestAgent", out var testAgent))
             {
                 return testAgent;
             }
+
+            // Classify user intent for model selection
+            var intent = _intentClassifier.ClassifyIntent(userQuery);
+
+            // Store intent for performance logging during orchestration
+            _currentIntent = intent;
+
+            _logger.LogDebug(
+                "Classified user query intent as '{Intent}' for query: '{QueryPreview}'",
+                intent,
+                userQuery.Length > 50 ? userQuery.Substring(0, 50) + "..." : userQuery);
 
             var instructionType = HermesInstructionType.ProjectAssistant;
 
@@ -148,22 +186,22 @@ namespace Hermes.Orchestrator
             //}
 
             var instructionText = _agentPromptComposer.ComposePrompt(instructionType);
-            var cacheKey = GenerateCacheKey(instructionType, instructionText);
+            var cacheKey = GenerateCacheKey(instructionType, instructionText, intent);
 
             if (!_agentCache.TryGetValue(cacheKey, out var agent))
             {
-                agent = await CreateAgentAsync(instructionText).ConfigureAwait(false);
+                agent = await CreateAgentAsync(instructionText, intent).ConfigureAwait(false);
                 _agentCache[cacheKey] = agent;
             }
 
             return agent;
         }
 
-        private static string GenerateCacheKey(HermesInstructionType instructionType, string instruction)
+        private static string GenerateCacheKey(HermesInstructionType instructionType, string instruction, string intent)
         {
             var hash = SHA256.HashData(Encoding.UTF8.GetBytes(instruction));
             var hashString = Convert.ToHexString(hash);
-            return $"{instructionType}:{hashString}";
+            return $"{instructionType}:{intent}:{hashString}";
         }
 
         private void InitializeAgentTools(IEnumerable<IAgentTool> agentTools)
@@ -192,9 +230,10 @@ namespace Hermes.Orchestrator
                             ? input[..500] + "..."
                             : input ?? "";
 
-                        // Log tool invocation with structured data including input
+                        // Log tool invocation with structured data including input and session ID
                         _logger.LogInformation(
-                            "[ToolInvocation] Tool={ToolName} Operation={Operation} Input={Input}",
+                            "[ToolInvocation] SessionId={SessionId} Tool={ToolName} Operation={Operation} Input={Input}",
+                            _currentSessionId ?? "unknown",
                             tool.Name,
                             operation,
                             truncatedInput);
@@ -264,7 +303,7 @@ namespace Hermes.Orchestrator
                 userId ?? "none",
                 query?.Length ?? 0);
 
-            var agent = await GetAgentAsync().ConfigureAwait(false);
+            var agent = await GetAgentAsync(query).ConfigureAwait(false);
 
             // Build context window from relevant conversation history using semantic filtering.
             var contextMessages = await BuildContextWindowAsync(actualSessionId, query, DefaultContextTurns).ConfigureAwait(false);
@@ -284,10 +323,32 @@ namespace Hermes.Orchestrator
             // Set the progress callback so tool invocations can report progress.
             _currentProgressCallback = progressCallback;
 
+            // Set the current session ID so tool invocations can include it in logs.
+            _currentSessionId = actualSessionId;
+
             try
             {
+                // Start timing LLM inference
+                _logger.LogDebug(
+                    "[LLMInferenceStart] SessionId={SessionId} Intent={Intent} ContextMessages={ContextCount}",
+                    actualSessionId,
+                    _currentIntent ?? "Unknown",
+                    contextMessages.Count);
+
+                var startTime = Stopwatch.GetTimestamp();
+
                 var response = await agent.RunAsync(contextMessages).ConfigureAwait(false);
+
+                var elapsed = Stopwatch.GetElapsedTime(startTime);
                 var responseText = response.AsChatResponse().Text;
+
+                _logger.LogInformation(
+                    "[LLMInferenceComplete] SessionId={SessionId} Intent={Intent} Duration={DurationMs}ms ResponseLength={ResponseLength} Model={Model}",
+                    actualSessionId,
+                    _currentIntent ?? "Unknown",
+                    elapsed.TotalMilliseconds,
+                    responseText.Length,
+                    _modelSelector.GetModelForOperation(_currentIntent ?? "Default"));
 
                 var historyEntries = new List<ConversationMessage>
                 {
@@ -313,8 +374,9 @@ namespace Hermes.Orchestrator
             }
             finally
             {
-                // Clear the progress callback after orchestration completes.
+                // Clear the progress callback and intent after orchestration completes.
                 _currentProgressCallback = null;
+                _currentIntent = null;
             }
         }
 

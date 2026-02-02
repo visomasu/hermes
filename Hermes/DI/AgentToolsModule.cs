@@ -9,6 +9,7 @@ using Hermes.Tools.UserManagement.Capabilities.Inputs;
 using Hermes.Tools.WorkItemSla;
 using Hermes.Tools.WorkItemSla.Capabilities;
 using Hermes.Tools.WorkItemSla.Capabilities.Inputs;
+using Integrations.AzureDevOps;
 
 namespace Hermes.DI
 {
@@ -17,10 +18,22 @@ namespace Hermes.DI
 	/// </summary>
 	public class AgentToolsModule : Module
 	{
+		private readonly IConfiguration _configuration;
+
+		public AgentToolsModule(IConfiguration configuration)
+		{
+			_configuration = configuration;
+		}
+
 		protected override void Load(ContainerBuilder builder)
 		{
             // Azure DevOps
-            builder.RegisterType<GetWorkItemTreeCapability>()
+            builder.Register(c =>
+			{
+				var client = c.Resolve<IAzureDevOpsWorkItemClient>();
+				var maxConcurrentFetches = _configuration.GetValue<int>("AzureDevOps:MaxConcurrentTreeFetches", 5);
+				return new GetWorkItemTreeCapability(client, maxConcurrentFetches);
+			})
 				.As<IAgentToolCapability<GetWorkItemTreeCapabilityInput>>()
 				.AsSelf()
 				.InstancePerDependency();
@@ -42,6 +55,11 @@ namespace Hermes.DI
 
 			builder.RegisterType<DiscoverUserActivityCapability>()
 				.As<IAgentToolCapability<DiscoverUserActivityCapabilityInput>>()
+				.AsSelf()
+				.InstancePerDependency();
+
+			builder.RegisterType<GenerateNewsletterCapability>()
+				.As<IAgentToolCapability<GenerateNewsletterCapabilityInput>>()
 				.AsSelf()
 				.InstancePerDependency();
 

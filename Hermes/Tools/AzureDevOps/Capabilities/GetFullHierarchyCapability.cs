@@ -31,23 +31,30 @@ namespace Hermes.Tools.AzureDevOps.Capabilities
 		{
 			var depth = input.Depth ?? _defaultDepth;
 
-			// Get parent hierarchy
+			// Start both parent and children tasks in parallel
 			var parentInput = new GetParentHierarchyCapabilityInput
 			{
 				WorkItemId = input.WorkItemId,
 				Fields = input.Fields
 			};
-			var parentJson = await _parentHierarchyCapability.ExecuteAsync(parentInput);
-			using var parentDoc = JsonDocument.Parse(parentJson);
-			var parentsElement = parentDoc.RootElement.Clone();
+			var parentTask = _parentHierarchyCapability.ExecuteAsync(parentInput);
 
-			// Get children tree
 			var treeInput = new GetWorkItemTreeCapabilityInput
 			{
 				WorkItemId = input.WorkItemId,
 				Depth = depth
 			};
-			var childrenJson = await _workItemTreeCapability.ExecuteAsync(treeInput);
+			var childrenTask = _workItemTreeCapability.ExecuteAsync(treeInput);
+
+			// Wait for both to complete
+			await Task.WhenAll(parentTask, childrenTask);
+
+			// Parse results
+			var parentJson = await parentTask;
+			using var parentDoc = JsonDocument.Parse(parentJson);
+			var parentsElement = parentDoc.RootElement.Clone();
+
+			var childrenJson = await childrenTask;
 			using var childrenDoc = JsonDocument.Parse(childrenJson);
 			var childrenElement = childrenDoc.RootElement.Clone();
 

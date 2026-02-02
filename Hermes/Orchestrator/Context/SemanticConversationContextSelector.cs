@@ -57,6 +57,16 @@ namespace Hermes.Orchestrator.Context
 				return _GetRecentMessages(conversationHistory, _config.MaxContextTurns);
 			}
 
+			// Step 2.5: Detect pronouns and adjust minimum recent context
+			var minRecentTurns = _config.MinRecentTurns;
+			if (_ContainsPronounsOrDemonstratives(currentQuery))
+			{
+				// Ensure we have at least 4 recent messages for pronoun resolution
+				// (previous user query + assistant response + current context)
+				minRecentTurns = Math.Max(minRecentTurns, 4);
+				_logger.LogDebug("Pronoun detected in query, increasing MinRecentTurns to {MinTurns}", minRecentTurns);
+			}
+
 			// Step 3: Generate embedding for current query
 			float[] queryEmbedding;
 			try
@@ -80,11 +90,11 @@ namespace Hermes.Orchestrator.Context
 
 			// Step 6: Separate recent vs older messages
 			var recentMessages = orderedMessages
-				.Skip(Math.Max(0, orderedMessages.Count - _config.MinRecentTurns))
+				.Skip(Math.Max(0, orderedMessages.Count - minRecentTurns))
 				.ToList();
 
 			var olderMessages = orderedMessages
-				.Take(Math.Max(0, orderedMessages.Count - _config.MinRecentTurns))
+				.Take(Math.Max(0, orderedMessages.Count - minRecentTurns))
 				.ToList();
 
 			// Step 7: Score older messages by semantic similarity
@@ -324,6 +334,32 @@ namespace Hermes.Orchestrator.Context
 				indicesToExclude.Count / 2); // Approximate number of duplicate query pairs
 
 			return deduplicated;
+		}
+
+		/// <summary>
+		/// Detects if the query contains pronouns or demonstratives that require context resolution.
+		/// </summary>
+		/// <param name="query">User query to analyze.</param>
+		/// <returns>True if the query likely needs context for pronoun resolution.</returns>
+		private bool _ContainsPronounsOrDemonstratives(string query)
+		{
+			if (string.IsNullOrWhiteSpace(query))
+			{
+				return false;
+			}
+
+			var lowerQuery = query.ToLowerInvariant();
+
+			// Demonstratives and pronouns that reference previous context
+			var contextReferencePatterns = new[]
+			{
+				"that item", "that feature", "that epic", "that work item",
+				"that one", "that id", "the same", "this item", "this feature",
+				"it", "its", "them", "their", "those",
+				"the previous", "the last", "the above"
+			};
+
+			return contextReferencePatterns.Any(pattern => lowerQuery.Contains(pattern));
 		}
 	}
 }

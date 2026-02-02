@@ -1,62 +1,183 @@
 # Hermes Evaluation Report
 
-**Generated:** 2026-01-31 05:45:06 UTC
+**Generated:** 2026-02-02 00:29:10 UTC
 
 ## Executive Summary
 
-**Status:** ❌ **FAILING**
+**Status:** ✅ **PASSING**
 
-- **Scenarios Passed:** 0/1 (0.0%)
-- **Overall Score:** 0.900
-- **Total Turns Executed:** 3
-- **Average Execution Time:** 18008ms per turn
+- **Scenarios Passed:** 9/9 (100.0%)
+- **Overall Score:** 0.988
+- **Total Turns Executed:** 22
+- **Average Execution Time:** 17321ms per turn
 
 ## Evaluation Metrics
 
 | Dimension | Score | Grade | Target |
 |-----------|-------|-------|--------|
 | Tool Selection | 1.000 | Excellent ✅ | 0.95 |
-| Parameter Extraction | 0.667 | Poor ⚠️ | 0.98 |
+| Parameter Extraction | 0.986 | Excellent ✅ | 0.98 |
 | Context Retention | 1.000 | Excellent ✅ | 0.80 |
-| Response Quality | 1.000 | Excellent ✅ | 0.75 |
+| Response Quality | 0.946 | Good ✅ | 0.75 |
 
 ## Performance Metrics
 
 | Metric | Value | Target |
 |--------|-------|--------|
-| Average Execution Time | 18008ms | <1500ms |
-| P95 Execution Time | 28190ms | <2500ms |
-| P99 Execution Time | 28190ms | <3000ms |
+| Average Execution Time | 17321ms | <1500ms |
+| P95 Execution Time | 54748ms | <2500ms |
+| P99 Execution Time | 65091ms | <3000ms |
 
 ## Detailed Scenario Results
 
-### ❌ SLA Violation Checks
+### ✅ Area Path Work Item Queries
 
-- **Status:** FAILED
-- **Overall Score:** 0.900
+- **Status:** PASSED
+- **Overall Score:** 1.000
 - **Execution Mode:** RestApi
 - **Data Mode:** Real
-- **Execution Time:** 54026ms
-- **Turns:** 3 (2 passed, 1 failed)
+- **Execution Time:** 32863ms
+- **Turns:** 2 (2 passed, 0 failed)
 
 **Dimension Scores:**
 
 - Tool Selection: 1.000
-- Parameter Extraction: 0.667
+- Parameter Extraction: 1.000
 - Context Retention: 1.000
 - Response Quality: 1.000
 
-**Failed Turns:**
+### ✅ Error Handling and Edge Cases
 
-- **Turn 2:** Score 0.700
-  - ❌ ParameterExtraction_Parameter_teamsUserId: Expected: "user@microsoft.com", Actual: "visomasu@microsoft.com"
+- **Status:** PASSED
+- **Overall Score:** 0.983
+- **Execution Mode:** RestApi
+- **Data Mode:** Real
+- **Execution Time:** 24374ms
+- **Turns:** 3 (3 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 1.000
+- Context Retention: 1.000
+- Response Quality: 0.889
+
+### ✅ Full Hierarchy Validation
+
+- **Status:** PASSED
+- **Overall Score:** 0.981
+- **Execution Mode:** RestApi
+- **Data Mode:** Real
+- **Execution Time:** 8763ms
+- **Turns:** 2 (2 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 1.000
+- Context Retention: 1.000
+- Response Quality: 0.875
+
+### ✅ Newsletter Generation with Follow-up Hierarchy Validation
+
+- **Status:** PASSED
+- **Overall Score:** 0.975
+- **Execution Mode:** RestApi
+- **Data Mode:** Mock
+- **Execution Time:** 70383ms
+- **Turns:** 2 (2 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 1.000
+- Context Retention: 1.000
+- Response Quality: 0.833
+
+### ✅ Parameter Extraction Variations
+
+- **Status:** PASSED
+- **Overall Score:** 0.950
+- **Execution Mode:** RestApi
+- **Data Mode:** Real
+- **Execution Time:** 97323ms
+- **Turns:** 4 (4 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 0.875
+- Context Retention: 1.000
+- Response Quality: 0.917
+
+### ✅ Simple Tool Selection Test
+
+- **Status:** PASSED
+- **Overall Score:** 1.000
+- **Execution Mode:** RestApi
+- **Data Mode:** Mock
+- **Execution Time:** 8738ms
+- **Turns:** 1 (1 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 1.000
+- Context Retention: 1.000
+- Response Quality: 1.000
+
+### ✅ SLA Registration Workflow
+
+- **Status:** PASSED
+- **Overall Score:** 1.000
+- **Execution Mode:** RestApi
+- **Data Mode:** Real
+- **Execution Time:** 38506ms
+- **Turns:** 3 (3 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 1.000
+- Context Retention: 1.000
+- Response Quality: 1.000
+
+### ✅ SLA Violation Checks
+
+- **Status:** PASSED
+- **Overall Score:** 1.000
+- **Execution Mode:** RestApi
+- **Data Mode:** Real
+- **Execution Time:** 63945ms
+- **Turns:** 3 (3 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 1.000
+- Context Retention: 1.000
+- Response Quality: 1.000
+
+### ✅ User Activity Discovery
+
+- **Status:** PASSED
+- **Overall Score:** 1.000
+- **Execution Mode:** RestApi
+- **Data Mode:** Real
+- **Execution Time:** 49274ms
+- **Turns:** 2 (2 passed, 0 failed)
+
+**Dimension Scores:**
+
+- Tool Selection: 1.000
+- Parameter Extraction: 1.000
+- Context Retention: 1.000
+- Response Quality: 1.000
 
 
 ## Recommendations
 
-- 🔧 **Parameter Extraction:** Improve parameter extraction prompts or add more examples to capability instructions.
 - ⚡ **Performance:** Average execution time exceeds target. Consider optimization or caching strategies.
-- ⚠️ **Overall Success Rate:** Less than 80% of scenarios passing. Investigate failed scenarios for systemic issues.
 
 ---
 

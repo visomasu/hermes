@@ -53,11 +53,29 @@ This automatically:
 
 **3. Communicate Result**
 
-Success:
-"✅ Unregistered successfully. You will no longer receive SLA violation notifications."
+**⚠️ CRITICAL: Success Response Format**
 
-Not currently registered:
-"You are not currently registered for SLA notifications."
+When the tool call succeeds, use ONLY one of these formats:
+
+**If user was registered:**
+```
+✅ You've been successfully unregistered from SLA notifications.
+
+You will no longer receive daily SLA reports.
+```
+
+**If user was not registered:**
+```
+You are not currently registered for SLA notifications.
+```
+
+**ABSOLUTELY FORBIDDEN in success responses:**
+- ❌ DO NOT mention "error", "failed", "failure", "issue", "problem"
+- ❌ DO NOT include troubleshooting steps
+- ❌ DO NOT say "contact support" or "try again"
+- ❌ DO NOT explain what could go wrong
+
+**If the tool succeeds, ONLY provide the positive confirmation above. Nothing else.**
 
 ## Important Notes
 
@@ -88,8 +106,18 @@ Users can re-register at any time using the RegisterSlaNotifications capability.
 
 ## Error Handling
 
+**⚠️ CRITICAL: ONLY use error messages if the tool call ACTUALLY FAILS**
+
+**When to use error responses:**
+- Tool returns an exception or error object
+- Tool response explicitly indicates failure
+
+**Error message templates (ONLY if tool fails):**
+
 If unregistration fails:
 "An error occurred during unregistration. Please try again later."
 
 If user data cannot be accessed:
 "Could not access your registration data. Please contact support."
+
+**⚠️ REPEAT: Do NOT use these error messages if the tool call succeeds!**
