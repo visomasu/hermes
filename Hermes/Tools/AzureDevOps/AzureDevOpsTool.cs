@@ -20,6 +20,7 @@ namespace Hermes.Tools.AzureDevOps
 		private readonly IAgentToolCapability<GetParentHierarchyCapabilityInput> _getParentHierarchyCapability;
 		private readonly IAgentToolCapability<GetFullHierarchyCapabilityInput> _getFullHierarchyCapability;
 		private readonly IAgentToolCapability<DiscoverUserActivityCapabilityInput> _discoverUserActivityCapability;
+		private readonly IAgentToolCapability<GenerateNewsletterCapabilityInput> _generateNewsletterCapability;
 		private readonly int _defaultDepth = 2;
 
 		// Static mapping of work item type to fields
@@ -37,7 +38,8 @@ namespace Hermes.Tools.AzureDevOps
 			{ "GetWorkItemsByAreaPath", new[] { "GetByAreaPath", "AreaPath", "GetWorkItemsByArea" } },
 			{ "GetParentHierarchy", new[] { "ParentHierarchy", "GetParents", "FetchParents" } },
 			{ "GetFullHierarchy", new[] { "FullHierarchy", "CompleteHierarchy", "GetCompleteHierarchy" } },
-			{ "DiscoverUserActivity", new[] { "UserActivity", "DiscoverActivity", "GetUserActivity" } }
+			{ "DiscoverUserActivity", new[] { "UserActivity", "DiscoverActivity", "GetUserActivity", "GetPullRequestsByUser", "GetUserPullRequests", "GetPRsByUser", "GetPullRequests", "GetUserPRActivity", "GetPRActivity", "GetPullRequestActivity", "GetUserPullRequestActivity", "DiscoverPRActivity" } },
+			{ "GenerateNewsletter", new[] { "CreateNewsletter", "Newsletter", "StatusUpdate", "ExecutiveSummary", "GenerateStatusUpdate" } }
 		};
 
 		/// <summary>
@@ -50,6 +52,7 @@ namespace Hermes.Tools.AzureDevOps
 		/// <param name="getParentHierarchyCapability">Capability implementation for GetParentHierarchy.</param>
 		/// <param name="getFullHierarchyCapability">Capability implementation for GetFullHierarchy.</param>
 		/// <param name="discoverUserActivityCapability">Capability implementation for DiscoverUserActivity.</param>
+		/// <param name="generateNewsletterCapability">Capability implementation for GenerateNewsletter.</param>
 		public AzureDevOpsTool(
 			ILogger<AzureDevOpsTool> logger,
 			IAzureDevOpsWorkItemClient client,
@@ -57,7 +60,8 @@ namespace Hermes.Tools.AzureDevOps
 			IAgentToolCapability<GetWorkItemsByAreaPathCapabilityInput> getWorkItemsByAreaPathCapability,
 			IAgentToolCapability<GetParentHierarchyCapabilityInput> getParentHierarchyCapability,
 			IAgentToolCapability<GetFullHierarchyCapabilityInput> getFullHierarchyCapability,
-			IAgentToolCapability<DiscoverUserActivityCapabilityInput> discoverUserActivityCapability)
+			IAgentToolCapability<DiscoverUserActivityCapabilityInput> discoverUserActivityCapability,
+			IAgentToolCapability<GenerateNewsletterCapabilityInput> generateNewsletterCapability)
 		{
 			_client = client;
 			_logger = logger;
@@ -67,6 +71,7 @@ namespace Hermes.Tools.AzureDevOps
 			_getParentHierarchyCapability = getParentHierarchyCapability;
 			_getFullHierarchyCapability = getFullHierarchyCapability;
 			_discoverUserActivityCapability = discoverUserActivityCapability;
+			_generateNewsletterCapability = generateNewsletterCapability;
 		}
 
 		/// <inheritdoc/>
@@ -76,7 +81,7 @@ namespace Hermes.Tools.AzureDevOps
 		public string Description => "Provides Azure DevOps capabilities such as retrieving work item trees, parent hierarchies and more.";
 
 		/// <inheritdoc/>
-		public IReadOnlyList<string> Capabilities => new[] { "GetWorkItemTree", "GetWorkItemsByAreaPath", "GetParentHierarchy", "GetFullHierarchy", "DiscoverUserActivity" };
+		public IReadOnlyList<string> Capabilities => new[] { "GetWorkItemTree", "GetWorkItemsByAreaPath", "GetParentHierarchy", "GetFullHierarchy", "DiscoverUserActivity", "GenerateNewsletter" };
 
 		/// <inheritdoc/>
 		public string GetMetadata()
@@ -86,14 +91,16 @@ namespace Hermes.Tools.AzureDevOps
 			var getParentHierarchyInput = BuildInputSchemaDescription(typeof(GetParentHierarchyCapabilityInput));
 			var getFullHierarchyInput = BuildInputSchemaDescription(typeof(GetFullHierarchyCapabilityInput));
 			var discoverUserActivityInput = BuildInputSchemaDescription(typeof(DiscoverUserActivityCapabilityInput));
+			var generateNewsletterInput = BuildInputSchemaDescription(typeof(GenerateNewsletterCapabilityInput));
 
 			return
-				"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy, DiscoverUserActivity] | " +
+				"Capabilities: [GetWorkItemTree, GetWorkItemsByAreaPath, GetParentHierarchy, GetFullHierarchy, DiscoverUserActivity, GenerateNewsletter] | " +
 				$"Input (GetWorkItemTree): {getWorkItemTreeInput} | " +
 				$"Input (GetWorkItemsByAreaPath): {getWorkItemsByAreaPathInput} | " +
 				$"Input (GetParentHierarchy): {getParentHierarchyInput} | " +
 				$"Input (GetFullHierarchy): {getFullHierarchyInput} | " +
 				$"Input (DiscoverUserActivity): {discoverUserActivityInput} | " +
+				$"Input (GenerateNewsletter): {generateNewsletterInput} | " +
 				"Output: JSON";
 		}
 
@@ -154,6 +161,7 @@ namespace Hermes.Tools.AzureDevOps
 				"GetParentHierarchy" => await ExecuteGetParentHierarchyAsync(input),
 				"GetFullHierarchy" => await ExecuteGetFullHierarchyAsync(input),
 				"DiscoverUserActivity" => await _ExecuteDiscoverUserActivityAsync(input),
+				"GenerateNewsletter" => await _ExecuteGenerateNewsletterAsync(input),
 				_ => throw new InvalidOperationException($"Unhandled canonical operation: {canonicalName}"),
 			};
 		}
@@ -217,6 +225,18 @@ namespace Hermes.Tools.AzureDevOps
 				?? throw new ArgumentException("Invalid input for DiscoverUserActivity.");
 
 			return await _discoverUserActivityCapability.ExecuteAsync(model);
+		}
+
+		#endregion
+
+		#region GenerateNewsletter
+
+		private async Task<string> _ExecuteGenerateNewsletterAsync(string input)
+		{
+			var model = JsonSerializer.Deserialize<GenerateNewsletterCapabilityInput>(input)
+				?? throw new ArgumentException("Invalid input for GenerateNewsletter.");
+
+			return await _generateNewsletterCapability.ExecuteAsync(model);
 		}
 
 		#endregion

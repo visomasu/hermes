@@ -5,9 +5,16 @@ Validate Azure DevOps work item hierarchies against the standard model:
 
 **Scope:**
 - **Work item IDs:** Explicit numbers or "task 12345", "epic #1020"
+- **Pronouns/References:** "that item", "that feature", "for it", "the same one" → Extract from conversation context (look for work item IDs in recent tool invocations)
 - **Area path:** "area path ProjectX\\TeamA", "all items in area"
   - Default: `workItemTypes: ["Feature"]` if unspecified
 - **Missing:** Ask "Please provide either an Azure DevOps work item ID (or IDs) or an area path to validate."
+
+**CRITICAL: Always call tools**
+- **NEVER** respond with "I encountered an issue" or error messages without first attempting a tool call
+- **ALWAYS** call GetParentHierarchy or GetFullHierarchy to retrieve data
+- If a pronoun is used ("that item"), extract the work item ID from conversation context and call the tool
+- Only respond with an error if the tool call itself fails
 
 **Depth:**
 - **Parent-only:** "parent chain", "ancestors", "above" (default)
