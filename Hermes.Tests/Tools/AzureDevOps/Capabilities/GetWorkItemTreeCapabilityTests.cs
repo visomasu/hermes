@@ -147,3 +147,69 @@ namespace Hermes.Tests.Tools.AzureDevOps.Capabilities
 		}
 	}
 }
+	[Fact]
+	public async Task ExecuteAsync_EpicFieldsReturned()
+	{
+		var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+		string epicJson = "{ \"id\":4, \"fields\":{\"System.WorkItemType\":\"Epic\"} }";
+		mockClient.Setup(x => x.GetWorkItemAsync(4)).ReturnsAsync(epicJson);
+		mockClient.Setup(x => x.GetWorkItemAsync(4, It.IsAny<IEnumerable<string>>()))
+			.ReturnsAsync(epicJson);
+
+		var requestedFields = new List<string>();
+		mockClient.Setup(x => x.GetWorkItemAsync(4, It.IsAny<IEnumerable<string>>()))
+			.Callback<int, IEnumerable<string>>((id, fields) => requestedFields = (fields ?? Enumerable.Empty<string>()).ToList())
+			.ReturnsAsync(epicJson);
+
+		var capability = new GetWorkItemTreeCapability(mockClient.Object);
+		var input = new GetWorkItemTreeCapabilityInput { WorkItemId = 4, Depth = 0 };
+		await capability.ExecuteAsync(input);
+
+		Assert.Contains("System.Id", requestedFields);
+		Assert.Contains("System.Title", requestedFields);
+		Assert.Contains("System.IterationPath", requestedFields);
+		Assert.Contains("Custom.PrivatePreviewDate", requestedFields);
+	}
+
+	[Fact]
+	public async Task ExecuteAsync_AllTypesIncludeIterationPath()
+	{
+		var mockClient = new Mock<IAzureDevOpsWorkItemClient>();
+
+		// Setup work items with different types
+		string epicJson = "{ \"id\":1, \"fields\":{\"System.WorkItemType\":\"Epic\"} }";
+		string featureJson = "{ \"id\":2, \"fields\":{\"System.WorkItemType\":\"Feature\"} }";
+		string userStoryJson = "{ \"id\":3, \"fields\":{\"System.WorkItemType\":\"User Story\"} }";
+		string taskJson = "{ \"id\":4, \"fields\":{\"System.WorkItemType\":\"Task\"} }";
+
+		mockClient.Setup(x => x.GetWorkItemAsync(1)).ReturnsAsync(epicJson);
+		mockClient.Setup(x => x.GetWorkItemAsync(2)).ReturnsAsync(featureJson);
+		mockClient.Setup(x => x.GetWorkItemAsync(3)).ReturnsAsync(userStoryJson);
+		mockClient.Setup(x => x.GetWorkItemAsync(4)).ReturnsAsync(taskJson);
+
+		var requestedFields = new Dictionary<int, IEnumerable<string>>();
+		mockClient.Setup(x => x.GetWorkItemAsync(It.IsAny<int>(), It.IsAny<IEnumerable<string>>()))
+			.Callback<int, IEnumerable<string>>((id, fields) => requestedFields[id] = (fields ?? Enumerable.Empty<string>()).ToList())
+			.ReturnsAsync((int id, IEnumerable<string> fields) =>
+			{
+				if (id == 1) return epicJson;
+				if (id == 2) return featureJson;
+				if (id == 3) return userStoryJson;
+				if (id == 4) return taskJson;
+				return "{}";
+			});
+
+		var capability = new GetWorkItemTreeCapability(mockClient.Object);
+
+		// Test each work item type
+		await capability.ExecuteAsync(new GetWorkItemTreeCapabilityInput { WorkItemId = 1, Depth = 0 });
+		await capability.ExecuteAsync(new GetWorkItemTreeCapabilityInput { WorkItemId = 2, Depth = 0 });
+		await capability.ExecuteAsync(new GetWorkItemTreeCapabilityInput { WorkItemId = 3, Depth = 0 });
+		await capability.ExecuteAsync(new GetWorkItemTreeCapabilityInput { WorkItemId = 4, Depth = 0 });
+
+		// Validate all types request IterationPath
+		Assert.Contains("System.IterationPath", requestedFields[1]);
+		Assert.Contains("System.IterationPath", requestedFields[2]);
+		Assert.Contains("System.IterationPath", requestedFields[3]);
+		Assert.Contains("System.IterationPath", requestedFields[4]);
+	}
