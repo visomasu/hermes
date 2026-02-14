@@ -4,6 +4,9 @@ using Hermes.Notifications.Infra;
 using Hermes.Notifications.Infra.Models;
 using Hermes.Notifications.WorkItemSla;
 using Hermes.Notifications.WorkItemSla.Models;
+using Hermes.Storage.Repositories.TeamConfiguration;
+using Hermes.Storage.Repositories.TeamConfiguration;
+using Hermes.Storage.Repositories.TeamConfiguration;
 using Hermes.Storage.Repositories.UserConfiguration;
 using Hermes.Storage.Repositories.UserConfiguration.Models;
 using Integrations.AzureDevOps;
@@ -13,9 +16,12 @@ using Xunit;
 
 namespace Hermes.Tests.Notifications.WorkItemSla
 {
+	// Suppress warnings for testing obsolete methods (maintained for backwards compatibility and regression coverage)
+#pragma warning disable CS0618
 	public class WorkItemUpdateSlaEvaluatorTests
 	{
 		private readonly Mock<IUserConfigurationRepository> _userConfigRepoMock;
+		private readonly Mock<ITeamConfigurationRepository> _teamConfigRepoMock;
 		private readonly Mock<IAzureDevOpsWorkItemClient> _azureDevOpsClientMock;
 		private readonly Mock<INotificationGate> _notificationGateMock;
 		private readonly Mock<IProactiveMessenger> _proactiveMessengerMock;
@@ -26,6 +32,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		public WorkItemUpdateSlaEvaluatorTests()
 		{
 			_userConfigRepoMock = new Mock<IUserConfigurationRepository>();
+			_teamConfigRepoMock = new Mock<ITeamConfigurationRepository>();
 			_azureDevOpsClientMock = new Mock<IAzureDevOpsWorkItemClient>();
 			_notificationGateMock = new Mock<INotificationGate>();
 			_proactiveMessengerMock = new Mock<IProactiveMessenger>();
@@ -35,7 +42,16 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 			{
 				Enabled = true,
 				AzureDevOpsBaseUrl = "https://dev.azure.com/test",
+#pragma warning disable CS0618 // Type or member is obsolete
+				TeamName = "Test Team",
+				IterationPath = @"OneCRM\FY26\Q3\Sprint1",
 				SlaRules = new Dictionary<string, int>
+				{
+					{ "Bug", 2 },
+					{ "Task", 5 }
+				},
+#pragma warning restore CS0618 // Type or member is obsolete
+				GlobalSlaDefaults = new Dictionary<string, int>
 				{
 					{ "Bug", 2 },
 					{ "Task", 5 }
@@ -45,21 +61,28 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 			};
 
 			_messageComposer = new WorkItemUpdateSlaMessageComposer();
+
+			// Setup default team configuration mock to return test team
+			var defaultTeam = CreateTeamConfig("test-team", "Test Team");
+			_teamConfigRepoMock
+				.Setup(r => r.GetAllTeamsAsync(It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<TeamConfigurationDocument> { defaultTeam });
 		}
 
 		private WorkItemUpdateSlaEvaluator CreateEvaluator()
-		{
-			return new WorkItemUpdateSlaEvaluator(
-				_userConfigRepoMock.Object,
-				_azureDevOpsClientMock.Object,
-				_notificationGateMock.Object,
-				_proactiveMessengerMock.Object,
-				_configuration,
-				_messageComposer,
-				_loggerMock.Object);
-		}
+	{
+		return new WorkItemUpdateSlaEvaluator(
+			_loggerMock.Object,
+			_userConfigRepoMock.Object,
+			_teamConfigRepoMock.Object,
+			_azureDevOpsClientMock.Object,
+			_notificationGateMock.Object,
+			_proactiveMessengerMock.Object,
+			_configuration,
+			_messageComposer);
+	}
 
-		private UserConfigurationDocument CreateUserConfig(string teamsUserId, string email, List<string>? directReports = null)
+		private UserConfigurationDocument CreateUserConfig(string teamsUserId, string email, List<string>? directReports = null, List<string>? subscribedTeams = null)
 		{
 			return new UserConfigurationDocument
 			{
@@ -69,10 +92,23 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				{
 					IsRegistered = true,
 					AzureDevOpsEmail = email,
-					DirectReportEmails = directReports ?? new List<string>()
+					DirectReportEmails = directReports ?? new List<string>(),
+					SubscribedTeamIds = subscribedTeams ?? new List<string> { "test-team" }
 				}
 			};
 		}
+
+	private TeamConfigurationDocument CreateTeamConfig(string teamId, string teamName, List<string>? areaPaths = null, Dictionary<string, int>? slaOverrides = null)
+	{
+		return new TeamConfigurationDocument
+		{
+			TeamId = teamId,
+			TeamName = teamName,
+			IterationPath = @"OneCRM\FY26\Q3\Sprint1",
+			AreaPaths = areaPaths ?? new List<string> { @"OneCRM\Test" },
+			SlaOverrides = slaOverrides ?? new Dictionary<string, int>()
+		};
+	}
 
 		[Fact]
 		public async Task EvaluateAndNotifyAsync_SlaDisabled_ReturnsEmptySummary()
@@ -617,6 +653,7 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		{
 			// Arrange
 			_configuration.MaxNotificationsPerRun = 1;
+			_configuration.UserProcessingBatchSize = 1; // Process users sequentially
 
 			var userConfigs = new List<UserConfigurationDocument>
 			{
@@ -687,6 +724,11 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				.Setup(r => r.GetAllWithSlaRegistrationAsync(It.IsAny<CancellationToken>()))
 				.ReturnsAsync(new List<UserConfigurationDocument> { userConfig });
 
+
+			// Mock GetCurrentIterationPathAsync to return @CurrentIteration
+			_azureDevOpsClientMock
+				.Setup(c => c.GetCurrentIterationPathAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync("@CurrentIteration");
 			_azureDevOpsClientMock
 				.Setup(c => c.GetWorkItemsByAssignedUserAsync(
 					It.IsAny<string>(),
@@ -995,4 +1037,5 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 				Times.Once);
 		}
 	}
+#pragma warning restore CS0618
 }

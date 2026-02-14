@@ -39,7 +39,9 @@ namespace Hermes.Notifications.WorkItemSla
 		/// Required to dynamically determine the current iteration path based on dates.
 		/// Example: "OneCRM Team", "Platform Team"
 		/// If null or empty, iteration filtering is skipped.
+		/// DEPRECATED: Use per-team configuration in TeamConfigurationDocument instead.
 		/// </summary>
+		[Obsolete("Use per-team configuration in TeamConfigurationDocument instead")]
 		public string? TeamName { get; set; }
 
 		/// <summary>
@@ -47,7 +49,9 @@ namespace Hermes.Notifications.WorkItemSla
 		/// If set, only work items under this iteration path will be checked.
 		/// Specify a path like "Project\\Sprint 1".
 		/// If null or empty, all iterations are checked (or current iteration if TeamName is set).
+		/// DEPRECATED: Use per-team configuration in TeamConfigurationDocument instead.
 		/// </summary>
+		[Obsolete("Use per-team configuration in TeamConfigurationDocument instead")]
 		public string? IterationPath { get; set; }
 
 		/// <summary>

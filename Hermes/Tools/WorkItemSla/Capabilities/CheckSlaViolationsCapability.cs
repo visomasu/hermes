@@ -54,7 +54,12 @@ namespace Hermes.Tools.WorkItemSla.Capabilities
 			{
 				_logger.LogInformation("Checking SLA violations for user {TeamsUserId}", input.TeamsUserId);
 
-				// 1. Get user profile (try storage first, fallback to Graph)
+				// 1. Get user configuration to check if registered with team subscriptions
+				var userConfig = await _userConfigRepo.GetByTeamsUserIdAsync(input.TeamsUserId);
+				bool isRegisteredWithTeams = userConfig?.SlaRegistration?.IsRegistered == true
+					&& userConfig.SlaRegistration.SubscribedTeamIds?.Count > 0;
+
+				// 2. Get user profile (from storage if registered, otherwise from Graph)
 				var userProfile = await GetOrFetchUserProfileAsync(input.TeamsUserId);
 
 				if (string.IsNullOrWhiteSpace(userProfile.Email))
@@ -67,7 +72,7 @@ namespace Hermes.Tools.WorkItemSla.Capabilities
 					});
 				}
 
-				// 2. Determine emails to check (user + directs if manager)
+				// 3. Determine emails to check (user + directs if manager)
 				var emailsToCheck = new List<string> { userProfile.Email };
 				if (userProfile.IsManager)
 				{
@@ -75,30 +80,54 @@ namespace Hermes.Tools.WorkItemSla.Capabilities
 				}
 
 				_logger.LogInformation(
-					"Checking SLA violations for {Count} email(s) (IsManager: {IsManager})",
+					"Checking SLA violations for {Count} email(s) (IsManager: {IsManager}, RegisteredWithTeams: {RegisteredWithTeams})",
 					emailsToCheck.Count,
-					userProfile.IsManager);
+					userProfile.IsManager,
+					isRegisteredWithTeams);
 
-				// 3. Check violations for all emails in parallel
-				var violationTasks = emailsToCheck.Select(async email =>
+				// 4. Check violations for all emails
+				// If registered with team subscriptions, use multi-team method (Option A)
+				// Otherwise, fall back to legacy method for backwards compatibility
+				Dictionary<string, List<WorkItemUpdateSlaViolation>> violationsByOwner;
+
+				if (isRegisteredWithTeams)
 				{
-					var violations = await _slaEvaluator.CheckViolationsForEmailAsync(email, userProfile.AreaPaths);
-					return new { Email = email, Violations = violations };
-				}).ToArray();
+					// Multi-team approach: check violations per subscribed team
+					_logger.LogDebug("Using multi-team approach for {EmailCount} email(s)", emailsToCheck.Count);
 
-				var results = await Task.WhenAll(violationTasks);
-
-				// Aggregate results
-				var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>();
-				foreach (var result in results)
-				{
-					if (result.Violations.Count > 0)
+					var violationTasks = emailsToCheck.Select(async email =>
 					{
-						violationsByOwner[result.Email] = result.Violations;
-					}
+						var violations = await _slaEvaluator.CheckViolationsForTeamsAsync(
+							email,
+							userConfig!.SlaRegistration!.SubscribedTeamIds!);
+						return new { Email = email, Violations = violations };
+					}).ToArray();
+
+					var results = await Task.WhenAll(violationTasks);
+					violationsByOwner = results
+						.Where(r => r.Violations.Count > 0)
+						.ToDictionary(r => r.Email, r => r.Violations);
+				}
+				else
+				{
+					// Legacy approach: single-query with optional area paths
+					_logger.LogDebug("Using legacy approach (unregistered or no team subscriptions) for {EmailCount} email(s)", emailsToCheck.Count);
+
+#pragma warning disable CS0618 // Type or member is obsolete
+					var violationTasks = emailsToCheck.Select(async email =>
+					{
+						var violations = await _slaEvaluator.CheckViolationsForEmailAsync(email, userProfile.AreaPaths);
+						return new { Email = email, Violations = violations };
+					}).ToArray();
+#pragma warning restore CS0618 // Type or member is obsolete
+
+					var results = await Task.WhenAll(violationTasks);
+					violationsByOwner = results
+						.Where(r => r.Violations.Count > 0)
+						.ToDictionary(r => r.Email, r => r.Violations);
 				}
 
-				// 4. Compose response
+				// 5. Compose response
 				if (violationsByOwner.Count == 0)
 				{
 					_logger.LogInformation("No SLA violations found for user {TeamsUserId}", input.TeamsUserId);

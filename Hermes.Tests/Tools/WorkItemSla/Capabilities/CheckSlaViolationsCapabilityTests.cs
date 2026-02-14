@@ -12,6 +12,9 @@ using Xunit;
 
 namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 {
+	// Suppress warnings for testing obsolete CheckViolationsForEmailAsync method
+	// (maintained for backwards compatibility)
+#pragma warning disable CS0618
 	public class CheckSlaViolationsCapabilityTests
 	{
 		[Fact]
@@ -328,5 +331,215 @@ namespace Hermes.Tests.Tools.WorkItemSla.Capabilities
 			Assert.Contains("SLA", description);
 			Assert.Contains("violations", description);
 		}
+
+		// =============================================================================
+		// Multi-Team Support Tests (Option A Implementation)
+		// =============================================================================
+
+		[Fact]
+		public async Task ExecuteAsync_RegisteredWithSingleTeam_UsesMultiTeamMethod()
+		{
+			// Arrange
+			var evaluatorMock = new Mock<IWorkItemUpdateSlaEvaluator>();
+			var graphMock = new Mock<IMicrosoftGraphClient>();
+			var repoMock = new Mock<IUserConfigurationRepository>();
+			var loggerMock = new Mock<ILogger<CheckSlaViolationsCapability>>();
+
+			var userConfig = new UserConfigurationDocument
+			{
+				Id = "user-mt1",
+				TeamsUserId = "user-mt1",
+				SlaRegistration = new WorkItemUpdateSlaRegistrationProfile
+				{
+					IsRegistered = true,
+					AzureDevOpsEmail = "user@example.com",
+					DirectReportEmails = new List<string>(),
+					SubscribedTeamIds = new List<string> { "team-1" } // Single team subscription
+				}
+			};
+
+			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(userConfig);
+
+			// Mock multi-team method
+			evaluatorMock.Setup(x => x.CheckViolationsForTeamsAsync("user@example.com", It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>
+				{
+					new() { WorkItemId = 1, Title = "Task 1", WorkItemType = "Task", DaysSinceUpdate = 10, SlaThresholdDays = 5, TeamId = "team-1", TeamName = "Team Alpha" }
+				});
+
+			var capability = new CheckSlaViolationsCapability(evaluatorMock.Object, graphMock.Object, repoMock.Object, loggerMock.Object);
+			var input = new CheckSlaViolationsCapabilityInput { TeamsUserId = "user-mt1" };
+
+			// Act
+			var result = await capability.ExecuteAsync(input);
+
+			// Assert
+			Assert.NotNull(result);
+			var response = JsonSerializer.Deserialize<JsonElement>(result);
+			Assert.True(response.GetProperty("success").GetBoolean());
+
+			// Verify multi-team method was called
+			evaluatorMock.Verify(x => x.CheckViolationsForTeamsAsync("user@example.com", It.Is<IEnumerable<string>>(t => t.Contains("team-1")), It.IsAny<CancellationToken>()), Times.Once);
+
+			// Verify legacy method was NOT called
+			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_RegisteredWithMultipleTeams_ChecksAllTeams()
+		{
+			// Arrange
+			var evaluatorMock = new Mock<IWorkItemUpdateSlaEvaluator>();
+			var graphMock = new Mock<IMicrosoftGraphClient>();
+			var repoMock = new Mock<IUserConfigurationRepository>();
+			var loggerMock = new Mock<ILogger<CheckSlaViolationsCapability>>();
+
+			var userConfig = new UserConfigurationDocument
+			{
+				Id = "user-mt2",
+				TeamsUserId = "user-mt2",
+				SlaRegistration = new WorkItemUpdateSlaRegistrationProfile
+				{
+					IsRegistered = true,
+					AzureDevOpsEmail = "manager@example.com",
+					DirectReportEmails = new List<string> { "report@example.com" },
+					SubscribedTeamIds = new List<string> { "team-1", "team-2" } // Multiple teams
+				}
+			};
+
+			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(userConfig);
+
+			// Manager violations
+			evaluatorMock.Setup(x => x.CheckViolationsForTeamsAsync("manager@example.com", It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>
+				{
+					new() { WorkItemId = 1, Title = "Task 1", WorkItemType = "Task", DaysSinceUpdate = 10, SlaThresholdDays = 5, TeamId = "team-1", TeamName = "Team Alpha" },
+					new() { WorkItemId = 2, Title = "Bug 1", WorkItemType = "Bug", DaysSinceUpdate = 4, SlaThresholdDays = 2, TeamId = "team-2", TeamName = "Team Beta" }
+				});
+
+			// Direct report violations
+			evaluatorMock.Setup(x => x.CheckViolationsForTeamsAsync("report@example.com", It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>
+				{
+					new() { WorkItemId = 3, Title = "Task 2", WorkItemType = "Task", DaysSinceUpdate = 8, SlaThresholdDays = 5, TeamId = "team-1", TeamName = "Team Alpha" }
+				});
+
+			var capability = new CheckSlaViolationsCapability(evaluatorMock.Object, graphMock.Object, repoMock.Object, loggerMock.Object);
+			var input = new CheckSlaViolationsCapabilityInput { TeamsUserId = "user-mt2" };
+
+			// Act
+			var result = await capability.ExecuteAsync(input);
+
+			// Assert
+			Assert.NotNull(result);
+			var response = JsonSerializer.Deserialize<JsonElement>(result);
+			Assert.True(response.GetProperty("success").GetBoolean());
+			Assert.Contains("team", response.GetProperty("message").GetString()!.ToLower());
+
+			// Verify multi-team method was called for both emails
+			evaluatorMock.Verify(x => x.CheckViolationsForTeamsAsync("manager@example.com", It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+			evaluatorMock.Verify(x => x.CheckViolationsForTeamsAsync("report@example.com", It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+
+			// Verify both team IDs were passed
+			evaluatorMock.Verify(x => x.CheckViolationsForTeamsAsync(It.IsAny<string>(), It.Is<IEnumerable<string>>(t => t.Contains("team-1") && t.Contains("team-2")), It.IsAny<CancellationToken>()), Times.Exactly(2));
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_RegisteredWithoutTeams_FallsBackToLegacyMethod()
+		{
+			// Arrange
+			var evaluatorMock = new Mock<IWorkItemUpdateSlaEvaluator>();
+			var graphMock = new Mock<IMicrosoftGraphClient>();
+			var repoMock = new Mock<IUserConfigurationRepository>();
+			var loggerMock = new Mock<ILogger<CheckSlaViolationsCapability>>();
+
+			var userConfig = new UserConfigurationDocument
+			{
+				Id = "user-legacy",
+				TeamsUserId = "user-legacy",
+				SlaRegistration = new WorkItemUpdateSlaRegistrationProfile
+				{
+					IsRegistered = true,
+					AzureDevOpsEmail = "legacy@example.com",
+					DirectReportEmails = new List<string>(),
+					SubscribedTeamIds = null // No team subscriptions - should use legacy path
+				}
+			};
+
+			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(userConfig);
+
+			// Mock legacy method
+			evaluatorMock.Setup(x => x.CheckViolationsForEmailAsync("legacy@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>
+				{
+					new() { WorkItemId = 1, Title = "Legacy task", WorkItemType = "Task", DaysSinceUpdate = 10, SlaThresholdDays = 5 }
+				});
+
+			var capability = new CheckSlaViolationsCapability(evaluatorMock.Object, graphMock.Object, repoMock.Object, loggerMock.Object);
+			var input = new CheckSlaViolationsCapabilityInput { TeamsUserId = "user-legacy" };
+
+			// Act
+			var result = await capability.ExecuteAsync(input);
+
+			// Assert
+			Assert.NotNull(result);
+			var response = JsonSerializer.Deserialize<JsonElement>(result);
+			Assert.True(response.GetProperty("success").GetBoolean());
+
+			// Verify legacy method was called
+			evaluatorMock.Verify(x => x.CheckViolationsForEmailAsync("legacy@example.com", It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+
+			// Verify multi-team method was NOT called
+			evaluatorMock.Verify(x => x.CheckViolationsForTeamsAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+		}
+
+		[Fact]
+		public async Task ExecuteAsync_MultiTeamNoViolations_ReturnsSuccessMessage()
+		{
+			// Arrange
+			var evaluatorMock = new Mock<IWorkItemUpdateSlaEvaluator>();
+			var graphMock = new Mock<IMicrosoftGraphClient>();
+			var repoMock = new Mock<IUserConfigurationRepository>();
+			var loggerMock = new Mock<ILogger<CheckSlaViolationsCapability>>();
+
+			var userConfig = new UserConfigurationDocument
+			{
+				Id = "user-clean-mt",
+				TeamsUserId = "user-clean-mt",
+				SlaRegistration = new WorkItemUpdateSlaRegistrationProfile
+				{
+					IsRegistered = true,
+					AzureDevOpsEmail = "clean@example.com",
+					DirectReportEmails = new List<string>(),
+					SubscribedTeamIds = new List<string> { "team-1", "team-2" }
+				}
+			};
+
+			repoMock.Setup(x => x.GetByTeamsUserIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(userConfig);
+
+			// No violations across all teams
+			evaluatorMock.Setup(x => x.CheckViolationsForTeamsAsync("clean@example.com", It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync(new List<WorkItemUpdateSlaViolation>());
+
+			var capability = new CheckSlaViolationsCapability(evaluatorMock.Object, graphMock.Object, repoMock.Object, loggerMock.Object);
+			var input = new CheckSlaViolationsCapabilityInput { TeamsUserId = "user-clean-mt" };
+
+			// Act
+			var result = await capability.ExecuteAsync(input);
+
+			// Assert
+			Assert.NotNull(result);
+			var response = JsonSerializer.Deserialize<JsonElement>(result);
+			Assert.True(response.GetProperty("success").GetBoolean());
+			Assert.Contains("No SLA violations", response.GetProperty("message").GetString()!);
+
+			// Verify multi-team method was called
+			evaluatorMock.Verify(x => x.CheckViolationsForTeamsAsync("clean@example.com", It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+		}
 	}
+#pragma warning restore CS0618
 }

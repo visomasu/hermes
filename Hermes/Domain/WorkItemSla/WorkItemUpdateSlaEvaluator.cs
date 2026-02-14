@@ -3,6 +3,7 @@ using Hermes.Domain.WorkItemSla.Models;
 using Hermes.Notifications.Infra;
 using Hermes.Notifications.WorkItemSla;
 using Hermes.Notifications.WorkItemSla.Models;
+using Hermes.Storage.Repositories.TeamConfiguration;
 using Hermes.Storage.Repositories.UserConfiguration;
 using Integrations.AzureDevOps;
 using Microsoft.Extensions.Logging;
@@ -13,10 +14,12 @@ namespace Hermes.Domain.WorkItemSla
 {
 	/// <summary>
 	/// Evaluates work items against update frequency SLA thresholds and sends notifications.
+	/// Supports multi-team subscriptions with per-team iteration caching and SLA rule overrides.
 	/// </summary>
 	public class WorkItemUpdateSlaEvaluator : IWorkItemUpdateSlaEvaluator
 	{
 		private readonly IUserConfigurationRepository _userConfigRepo;
+		private readonly ITeamConfigurationRepository _teamConfigRepo;
 		private readonly IAzureDevOpsWorkItemClient _azureDevOpsClient;
 		private readonly INotificationGate _notificationGate;
 		private readonly IProactiveMessenger _proactiveMessenger;
@@ -24,25 +27,27 @@ namespace Hermes.Domain.WorkItemSla
 		private readonly WorkItemUpdateSlaMessageComposer _messageComposer;
 		private readonly ILogger<WorkItemUpdateSlaEvaluator> _logger;
 
-		// Cache for current iteration path (reused across all checks in a single evaluation run)
-		private AsyncLazy<string?>? _currentIterationCache;
+		// Per-team iteration path cache (reused across all checks in a single evaluation run)
+		private Dictionary<string, AsyncLazy<string?>> _iterationCacheByTeam = new();
 
 		public WorkItemUpdateSlaEvaluator(
+			ILogger<WorkItemUpdateSlaEvaluator> logger,
 			IUserConfigurationRepository userConfigRepo,
+			ITeamConfigurationRepository teamConfigRepo,
 			IAzureDevOpsWorkItemClient azureDevOpsClient,
 			INotificationGate notificationGate,
 			IProactiveMessenger proactiveMessenger,
 			WorkItemUpdateSlaConfiguration configuration,
-			WorkItemUpdateSlaMessageComposer messageComposer,
-			ILogger<WorkItemUpdateSlaEvaluator> logger)
+			WorkItemUpdateSlaMessageComposer messageComposer)
 		{
+			_logger = logger;
 			_userConfigRepo = userConfigRepo;
+			_teamConfigRepo = teamConfigRepo;
 			_azureDevOpsClient = azureDevOpsClient;
 			_notificationGate = notificationGate;
 			_proactiveMessenger = proactiveMessenger;
 			_configuration = configuration;
 			_messageComposer = messageComposer;
-			_logger = logger;
 		}
 
 		/// <inheritdoc/>
@@ -53,35 +58,7 @@ namespace Hermes.Domain.WorkItemSla
 			var summary = new SlaNotificationRunSummary();
 
 			// Initialize iteration path cache for this evaluation run
-			// This must happen BEFORE parallel email processing to avoid race conditions
-			_currentIterationCache = null;
-			if (!string.IsNullOrWhiteSpace(_configuration.TeamName))
-			{
-				_currentIterationCache = new AsyncLazy<string?>(async () =>
-				{
-					try
-					{
-						var currentIteration = await _azureDevOpsClient.GetCurrentIterationPathAsync(_configuration.TeamName, cancellationToken);
-						if (!string.IsNullOrWhiteSpace(currentIteration))
-						{
-							_logger.LogDebug("Dynamically determined current iteration: {IterationPath}", currentIteration);
-							return currentIteration;
-						}
-						else
-						{
-							_logger.LogDebug("No current iteration found for team {TeamName}, using configured fallback: {IterationPath}",
-								_configuration.TeamName, _configuration.IterationPath);
-							return null;
-						}
-					}
-					catch (Exception ex)
-					{
-						_logger.LogWarning(ex, "Failed to get current iteration for team {TeamName}, using configured path: {IterationPath}",
-							_configuration.TeamName, _configuration.IterationPath);
-						return null;
-					}
-				});
-			}
+			_iterationCacheByTeam = new Dictionary<string, AsyncLazy<string?>>();
 
 			try
 			{
@@ -152,43 +129,49 @@ namespace Hermes.Domain.WorkItemSla
 		}
 
 		/// <inheritdoc/>
+		[Obsolete("Use CheckViolationsForTeamAsync instead. This method is maintained for backwards compatibility.")]
 		public async Task<List<WorkItemUpdateSlaViolation>> CheckViolationsForEmailAsync(
 			string email,
 			IEnumerable<string>? areaPaths = null,
 			CancellationToken cancellationToken = default)
 		{
+			// Backwards compatibility: use global configuration
 			if (string.IsNullOrWhiteSpace(email))
 			{
 				_logger.LogWarning("CheckViolationsForEmailAsync called with empty email");
 				return new List<WorkItemUpdateSlaViolation>();
 			}
 
-			_logger.LogDebug("Checking SLA violations for email {Email} with area paths {AreaPaths}",
-				email,
-				areaPaths != null && areaPaths.Any() ? string.Join(", ", areaPaths) : "all");
+			_logger.LogDebug("CheckViolationsForEmailAsync (legacy) called for {Email}", email);
 
-			// Get work item types we care about from SLA rules
+			// Use global SLA rules from configuration
+#pragma warning disable CS0618 // Type or member is obsolete
 			var workItemTypes = _configuration.SlaRules.Keys.ToList();
+			var configuredIterationPath = _configuration.IterationPath;
+			var teamName = _configuration.TeamName;
+#pragma warning restore CS0618 // Type or member is obsolete
 
-			// Determine iteration path (dynamic current iteration or static path)
-			// Use cached value (initialized in EvaluateAndNotifyAsync) to avoid redundant API calls
-			string? iterationPath = _configuration.IterationPath;
-			if (_currentIterationCache != null)
+			// Try to get dynamic iteration path (maintains backwards compatibility with old dynamic iteration logic)
+			string? iterationPath = configuredIterationPath;
+			try
 			{
-				try
+				var dynamicIteration = await _azureDevOpsClient.GetCurrentIterationPathAsync(
+					teamName,
+					cancellationToken);
+
+				if (!string.IsNullOrWhiteSpace(dynamicIteration))
 				{
-					var currentIteration = await _currentIterationCache.Value;
-					if (!string.IsNullOrWhiteSpace(currentIteration))
-					{
-						iterationPath = currentIteration;
-					}
+					_logger.LogDebug("Using dynamic iteration: {IterationPath}", dynamicIteration);
+					iterationPath = dynamicIteration;
 				}
-				catch (Exception ex)
+				else
 				{
-					_logger.LogWarning(ex, "Failed to get current iteration from cache, using configured path: {IterationPath}",
-						_configuration.IterationPath);
-					// Fall back to configured iteration path
+					_logger.LogDebug("No current iteration found, using configured: {IterationPath}", configuredIterationPath);
 				}
+			}
+			catch (Exception ex)
+			{
+				_logger.LogWarning(ex, "Failed to get current iteration, using configured: {IterationPath}", configuredIterationPath);
 			}
 
 			// Query Azure DevOps for assigned work items
@@ -207,16 +190,199 @@ namespace Hermes.Domain.WorkItemSla
 				return new List<WorkItemUpdateSlaViolation>();
 			}
 
-			// Parse work items and calculate violations
-			var violations = _CalculateViolations(workItemsJson);
+			// Parse work items and calculate violations using global rules
+#pragma warning disable CS0618 // Type or member is obsolete
+			var violations = _CalculateViolations(workItemsJson, _configuration.SlaRules, string.Empty, string.Empty);
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			_logger.LogDebug("Found {Count} SLA violations for email {Email}", violations.Count, email);
 
 			return violations;
 		}
 
+		/// <inheritdoc/>
+		public async Task<List<WorkItemUpdateSlaViolation>> CheckViolationsForTeamsAsync(
+			string email,
+			IEnumerable<string> teamIds,
+			CancellationToken cancellationToken = default)
+		{
+			if (string.IsNullOrWhiteSpace(email))
+			{
+				_logger.LogWarning("CheckViolationsForTeamsAsync called with empty email");
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			if (teamIds == null || !teamIds.Any())
+			{
+				_logger.LogWarning("CheckViolationsForTeamsAsync called with no team IDs for email {Email}", email);
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			_logger.LogDebug("CheckViolationsForTeamsAsync called for {Email} with {TeamCount} teams",
+				email, teamIds.Count());
+
+			// Initialize iteration path cache for this call if not already initialized
+			if (_iterationCacheByTeam == null)
+			{
+				_iterationCacheByTeam = new Dictionary<string, AsyncLazy<string?>>();
+			}
+
+			// Fetch all teams from repository
+			var allTeams = await _teamConfigRepo.GetAllTeamsAsync(cancellationToken);
+			if (allTeams == null || allTeams.Count == 0)
+			{
+				_logger.LogWarning("No teams found in configuration for CheckViolationsForTeamsAsync");
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			// Filter to only subscribed teams
+			var subscribedTeams = allTeams.Where(t => teamIds.Contains(t.TeamId)).ToList();
+			if (subscribedTeams.Count == 0)
+			{
+				_logger.LogWarning("None of the provided team IDs found in configuration for email {Email}", email);
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			_logger.LogDebug("Found {SubscribedCount} subscribed teams out of {TotalCount} for email {Email}",
+				subscribedTeams.Count, allTeams.Count, email);
+
+			// Check violations for each subscribed team
+			var allViolations = new List<WorkItemUpdateSlaViolation>();
+
+			foreach (var team in subscribedTeams)
+			{
+				// Merge global defaults with team-specific overrides
+				var mergedSlaRules = _MergeSlaRules(_configuration.GlobalSlaDefaults, team.SlaOverrides);
+
+				_logger.LogDebug("Checking team {TeamId} with {OverrideCount} SLA overrides, {TotalCount} total rules",
+					team.TeamId, team.SlaOverrides.Count, mergedSlaRules.Count);
+
+				// Check violations for this team
+				var teamViolations = await _CheckViolationsForTeamAsync(
+					email,
+					team,
+					mergedSlaRules,
+					cancellationToken);
+
+				allViolations.AddRange(teamViolations);
+			}
+
+			_logger.LogDebug("CheckViolationsForTeamsAsync found {Count} total violations across {TeamCount} teams for email {Email}",
+				allViolations.Count, subscribedTeams.Count, email);
+
+			return allViolations;
+		}
+
 		/// <summary>
-		/// Processes a single user for SLA violations.
+		/// Checks SLA violations for a specific email and team.
+		/// </summary>
+		private async Task<List<WorkItemUpdateSlaViolation>> _CheckViolationsForTeamAsync(
+			string email,
+			TeamConfigurationDocument team,
+			Dictionary<string, int> mergedSlaRules,
+			CancellationToken cancellationToken)
+		{
+			if (string.IsNullOrWhiteSpace(email))
+			{
+				_logger.LogWarning("_CheckViolationsForTeamAsync called with empty email");
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			_logger.LogDebug("Checking SLA violations for email {Email}, team {TeamId}", email, team.TeamId);
+
+			// Get work item types from merged SLA rules
+			var workItemTypes = mergedSlaRules.Keys.ToList();
+
+			// Get iteration path for this team (use cache to avoid redundant API calls)
+			var iterationPath = await _GetOrCreateIterationCacheAsync(team, cancellationToken);
+
+			// Query Azure DevOps for assigned work items in this team's area paths
+			var workItemsJson = await _azureDevOpsClient.GetWorkItemsByAssignedUserAsync(
+				email,
+				new[] { "Active", "New" },
+				new[] { "System.Id", "System.Title", "System.WorkItemType", "System.ChangedDate" },
+				iterationPath,
+				team.AreaPaths,
+				workItemTypes,
+				cancellationToken);
+
+			if (string.IsNullOrWhiteSpace(workItemsJson))
+			{
+				_logger.LogDebug("No work items found for email {Email} in team {TeamId}", email, team.TeamId);
+				return new List<WorkItemUpdateSlaViolation>();
+			}
+
+			// Parse work items and calculate violations with team-specific rules
+			var violations = _CalculateViolations(workItemsJson, mergedSlaRules, team.TeamId, team.TeamName);
+
+			_logger.LogDebug("Found {Count} SLA violations for email {Email} in team {TeamId}",
+				violations.Count, email, team.TeamId);
+
+			return violations;
+		}
+
+		/// <summary>
+		/// Gets or creates the iteration path cache for a specific team.
+		/// </summary>
+		private async Task<string?> _GetOrCreateIterationCacheAsync(
+			TeamConfigurationDocument team,
+			CancellationToken cancellationToken)
+		{
+			if (!_iterationCacheByTeam.ContainsKey(team.TeamId))
+			{
+				_iterationCacheByTeam[team.TeamId] = new AsyncLazy<string?>(async () =>
+				{
+					try
+					{
+						var currentIteration = await _azureDevOpsClient.GetCurrentIterationPathAsync(
+							team.TeamName,
+							cancellationToken);
+
+						if (!string.IsNullOrWhiteSpace(currentIteration))
+						{
+							_logger.LogDebug("Dynamically determined current iteration for team {TeamId}: {IterationPath}",
+								team.TeamId, currentIteration);
+							return currentIteration;
+						}
+						else
+						{
+							_logger.LogDebug("No current iteration found for team {TeamId}, using configured: {IterationPath}",
+								team.TeamId, team.IterationPath);
+							return team.IterationPath;
+						}
+					}
+					catch (Exception ex)
+					{
+						_logger.LogWarning(ex, "Failed to get current iteration for team {TeamId}, using configured: {IterationPath}",
+							team.TeamId, team.IterationPath);
+						return team.IterationPath;
+					}
+				});
+			}
+
+			return await _iterationCacheByTeam[team.TeamId].Value;
+		}
+
+		/// <summary>
+		/// Merges global SLA defaults with team-specific overrides.
+		/// Team overrides take precedence over global defaults.
+		/// </summary>
+		private Dictionary<string, int> _MergeSlaRules(
+			Dictionary<string, int> globalDefaults,
+			Dictionary<string, int> teamOverrides)
+		{
+			var merged = new Dictionary<string, int>(globalDefaults);
+
+			foreach (var (workItemType, days) in teamOverrides)
+			{
+				merged[workItemType] = days; // Team override wins
+			}
+
+			return merged;
+		}
+
+		/// <summary>
+		/// Processes a single user for SLA violations across all subscribed teams.
 		/// </summary>
 		private async Task _ProcessUserAsync(
 			UserConfigurationDocument userConfig,
@@ -238,8 +404,29 @@ namespace Hermes.Domain.WorkItemSla
 				return;
 			}
 
-			_logger.LogDebug("Processing user {Email} (Teams user {TeamsUserId}, IsManager: {IsManager})",
-				profile.AzureDevOpsEmail, userConfig.TeamsUserId, profile.IsManager);
+			// Check if user has subscribed teams
+			if (profile.SubscribedTeamIds == null || profile.SubscribedTeamIds.Count == 0)
+			{
+				_logger.LogWarning("User {TeamsUserId} has no subscribed teams, skipping", userConfig.TeamsUserId);
+				return;
+			}
+
+			_logger.LogDebug("Processing user {Email} (Teams user {TeamsUserId}, IsManager: {IsManager}, Teams: {Teams})",
+				profile.AzureDevOpsEmail, userConfig.TeamsUserId, profile.IsManager,
+				string.Join(", ", profile.SubscribedTeamIds));
+
+			// Get all team configurations for subscribed teams
+			var allTeams = await _teamConfigRepo.GetAllTeamsAsync(cancellationToken);
+			var subscribedTeams = allTeams
+				.Where(t => profile.SubscribedTeamIds.Contains(t.TeamId))
+				.ToList();
+
+			if (subscribedTeams.Count == 0)
+			{
+				_logger.LogWarning("User {TeamsUserId} subscribed to teams but none found in configuration",
+					userConfig.TeamsUserId);
+				return;
+			}
 
 			// Determine emails to check (user + directs if manager)
 			var emailsToCheck = new List<string> { profile.AzureDevOpsEmail };
@@ -248,38 +435,56 @@ namespace Hermes.Domain.WorkItemSla
 				emailsToCheck.AddRange(profile.DirectReportEmails);
 			}
 
-			_logger.LogInformation("Checking SLA violations for {Count} email(s) (user: {Email}, IsManager: {IsManager})",
-				emailsToCheck.Count, profile.AzureDevOpsEmail, profile.IsManager);
+			_logger.LogInformation("Checking SLA violations for {EmailCount} email(s) across {TeamCount} team(s) (user: {Email}, IsManager: {IsManager})",
+				emailsToCheck.Count, subscribedTeams.Count, profile.AzureDevOpsEmail, profile.IsManager);
 
-			// Check violations for all emails in parallel
-			var violationTasks = emailsToCheck.Select(async email =>
+			// Check violations for all emails across all teams
+			var allViolations = new List<WorkItemUpdateSlaViolation>();
+
+			foreach (var team in subscribedTeams)
 			{
-				var violations = await CheckViolationsForEmailAsync(email, profile.AreaPaths, cancellationToken);
-				return new { Email = email, Violations = violations };
-			}).ToArray();
+				// Merge global defaults with team-specific overrides
+				var mergedSlaRules = _MergeSlaRules(_configuration.GlobalSlaDefaults, team.SlaOverrides);
 
-			var results = await Task.WhenAll(violationTasks);
+				_logger.LogDebug("Team {TeamId} has {OverrideCount} SLA overrides, {TotalCount} total rules",
+					team.TeamId, team.SlaOverrides.Count, mergedSlaRules.Count);
 
-			// Aggregate results
-			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>();
-			foreach (var result in results)
-			{
-				if (result.Violations.Count > 0)
+				// Check violations for all emails in this team
+				var teamViolationTasks = emailsToCheck.Select(async email =>
 				{
-					violationsByOwner[result.Email] = result.Violations;
+					var violations = await _CheckViolationsForTeamAsync(email, team, mergedSlaRules, cancellationToken);
+					return new { Email = email, Violations = violations };
+				}).ToArray();
+
+				var teamResults = await Task.WhenAll(teamViolationTasks);
+
+				// Aggregate violations from this team
+				foreach (var result in teamResults)
+				{
+					allViolations.AddRange(result.Violations);
 				}
 			}
 
+			// Group violations by owner email
+			var violationsByOwner = allViolations
+				.GroupBy(v => v.Url.Contains("assignedto=") ?
+					v.Url.Split("assignedto=")[1].Split('&')[0] :
+					profile.AzureDevOpsEmail)
+				.ToDictionary(
+					g => g.Key,
+					g => g.ToList());
+
 			if (violationsByOwner.Count == 0)
 			{
-				_logger.LogDebug("No SLA violations found for user {Email}", profile.AzureDevOpsEmail);
+				_logger.LogDebug("No SLA violations found for user {Email} across {TeamCount} teams",
+					profile.AzureDevOpsEmail, subscribedTeams.Count);
 				return;
 			}
 
 			var totalViolations = violationsByOwner.Sum(kvp => kvp.Value.Count);
 			summary.ViolationsDetected += totalViolations;
-			_logger.LogInformation("Found {TotalCount} SLA violations for user {Email} ({OwnerCount} owners)",
-				totalViolations, profile.AzureDevOpsEmail, violationsByOwner.Count);
+			_logger.LogInformation("Found {TotalCount} SLA violations for user {Email} ({OwnerCount} owners, {TeamCount} teams)",
+				totalViolations, profile.AzureDevOpsEmail, violationsByOwner.Count, subscribedTeams.Count);
 
 			// Evaluate NotificationGate (unless bypassed for testing)
 			if (!_configuration.BypassGates)
@@ -320,10 +525,11 @@ namespace Hermes.Domain.WorkItemSla
 			}
 
 			summary.NotificationsSent++;
-			_logger.LogInformation("Sent SLA notification to user {Email} ({Type}): {Count} total violations",
+			_logger.LogInformation("Sent SLA notification to user {Email} ({Type}): {Count} total violations across {TeamCount} teams",
 				profile.AzureDevOpsEmail,
 				profile.IsManager ? "Manager" : "IC",
-				totalViolations);
+				totalViolations,
+				subscribedTeams.Count);
 
 			// Record notification in NotificationGate (unless bypassed)
 			if (!_configuration.BypassGates)
@@ -341,7 +547,11 @@ namespace Hermes.Domain.WorkItemSla
 		/// <summary>
 		/// Calculates SLA violations from Azure DevOps work items JSON.
 		/// </summary>
-		private List<WorkItemUpdateSlaViolation> _CalculateViolations(string workItemsJson)
+		private List<WorkItemUpdateSlaViolation> _CalculateViolations(
+			string workItemsJson,
+			Dictionary<string, int> slaRules,
+			string teamId,
+			string teamName)
 		{
 			var violations = new List<WorkItemUpdateSlaViolation>();
 
@@ -358,7 +568,7 @@ namespace Hermes.Domain.WorkItemSla
 
 				foreach (var workItem in workItemsArray.EnumerateArray())
 				{
-					var violation = _CheckWorkItemForViolation(workItem);
+					var violation = _CheckWorkItemForViolation(workItem, slaRules, teamId, teamName);
 					if (violation != null)
 					{
 						violations.Add(violation);
@@ -367,7 +577,7 @@ namespace Hermes.Domain.WorkItemSla
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error parsing work items JSON");
+				_logger.LogError(ex, "Error parsing work items JSON for team {TeamId}", teamId);
 			}
 
 			return violations;
@@ -376,7 +586,11 @@ namespace Hermes.Domain.WorkItemSla
 		/// <summary>
 		/// Checks a single work item for SLA violation.
 		/// </summary>
-		private WorkItemUpdateSlaViolation? _CheckWorkItemForViolation(JsonElement workItem)
+		private WorkItemUpdateSlaViolation? _CheckWorkItemForViolation(
+			JsonElement workItem,
+			Dictionary<string, int> slaRules,
+			string teamId,
+			string teamName)
 		{
 			try
 			{
@@ -405,7 +619,7 @@ namespace Hermes.Domain.WorkItemSla
 					return null;
 
 				// Check if this work item type has an SLA rule
-				if (!_configuration.SlaRules.TryGetValue(workItemType, out var slaThresholdDays))
+				if (!slaRules.TryGetValue(workItemType, out var slaThresholdDays))
 				{
 					// No SLA rule for this work item type
 					return null;
@@ -431,12 +645,14 @@ namespace Hermes.Domain.WorkItemSla
 					WorkItemType = workItemType,
 					DaysSinceUpdate = daysSinceUpdate,
 					SlaThresholdDays = slaThresholdDays,
-					Url = url
+					Url = url,
+					TeamId = teamId,
+					TeamName = teamName
 				};
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error checking work item for violation");
+				_logger.LogError(ex, "Error checking work item for violation in team {TeamId}", teamId);
 				return null;
 			}
 		}
