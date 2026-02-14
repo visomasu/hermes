@@ -65,7 +65,7 @@ Extract the `newsletter` field and present it to the user as-is. Do NOT modify o
 The GenerateNewsletter capability automatically produces newsletters with these sections:
 
 1. **Overview** - Project scope and current status summary
-2. **Execution Timelines & Milestones** - Key dates and milestone status
+2. **Execution Timelines & Milestones** - Key dates and milestone status grouped by iteration/sprint (System.IterationPath). Each iteration shows associated work items, dates, and completion status. Current iteration is highlighted first, followed by upcoming iterations.
 3. **Outcomes Since Last Newsletter** - Recently completed work and achievements
 4. **Current Sprint Progress** - Active work items and completion percentage
 5. **Risks & Mitigation Plan** - Identified risks with impact assessment

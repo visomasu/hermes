@@ -146,10 +146,14 @@ Your newsletter should include:
    - Project scope and current status
    - High-level progress summary
 
-2. **Execution Timelines & Milestones** (table format)
-   - Key milestones with dates (StartDate, TargetDate, FinishDate)
-   - Current milestone: progress percentage and expected completion
-   - Next milestone: name and target date
+2. **Execution Timelines & Milestones** (grouped by iteration)
+   - Group milestones by System.IterationPath (sprint/iteration)
+   - For each iteration, show:
+     * Iteration name/path
+     * Associated work items with StartDate, TargetDate, FinishDate
+     * Completion status and progress percentage
+   - Format as tables or structured lists for readability
+   - Show current iteration first, then upcoming iterations chronologically
 
 3. **Outcomes Since Last Newsletter** (bullet points)
    - Completed work items and their business impact

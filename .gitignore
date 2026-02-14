@@ -50,3 +50,6 @@ TestResults/
 _ReSharper*/
 .claude/
 *.pptx
+
+# Project planning documentation (untracked)
+planning-docs/
