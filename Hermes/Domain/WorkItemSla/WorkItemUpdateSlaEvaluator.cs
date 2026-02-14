@@ -505,10 +505,29 @@ namespace Hermes.Domain.WorkItemSla
 					profile.AzureDevOpsEmail);
 			}
 
-			// Compose message (manager vs IC)
-			var message = profile.IsManager
-				? _messageComposer.ComposeManagerDigestMessage(violationsByOwner, profile.AzureDevOpsEmail)
-				: _messageComposer.ComposeDigestMessage(violationsByOwner[profile.AzureDevOpsEmail]);
+			// Compose message (manager vs IC) with team-aware formatting
+			// Detect multi-team scenario
+			var uniqueTeamCount = allViolations
+				.Select(v => v.TeamId)
+				.Where(id => !string.IsNullOrEmpty(id))
+				.Distinct()
+				.Count();
+
+			// Choose appropriate composer method based on role and team count
+			string message;
+			if (profile.IsManager)
+			{
+				message = uniqueTeamCount > 1
+					? _messageComposer.ComposeManagerDigestMessageWithTeams(violationsByOwner, profile.AzureDevOpsEmail)
+					: _messageComposer.ComposeManagerDigestMessage(violationsByOwner, profile.AzureDevOpsEmail);
+			}
+			else
+			{
+				var userViolations = violationsByOwner[profile.AzureDevOpsEmail];
+				message = uniqueTeamCount > 1
+					? _messageComposer.ComposeDigestMessageWithTeams(userViolations)
+					: _messageComposer.ComposeDigestMessage(userViolations);
+			}
 
 			// Send notification
 			var sendResult = await _proactiveMessenger.SendMessageByTeamsUserIdAsync(

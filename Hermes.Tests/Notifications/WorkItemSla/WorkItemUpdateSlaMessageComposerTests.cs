@@ -586,5 +586,477 @@ namespace Hermes.Tests.Notifications.WorkItemSla
 		}
 
 		#endregion
+
+		#region Team-Separated Message Tests
+
+		[Fact]
+		public void ComposeManagerDigestMessageWithTeams_SingleTeam_ShowsTeamBadgeOnly()
+		{
+			// Arrange
+			var managerEmail = "manager@test.com";
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>
+			{
+				{
+					managerEmail,
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 100,
+							Title = "Manager's bug",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 5,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/100",
+							TeamId = "team-alpha",
+							TeamName = "Team Alpha"
+						}
+					}
+				},
+				{
+					"direct1@test.com",
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 200,
+							Title = "Direct's bug",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 3,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/200",
+							TeamId = "team-alpha",
+							TeamName = "Team Alpha"
+						}
+					}
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeManagerDigestMessageWithTeams(violationsByOwner, managerEmail);
+
+			// Assert
+			Assert.Contains("- Team: Team Alpha", result);
+			Assert.DoesNotContain("## 🎯", result); // Should not have team section headers
+			Assert.Contains("### 👤 Your Violations", result);
+			Assert.Contains("### 👥 Team Member Violations", result);
+		}
+
+		[Fact]
+		public void ComposeManagerDigestMessageWithTeams_TwoTeams_ShowsTeamSections()
+		{
+			// Arrange
+			var managerEmail = "manager@test.com";
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>
+			{
+				{
+					managerEmail,
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 100,
+							Title = "Manager's bug in Alpha",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 5,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/100",
+							TeamId = "team-alpha",
+							TeamName = "Team Alpha"
+						},
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 101,
+							Title = "Manager's bug in Beta",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 6,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/101",
+							TeamId = "team-beta",
+							TeamName = "Team Beta"
+						}
+					}
+				},
+				{
+					"direct1@test.com",
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 200,
+							Title = "Direct's bug in Alpha",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 3,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/200",
+							TeamId = "team-alpha",
+							TeamName = "Team Alpha"
+						}
+					}
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeManagerDigestMessageWithTeams(violationsByOwner, managerEmail);
+
+			// Assert
+			Assert.Contains("## 🎯 Team Alpha", result);
+			Assert.Contains("## 🎯 Team Beta", result);
+			Assert.Contains("Manager's bug in Alpha", result);
+			Assert.Contains("Manager's bug in Beta", result);
+			Assert.Contains("Direct's bug in Alpha", result);
+			Assert.Contains("- Teams: Team Alpha, Team Beta", result);
+		}
+
+		[Fact]
+		public void ComposeManagerDigestMessageWithTeams_ThreeTeams_SortsAlphabetically()
+		{
+			// Arrange
+			var managerEmail = "manager@test.com";
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>
+			{
+				{
+					"direct1@test.com",
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 1,
+							Title = "Bug in Zulu",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 3,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/1",
+							TeamId = "team-zulu",
+							TeamName = "Team Zulu"
+						},
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 2,
+							Title = "Bug in Alpha",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 4,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/2",
+							TeamId = "team-alpha",
+							TeamName = "Team Alpha"
+						},
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 3,
+							Title = "Bug in Beta",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 5,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/3",
+							TeamId = "team-beta",
+							TeamName = "Team Beta"
+						}
+					}
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeManagerDigestMessageWithTeams(violationsByOwner, managerEmail);
+
+			// Assert
+			var indexAlpha = result.IndexOf("## 🎯 Team Alpha");
+			var indexBeta = result.IndexOf("## 🎯 Team Beta");
+			var indexZulu = result.IndexOf("## 🎯 Team Zulu");
+
+			Assert.True(indexAlpha > 0, "Team Alpha section should be present");
+			Assert.True(indexBeta > 0, "Team Beta section should be present");
+			Assert.True(indexZulu > 0, "Team Zulu section should be present");
+			Assert.True(indexAlpha < indexBeta, "Team Alpha should appear before Team Beta");
+			Assert.True(indexBeta < indexZulu, "Team Beta should appear before Team Zulu");
+		}
+
+		[Fact]
+		public void ComposeManagerDigestMessageWithTeams_TeamWithLargeDirectReports_ShowsAggregated()
+		{
+			// Arrange
+			var managerEmail = "manager@test.com";
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>();
+
+			// Team Alpha: 7 direct reports (exceeds threshold of 5)
+			for (int i = 1; i <= 7; i++)
+			{
+				violationsByOwner[$"alpha-direct{i}@test.com"] = new List<WorkItemUpdateSlaViolation>
+				{
+					new WorkItemUpdateSlaViolation
+					{
+						WorkItemId = i,
+						Title = $"Alpha Bug {i}",
+						WorkItemType = "Bug",
+						DaysSinceUpdate = i,
+						SlaThresholdDays = 2,
+						Url = $"https://dev.azure.com/test/{i}",
+						TeamId = "team-alpha",
+						TeamName = "Team Alpha"
+					}
+				};
+			}
+
+			// Team Beta: 2 direct reports (within threshold)
+			violationsByOwner["beta-direct1@test.com"] = new List<WorkItemUpdateSlaViolation>
+			{
+				new WorkItemUpdateSlaViolation
+				{
+					WorkItemId = 100,
+					Title = "Beta Bug 1",
+					WorkItemType = "Bug",
+					DaysSinceUpdate = 5,
+					SlaThresholdDays = 2,
+					Url = "https://dev.azure.com/test/100",
+					TeamId = "team-beta",
+					TeamName = "Team Beta"
+				}
+			};
+
+			violationsByOwner["beta-direct2@test.com"] = new List<WorkItemUpdateSlaViolation>
+			{
+				new WorkItemUpdateSlaViolation
+				{
+					WorkItemId = 101,
+					Title = "Beta Bug 2",
+					WorkItemType = "Bug",
+					DaysSinceUpdate = 3,
+					SlaThresholdDays = 2,
+					Url = "https://dev.azure.com/test/101",
+					TeamId = "team-beta",
+					TeamName = "Team Beta"
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeManagerDigestMessageWithTeams(violationsByOwner, managerEmail);
+
+			// Assert
+			// Team Alpha should show aggregated view
+			var alphaSection = result.Substring(result.IndexOf("## 🎯 Team Alpha"), result.IndexOf("## 🎯 Team Beta") - result.IndexOf("## 🎯 Team Alpha"));
+			Assert.Contains("**Team Summary** (showing counts only due to team size):", alphaSection);
+			Assert.DoesNotContain("[View work item]", alphaSection);
+
+			// Team Beta should show detailed view
+			var betaSection = result.Substring(result.IndexOf("## 🎯 Team Beta"));
+			Assert.Contains("Beta Bug 1", betaSection);
+			Assert.Contains("Beta Bug 2", betaSection);
+			Assert.Contains("[View work item]", betaSection);
+		}
+
+		[Fact]
+		public void ComposeManagerDigestMessageWithTeams_TeamWithNoManagerViolations_OnlyShowsTeamSection()
+		{
+			// Arrange
+			var managerEmail = "manager@test.com";
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>
+			{
+				{
+					managerEmail,
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 100,
+							Title = "Manager's bug in Alpha",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 5,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/100",
+							TeamId = "team-alpha",
+							TeamName = "Team Alpha"
+						}
+					}
+				},
+				{
+					"direct1@test.com",
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 200,
+							Title = "Direct's bug in Beta",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 3,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/200",
+							TeamId = "team-beta",
+							TeamName = "Team Beta"
+						}
+					}
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeManagerDigestMessageWithTeams(violationsByOwner, managerEmail);
+
+			// Assert
+			// Team Alpha should have manager's violations section
+			var alphaSection = result.Substring(result.IndexOf("## 🎯 Team Alpha"), result.IndexOf("## 🎯 Team Beta") - result.IndexOf("## 🎯 Team Alpha"));
+			Assert.Contains("### 👤 Your Violations", alphaSection);
+			Assert.DoesNotContain("### 👥 Team Member Violations", alphaSection);
+
+			// Team Beta should only have team member violations section
+			var betaSection = result.Substring(result.IndexOf("## 🎯 Team Beta"));
+			Assert.DoesNotContain("### 👤 Your Violations", betaSection);
+			Assert.Contains("### 👥 Team Member Violations", betaSection);
+		}
+
+		[Fact]
+		public void ComposeManagerDigestMessageWithTeams_TruncatesWithinTeam()
+		{
+			// Arrange
+			var managerEmail = "manager@test.com";
+			var violations = new List<WorkItemUpdateSlaViolation>();
+
+			// Create 15 violations for a single direct report (exceeds max of 10 per direct)
+			for (int i = 1; i <= 15; i++)
+			{
+				violations.Add(new WorkItemUpdateSlaViolation
+				{
+					WorkItemId = i,
+					Title = $"Bug {i}",
+					WorkItemType = "Bug",
+					DaysSinceUpdate = i,
+					SlaThresholdDays = 2,
+					Url = $"https://dev.azure.com/test/{i}",
+					TeamId = "team-alpha",
+					TeamName = "Team Alpha"
+				});
+			}
+
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>
+			{
+				{ "direct1@test.com", violations }
+			};
+
+			// Act
+			var result = _composer.ComposeManagerDigestMessageWithTeams(violationsByOwner, managerEmail);
+
+			// Assert
+			Assert.Contains("*...and 5 more*", result);
+			Assert.Contains("Bug 15", result); // Most overdue should be shown
+			Assert.DoesNotContain("Bug #1:", result); // Least overdue should be truncated
+		}
+
+		[Fact]
+		public void ComposeDigestMessageWithTeams_MultiTeamIC_GroupsByTeam()
+		{
+			// Arrange
+			var violations = new List<WorkItemUpdateSlaViolation>
+			{
+				new WorkItemUpdateSlaViolation
+				{
+					WorkItemId = 1,
+					Title = "Bug in Alpha",
+					WorkItemType = "Bug",
+					DaysSinceUpdate = 5,
+					SlaThresholdDays = 2,
+					Url = "https://dev.azure.com/test/1",
+					TeamId = "team-alpha",
+					TeamName = "Team Alpha"
+				},
+				new WorkItemUpdateSlaViolation
+				{
+					WorkItemId = 2,
+					Title = "Task in Beta",
+					WorkItemType = "Task",
+					DaysSinceUpdate = 7,
+					SlaThresholdDays = 5,
+					Url = "https://dev.azure.com/test/2",
+					TeamId = "team-beta",
+					TeamName = "Team Beta"
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeDigestMessageWithTeams(violations);
+
+			// Assert
+			Assert.Contains("across 2 teams", result);
+			Assert.Contains("🎯 **Team Alpha**", result);
+			Assert.Contains("🎯 **Team Beta**", result);
+			Assert.Contains("Bug in Alpha", result);
+			Assert.Contains("Task in Beta", result);
+		}
+
+		[Fact]
+		public void ComposeDigestMessageWithTeams_SingleTeamIC_UsesFallback()
+		{
+			// Arrange
+			var violations = new List<WorkItemUpdateSlaViolation>
+			{
+				new WorkItemUpdateSlaViolation
+				{
+					WorkItemId = 1,
+					Title = "Bug in Alpha",
+					WorkItemType = "Bug",
+					DaysSinceUpdate = 5,
+					SlaThresholdDays = 2,
+					Url = "https://dev.azure.com/test/1",
+					TeamId = "team-alpha",
+					TeamName = "Team Alpha"
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeDigestMessageWithTeams(violations);
+
+			// Assert
+			Assert.Contains("⚠️ SLA Violation Alert", result);
+			Assert.Contains("1 work item", result);
+			Assert.DoesNotContain("🎯 **Team", result); // Should not have team badges
+			Assert.Contains("Bug in Alpha", result);
+		}
+
+		[Fact]
+		public void ComposeManagerDigestMessageWithTeams_EmptyTeamName_HandlesGracefully()
+		{
+			// Arrange
+			var managerEmail = "manager@test.com";
+			var violationsByOwner = new Dictionary<string, List<WorkItemUpdateSlaViolation>>
+			{
+				{
+					"direct1@test.com",
+					new List<WorkItemUpdateSlaViolation>
+					{
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 1,
+							Title = "Bug with no team name",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 5,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/1",
+							TeamId = "team-123",
+							TeamName = string.Empty
+						},
+						new WorkItemUpdateSlaViolation
+						{
+							WorkItemId = 2,
+							Title = "Bug with team name",
+							WorkItemType = "Bug",
+							DaysSinceUpdate = 3,
+							SlaThresholdDays = 2,
+							Url = "https://dev.azure.com/test/2",
+							TeamId = "team-456",
+							TeamName = "Team Beta"
+						}
+					}
+				}
+			};
+
+			// Act
+			var result = _composer.ComposeManagerDigestMessageWithTeams(violationsByOwner, managerEmail);
+
+			// Assert
+			// Should use TeamId as fallback when TeamName is empty
+			Assert.Contains("## 🎯 team-123", result);
+			Assert.Contains("## 🎯 Team Beta", result);
+			Assert.Contains("Bug with no team name", result);
+			Assert.Contains("Bug with team name", result);
+		}
+
+		#endregion
 	}
 }
