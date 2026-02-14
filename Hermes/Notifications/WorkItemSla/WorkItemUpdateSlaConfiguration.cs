@@ -21,8 +21,18 @@ namespace Hermes.Notifications.WorkItemSla
 		/// Gets or sets the SLA rules by work item type.
 		/// Key: Work item type (e.g., "Bug", "Task")
 		/// Value: Days before SLA violation
+		/// DEPRECATED: Use GlobalSlaDefaults instead. Kept for backwards compatibility.
 		/// </summary>
+		[Obsolete("Use GlobalSlaDefaults instead")]
 		public Dictionary<string, int> SlaRules { get; set; } = new();
+
+		/// <summary>
+		/// Gets or sets the global default SLA rules by work item type.
+		/// These are used as fallback values when team-specific SLA overrides are not defined.
+		/// Key: Work item type (e.g., "Bug", "Task")
+		/// Value: Days before SLA violation
+		/// </summary>
+		public Dictionary<string, int> GlobalSlaDefaults { get; set; } = new();
 
 		/// <summary>
 		/// Gets or sets the team name for querying current iteration.

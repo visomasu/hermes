@@ -12,6 +12,7 @@ using Hermes.Tools;
 using Hermes.Tools.AzureDevOps;
 using Hermes.Tools.UserManagement;
 using Hermes.Tools.WorkItemSla;
+using Hermes.Infrastructure;
 
 namespace Hermes.DI
 {
@@ -136,6 +137,11 @@ namespace Hermes.DI
                     modelSelector,
                     intentClassifier);
             }).As<IAgentOrchestrator>().SingleInstance();
+
+            // Register TeamConfigurationSeeder for loading team configurations on startup
+            builder.RegisterType<TeamConfigurationSeeder>()
+                .AsSelf()
+                .SingleInstance();
         }
     }
 }
