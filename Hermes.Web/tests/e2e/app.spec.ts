@@ -7,7 +7,7 @@ test.describe('Hermes Web UI', () => {
 
   test('should load the application', async ({ page }) => {
     // Check page title
-    await expect(page).toHaveTitle(/Vite \+ React \+ TS/);
+    await expect(page).toHaveTitle(/Hermes/);
 
     // Check main heading
     await expect(page.locator('h1')).toContainText('Hermes');
@@ -39,7 +39,7 @@ test.describe('Hermes Web UI', () => {
 
     // Click Team Settings
     await page.getByText('Team Settings').click();
-    await expect(page.locator('main')).toContainText('Coming Soon');
+    await expect(page.locator('main')).toContainText('Team Configuration');
 
     // Click About
     await page.getByText('About').click();

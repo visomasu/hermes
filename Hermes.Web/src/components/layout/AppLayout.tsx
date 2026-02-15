@@ -9,6 +9,19 @@ export default function AppLayout() {
   const [activeView, setActiveView] = useState<ActiveView>('user-config');
   const [chatOpen, setChatOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [focusContent, setFocusContent] = useState<string>('');
+
+  // Handler for entering focus mode
+  const handleFocusMessage = (content: string) => {
+    setFocusContent(content);
+    setActiveView('focus');
+  };
+
+  // Handler for exiting focus mode
+  const handleExitFocus = () => {
+    setActiveView('user-config');
+    setFocusContent('');
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -26,10 +39,19 @@ export default function AppLayout() {
         />
 
         {/* Main Content */}
-        <MainContent activeView={activeView} />
+        <MainContent
+          activeView={activeView}
+          focusContent={focusContent}
+          onExitFocus={handleExitFocus}
+        />
 
         {/* Right Chat Pane (Collapsible) */}
-        {chatOpen && <ChatPane onClose={() => setChatOpen(false)} />}
+        {chatOpen && (
+          <ChatPane
+            onClose={() => setChatOpen(false)}
+            onFocusMessage={handleFocusMessage}
+          />
+        )}
 
         {/* Toggle Chat Button (when closed) */}
         {!chatOpen && (

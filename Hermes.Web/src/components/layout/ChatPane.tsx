@@ -2,14 +2,16 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import type { ChatMessage, ChatResponse } from '../../types/chat';
 import clsx from 'clsx';
+import MarkdownRenderer from '../shared/MarkdownRenderer';
 
 interface ChatPaneProps {
   onClose: () => void;
+  onFocusMessage?: (content: string) => void;
 }
 
 const TEST_USER_ID = 'testuser@microsoft.com'; // Hardcoded for MVP
 
-export default function ChatPane({ onClose }: ChatPaneProps) {
+export default function ChatPane({ onClose, onFocusMessage }: ChatPaneProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -159,13 +161,34 @@ export default function ChatPane({ onClose }: ChatPaneProps) {
           >
             <div
               className={clsx(
-                'max-w-[85%] rounded-2xl px-4 py-3 shadow-md',
+                'max-w-[85%] rounded-2xl px-4 py-3 shadow-md relative group',
                 message.role === 'user' && 'bg-gradient-to-br from-blue-500 to-blue-600 text-white',
                 message.role === 'assistant' && 'bg-white text-gray-900 border border-gray-200',
                 message.role === 'error' && 'bg-red-50 text-red-900 border border-red-200'
               )}
             >
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+              {/* Render markdown for assistant messages */}
+              {message.role === 'assistant' ? (
+                <MarkdownRenderer
+                  content={message.content}
+                  mode="compact"
+                />
+              ) : (
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+              )}
+
+              {/* Focus button for assistant messages */}
+              {message.role === 'assistant' && onFocusMessage && (
+                <button
+                  onClick={() => onFocusMessage(message.content)}
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-100 hover:bg-gray-200 p-1.5 rounded-lg shadow"
+                  title="View in focus mode"
+                >
+                  📖
+                </button>
+              )}
+
+              {/* Timestamp */}
               <p className={clsx(
                 'text-xs mt-2',
                 message.role === 'user' ? 'text-white/70' : 'text-gray-500'

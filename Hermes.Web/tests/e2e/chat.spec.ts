@@ -30,8 +30,11 @@ test.describe('Chat Functionality', () => {
     // Chat should be open by default
     await expect(chatPane).toBeVisible();
 
-    // Close chat
-    await page.locator('button', { hasText: '✕' }).click();
+    // Close chat - find the close button in the chat header
+    const closeButton = chatPane.locator('button').filter({ hasText: /^✕$/ }).or(
+      chatPane.locator('button').filter({ has: page.locator('svg path[d*="M6 18L18 6"]') })
+    );
+    await closeButton.first().click({ timeout: 10000 });
     await expect(chatPane).not.toBeVisible();
 
     // Should show toggle button
@@ -47,7 +50,7 @@ test.describe('Chat Functionality', () => {
     const textarea = chatPane.locator('textarea');
 
     await expect(textarea).toBeVisible();
-    await expect(textarea).toHaveAttribute('placeholder', 'Type your message...');
+    await expect(textarea).toHaveAttribute('placeholder', 'Message Hermes...');
   });
 
   test('should be able to type in chat input', async ({ page }) => {
@@ -128,7 +131,7 @@ test.describe('Chat Functionality', () => {
     const chatPane = page.locator('aside').last();
 
     // Should show empty state message
-    await expect(chatPane.getByText('Start a conversation with Hermes')).toBeVisible();
+    await expect(chatPane.getByText('Start a conversation')).toBeVisible();
   });
 
   test('should handle Enter key to send message', async ({ page }) => {
