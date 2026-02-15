@@ -2,9 +2,12 @@ import type { ActiveView } from './Sidebar';
 import UserConfigForm from '../forms/UserConfigForm';
 import TeamConfigForm from '../forms/TeamConfigForm';
 import Card from '../shared/Card';
+import FocusView from '../views/FocusView';
 
 interface MainContentProps {
   activeView: ActiveView;
+  focusContent?: string;
+  onExitFocus?: () => void;
 }
 
 function AboutView() {
@@ -50,14 +53,27 @@ function AboutView() {
   );
 }
 
-export default function MainContent({ activeView }: MainContentProps) {
+export default function MainContent({
+  activeView,
+  focusContent = '',
+  onExitFocus
+}: MainContentProps) {
   return (
-    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-blue-50 p-8">
-      <div className="max-w-5xl mx-auto">
-        {activeView === 'user-config' && <UserConfigForm />}
-        {activeView === 'team-config' && <TeamConfigForm />}
-        {activeView === 'about' && <AboutView />}
-      </div>
+    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-blue-50">
+      {activeView === 'focus' ? (
+        <FocusView
+          content={focusContent}
+          onExit={onExitFocus || (() => {})}
+        />
+      ) : (
+        <div className="p-8">
+          <div className="max-w-5xl mx-auto">
+            {activeView === 'user-config' && <UserConfigForm />}
+            {activeView === 'team-config' && <TeamConfigForm />}
+            {activeView === 'about' && <AboutView />}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

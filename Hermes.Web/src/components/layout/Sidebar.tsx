@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 
-export type ActiveView = 'user-config' | 'team-config' | 'about';
+export type ActiveView = 'user-config' | 'team-config' | 'about' | 'focus';
 
 interface SidebarProps {
   activeView: ActiveView;

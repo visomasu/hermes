@@ -25,20 +25,30 @@ test.describe('Chat Functionality', () => {
   });
 
   test('should be able to toggle chat pane', async ({ page }) => {
-    const chatPane = page.locator('aside').last();
-
-    // Chat should be open by default
+    // Find chat pane - it should be visible by default
+    let chatPane = page.locator('aside').filter({ hasText: 'Chat with Hermes' });
     await expect(chatPane).toBeVisible();
 
-    // Close chat
-    await page.locator('button', { hasText: '✕' }).click();
-    await expect(chatPane).not.toBeVisible();
+    // Close chat - find the close button in the header
+    // The close button has the X icon (path with "M6 18L18 6M6 6l12 12")
+    const closeButton = chatPane.locator('button[title=""], button').filter({
+      has: page.locator('svg path[d*="M6 18L18 6"]')
+    }).first();
+    await expect(closeButton).toBeVisible();
+    await closeButton.click();
 
-    // Should show toggle button
-    await expect(page.locator('button', { hasText: '💬' })).toBeVisible();
+    // Chat pane should be removed from DOM (not just hidden)
+    await expect(chatPane).not.toBeAttached({ timeout: 2000 });
+
+    // Should show floating toggle button at bottom-right
+    const toggleButton = page.locator('button[title="Open Chat"]');
+    await expect(toggleButton).toBeVisible();
 
     // Reopen chat
-    await page.locator('button', { hasText: '💬' }).click();
+    await toggleButton.click();
+
+    // Chat pane should be visible again
+    chatPane = page.locator('aside').filter({ hasText: 'Chat with Hermes' });
     await expect(chatPane).toBeVisible();
   });
 
@@ -47,7 +57,7 @@ test.describe('Chat Functionality', () => {
     const textarea = chatPane.locator('textarea');
 
     await expect(textarea).toBeVisible();
-    await expect(textarea).toHaveAttribute('placeholder', 'Type your message...');
+    await expect(textarea).toHaveAttribute('placeholder', 'Message Hermes...');
   });
 
   test('should be able to type in chat input', async ({ page }) => {
@@ -61,7 +71,10 @@ test.describe('Chat Functionality', () => {
   test('should have send button enabled when text is entered', async ({ page }) => {
     const chatPane = page.locator('aside').last();
     const textarea = chatPane.locator('textarea');
-    const sendButton = chatPane.locator('button', { hasText: 'Send' });
+    // Send button is an icon button with a send SVG icon
+    const sendButton = chatPane.locator('button').filter({
+      has: page.locator('svg path[d*="M2.01 21L23 12"]')
+    });
 
     // Initially, send button might be disabled
     await textarea.fill('Test message');
@@ -69,15 +82,17 @@ test.describe('Chat Functionality', () => {
     // Wait a moment for state to update
     await page.waitForTimeout(500);
 
-    // Send button should now be enabled (or waiting for WebSocket connection)
-    // We'll just check it exists
+    // Send button should now be visible (or waiting for WebSocket connection)
     await expect(sendButton).toBeVisible();
   });
 
   test('should send message when send button is clicked', async ({ page }) => {
     const chatPane = page.locator('aside').last();
     const textarea = chatPane.locator('textarea');
-    const sendButton = chatPane.locator('button', { hasText: 'Send' });
+    // Send button is an icon button with a send SVG icon
+    const sendButton = chatPane.locator('button').filter({
+      has: page.locator('svg path[d*="M2.01 21L23 12"]')
+    });
 
     // Wait for WebSocket to connect (indicated by green dot)
     const statusIndicator = chatPane.locator('div[class*="rounded-full"]').first();
@@ -94,11 +109,8 @@ test.describe('Chat Functionality', () => {
       await page.waitForTimeout(1000);
     }
 
-    if (!isConnected) {
-      test.fail();
-      console.error('WebSocket failed to connect within timeout');
-      return;
-    }
+    // Assert connection was successful
+    expect(isConnected).toBe(true);
 
     // Type a message
     await textarea.fill('Hello Hermes');
@@ -128,7 +140,7 @@ test.describe('Chat Functionality', () => {
     const chatPane = page.locator('aside').last();
 
     // Should show empty state message
-    await expect(chatPane.getByText('Start a conversation with Hermes')).toBeVisible();
+    await expect(chatPane.getByText('Start a conversation')).toBeVisible();
   });
 
   test('should handle Enter key to send message', async ({ page }) => {
