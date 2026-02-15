@@ -10,6 +10,7 @@ using Hermes.Storage.Repositories.ConversationHistory;
 using Hermes.Storage.Repositories.ConversationReference;
 using Hermes.Storage.Repositories.UserConfiguration;
 using Hermes.Storage.Repositories.UserNotificationState;
+using Hermes.Storage.Repositories.TeamConfiguration;
 using Hermes.Storage.Core.Models;
 
 namespace Hermes.DI
@@ -119,6 +120,11 @@ namespace Hermes.DI
             // Register UserNotificationStateRepository
             builder.RegisterType<UserNotificationStateRepository>()
                 .As<IUserNotificationStateRepository>()
+                .SingleInstance();
+
+            // Register TeamConfigurationRepository
+            builder.RegisterType<TeamConfigurationRepository>()
+                .As<ITeamConfigurationRepository>()
                 .SingleInstance();
         }
     }

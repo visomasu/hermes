@@ -21,15 +21,27 @@ namespace Hermes.Notifications.WorkItemSla
 		/// Gets or sets the SLA rules by work item type.
 		/// Key: Work item type (e.g., "Bug", "Task")
 		/// Value: Days before SLA violation
+		/// DEPRECATED: Use GlobalSlaDefaults instead. Kept for backwards compatibility.
 		/// </summary>
+		[Obsolete("Use GlobalSlaDefaults instead")]
 		public Dictionary<string, int> SlaRules { get; set; } = new();
+
+		/// <summary>
+		/// Gets or sets the global default SLA rules by work item type.
+		/// These are used as fallback values when team-specific SLA overrides are not defined.
+		/// Key: Work item type (e.g., "Bug", "Task")
+		/// Value: Days before SLA violation
+		/// </summary>
+		public Dictionary<string, int> GlobalSlaDefaults { get; set; } = new();
 
 		/// <summary>
 		/// Gets or sets the team name for querying current iteration.
 		/// Required to dynamically determine the current iteration path based on dates.
 		/// Example: "OneCRM Team", "Platform Team"
 		/// If null or empty, iteration filtering is skipped.
+		/// DEPRECATED: Use per-team configuration in TeamConfigurationDocument instead.
 		/// </summary>
+		[Obsolete("Use per-team configuration in TeamConfigurationDocument instead")]
 		public string? TeamName { get; set; }
 
 		/// <summary>
@@ -37,7 +49,9 @@ namespace Hermes.Notifications.WorkItemSla
 		/// If set, only work items under this iteration path will be checked.
 		/// Specify a path like "Project\\Sprint 1".
 		/// If null or empty, all iterations are checked (or current iteration if TeamName is set).
+		/// DEPRECATED: Use per-team configuration in TeamConfigurationDocument instead.
 		/// </summary>
+		[Obsolete("Use per-team configuration in TeamConfigurationDocument instead")]
 		public string? IterationPath { get; set; }
 
 		/// <summary>

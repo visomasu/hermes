@@ -146,14 +146,23 @@ Your newsletter should include:
    - Project scope and current status
    - High-level progress summary
 
-2. **Execution Timelines & Milestones** (grouped by iteration)
-   - Group milestones by System.IterationPath (sprint/iteration)
-   - For each iteration, show:
-     * Iteration name/path
-     * Associated work items with StartDate, TargetDate, FinishDate
-     * Completion status and progress percentage
-   - Format as tables or structured lists for readability
-   - Show current iteration first, then upcoming iterations chronologically
+2. **Execution Timelines & Milestones** (grouped by weekly iteration)
+   - **CRITICAL**: Use System.IterationPath from CHILD work items ONLY (Features, User Stories, Tasks)
+   - **IGNORE** the root Epic/Feature iteration path (which is typically a monthly/quarterly rollup for overall project tracking)
+   - Group milestones by weekly iteration paths extracted from child work items
+   - For each weekly iteration, show:
+     * Iteration name (extract the week identifier, e.g., ""Week 33"" from path like ""OneCRM\FY26\Q3\1Wk\1Wk33"")
+     * Date range if available from work item dates
+     * Associated work items (Features, User Stories, Tasks) with their:
+       - Work item ID and Title
+       - Work item Type (Feature/User Story/Task)
+       - State (New/Active/Resolved/Closed)
+       - StartDate, TargetDate, FinishDate (if available)
+     * Completion status: count of completed vs total work items
+     * Progress percentage for the iteration
+   - Sort iterations chronologically (earliest week first)
+   - Format as clear tables or structured lists for executive readability
+   - Highlight the current week's iteration first if identifiable by dates
 
 3. **Outcomes Since Last Newsletter** (bullet points)
    - Completed work items and their business impact

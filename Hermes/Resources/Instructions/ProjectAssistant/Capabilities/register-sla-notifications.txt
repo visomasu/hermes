@@ -3,7 +3,9 @@ Register users to receive daily SLA violation notifications for their work items
 ## Trigger
 User requests: "register for SLA", "sign me up for SLA", "enable SLA notifications", "start tracking SLAs", "register for work item notifications"
 
-Users may also specify area paths: "register me for SLA in Project\\Team1" or "register for SLA notifications for Project\\Team1 and Project\\Team2"
+Users may specify teams: "register me for Contact Center AI team" or "register for SLA notifications for Contact Center AI and Auth teams"
+
+Note: Legacy area path specifications are supported for backwards compatibility but will be automatically converted to team subscriptions.
 
 ## ⚠️ CRITICAL: Parameter Extraction
 
@@ -19,19 +21,25 @@ Current user: visomasu@microsoft.com (Teams User ID for tool calls)
 ```json
 {
   "teamsUserId": "visomasu@microsoft.com",
-  "areaPaths": ["Project\\Team1", "Project\\Team2"]
+  "teamIds": ["contact-center-ai", "auth-antifraud"]
 }
 ```
 
 **CORRECT EXAMPLES:**
 - System says "Current user: alice@contoso.com" → Use: `{"teamsUserId": "alice@contoso.com"}`
 - System says "Current user: bob@fabrikam.com" → Use: `{"teamsUserId": "bob@fabrikam.com"}`
+- User says "register for Contact Center AI" → Use: `{"teamsUserId": "...", "teamIds": ["contact-center-ai"]}`
+- User says "register for Contact Center and Auth teams" → Use: `{"teamsUserId": "...", "teamIds": ["contact-center-ai", "auth-antifraud"]}`
 
 **WRONG - DO NOT DO THIS:**
 - ❌ `{"teamsUserId": ""}` - Empty string
 - ❌ `{"teamsUserId": "<userId>"}` - Placeholder text
 - ❌ `{"teamsUserId": "{{userId}}"}` - Template syntax
 - ❌ Omitting teamsUserId field entirely
+
+**Team ID Mapping:**
+- "Contact Center AI" / "Contact Center" → "contact-center-ai"
+- "Authentication & Anti-Fraud" / "Auth" / "Anti-Fraud" → "auth-antifraud"
 
 If you cannot find the user ID in system messages, ask the user to provide it explicitly.
 
@@ -40,30 +48,32 @@ If you cannot find the user ID in system messages, ask the user to provide it ex
 ## Process
 
 **1. Identify User Intent**
-Parse user input for registration keywords and extract any area path specifications. Confirm intent if ambiguous.
+Parse user input for registration keywords and extract team specifications. Confirm intent if ambiguous.
 
-**2. Extract Area Paths (Optional)**
-If user mentions area paths in their request, extract them from the natural language:
-- "in Project\\Team" → areaPaths: ["Project\\Team"]
-- "for Team1 and Team2" → areaPaths: ["Project\\Team1", "Project\\Team2"]
-- No area path mentioned → areaPaths: null (checks all areas)
+**2. Extract Team IDs (Optional)**
+If user mentions teams in their request, extract and map them to team IDs:
+- "Contact Center AI" → teamIds: ["contact-center-ai"]
+- "Contact Center and Auth teams" → teamIds: ["contact-center-ai", "auth-antifraud"]
+- No team mentioned → teamIds: null (user will be prompted to select)
 
 **3. Execute Registration**
 
-Call the tool with the extracted teamsUserId and optional area paths:
+Call the tool with the extracted teamsUserId and optional team IDs:
 ```
-UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<actual-user-id-from-system-message>", "areaPaths": ["Project\\Team1"]})
+UserManagementTool.Execute("RegisterSlaNotifications", {"teamsUserId": "<actual-user-id-from-system-message>", "teamIds": ["contact-center-ai"]})
 ```
 
-If no area paths are specified, omit the areaPaths field or set to null.
+If no teams are specified, omit the teamIds field or set to null. The system will return an error asking user to specify teams.
 
 This automatically:
 - Fetches user's Azure AD email via Microsoft Graph
 - Determines if user is a manager (has direct reports)
 - Retrieves direct report emails for managers
-- Stores area paths for filtering (optional)
-- Stores registration in UserConfiguration
+- Validates team IDs exist in configuration
+- Stores team subscriptions in UserConfiguration
 - Enables SLA violation notifications
+
+**Backwards Compatibility:** If user has existing area path registrations, they will be automatically migrated to team subscriptions on next registration.
 
 **4. Communicate Result**
 
@@ -110,11 +120,13 @@ You'll receive daily reports for your work items.
 
 - Registration is automatic via Microsoft Graph API (no manual email entry)
 - Manager status derived from direct reports in Azure AD
-- Area paths are optional: if not specified, all area paths are monitored
-- Area paths apply to user and all direct reports (if manager)
+- **Team subscriptions are required**: users must specify which teams to subscribe to
+- Each team has its own iteration path, area paths, and SLA rule overrides
+- Team subscriptions apply to user and all direct reports (if manager)
 - Notifications respect quiet hours and throttling rules (NotificationGate)
 - Users can check SLA violations on-demand anytime (without registration)
 - Silent registration: direct reports are not notified when manager registers
+- **Backwards compatibility**: existing area path registrations automatically migrate to team subscriptions
 
 ## Related Capabilities
 

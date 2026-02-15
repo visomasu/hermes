@@ -1,0 +1,64 @@
+### Seed Team Configurations
+### This file uses httpyac format for seeding team configurations via REST API
+### Run these requests to populate team configurations in CosmosDB
+
+@baseUrl = http://localhost:3978
+@apiPath = /api/teamconfiguration
+
+### 1. Create Contact Center AI Team (Weekly Milestones)
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "teamId": "contact-center-ai",
+  "teamName": "Contact Center AI",
+  "iterationPath": "OneCRM\\FY26\\Q3\\1Wk\\1Wk33",
+  "areaPaths": [
+    "OneCRM\\AI\\ContactCenter"
+  ],
+  "slaOverrides": {
+    "Task": 3
+  }
+}
+
+### 2. Create Authentication & Anti-Fraud Team (Monthly Milestones)
+POST {{baseUrl}}{{apiPath}}
+Content-Type: application/json
+
+{
+  "teamId": "auth-antifraud",
+  "teamName": "Authentication & Anti-Fraud",
+  "iterationPath": "OneCRM\\FY26\\Q3\\Month\\01 Jan",
+  "areaPaths": [
+    "OneCRM\\Security\\Auth",
+    "OneCRM\\Security\\AntiFraud"
+  ],
+  "slaOverrides": {
+    "Feature": 10
+  }
+}
+
+### 3. Get All Teams
+GET {{baseUrl}}{{apiPath}}
+
+### 4. Get Specific Team
+GET {{baseUrl}}{{apiPath}}/contact-center-ai
+
+### 5. Update Team (Example: Update iteration path)
+PUT {{baseUrl}}{{apiPath}}/contact-center-ai
+Content-Type: application/json
+
+{
+  "teamId": "contact-center-ai",
+  "teamName": "Contact Center AI",
+  "iterationPath": "OneCRM\\FY26\\Q3\\1Wk\\1Wk34",
+  "areaPaths": [
+    "OneCRM\\AI\\ContactCenter"
+  ],
+  "slaOverrides": {
+    "Task": 3
+  }
+}
+
+### 6. Delete Team (Cleanup)
+DELETE {{baseUrl}}{{apiPath}}/contact-center-ai

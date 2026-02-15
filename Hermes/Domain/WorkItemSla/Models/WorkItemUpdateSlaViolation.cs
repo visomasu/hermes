@@ -34,5 +34,17 @@ namespace Hermes.Domain.WorkItemSla.Models
 		/// Gets or sets the URL to view the work item in Azure DevOps.
 		/// </summary>
 		public string Url { get; set; } = string.Empty;
+
+		/// <summary>
+		/// Gets or sets the team ID this violation belongs to.
+		/// Used for team-separated reporting in multi-team scenarios.
+		/// </summary>
+		public string TeamId { get; set; } = string.Empty;
+
+		/// <summary>
+		/// Gets or sets the team name this violation belongs to.
+		/// Used for display in manager reports.
+		/// </summary>
+		public string TeamName { get; set; } = string.Empty;
 	}
 }

@@ -34,11 +34,18 @@ namespace Hermes.Storage.Repositories.UserConfiguration.Models
 		public bool IsManager => DirectReportEmails.Count > 0;
 
 		/// <summary>
-		/// Area paths to filter work items for SLA violation checks.
-		/// Optional: If empty, all area paths are checked.
-		/// Supports multiple area paths for users working across multiple teams/projects.
-		/// Example: ["Project\\Team1", "Project\\Team2"]
+		/// Team IDs user is subscribed to for SLA notifications.
+		/// Each team has its own iteration path, area paths, and SLA rule overrides.
+		/// Example: ["contact-center-ai", "auth-antifraud"]
 		/// </summary>
+		public List<string> SubscribedTeamIds { get; set; } = new();
+
+		/// <summary>
+		/// Legacy area paths property (deprecated).
+		/// Kept for backwards compatibility during migration.
+		/// Use SubscribedTeamIds instead - area paths are now team-specific.
+		/// </summary>
+		[Obsolete("Use SubscribedTeamIds instead. Area paths are now configured per team.")]
 		public List<string> AreaPaths { get; set; } = new();
 
 		/// <summary>

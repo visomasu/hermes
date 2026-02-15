@@ -113,6 +113,15 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+// Seed team configurations from appsettings.json on startup (optional for development)
+// Production environments should use REST API at /api/teamconfiguration
+using (var scope = app.Services.CreateScope())
+{
+    var container = scope.ServiceProvider.GetRequiredService<ILifetimeScope>();
+    var seeder = container.Resolve<Hermes.Infrastructure.TeamConfigurationSeeder>();
+    await seeder.SeedTeamsAsync();
+}
+
 // Configure the HTTP request pipeline.
 // Removed Swagger/OpenAPI middleware
 

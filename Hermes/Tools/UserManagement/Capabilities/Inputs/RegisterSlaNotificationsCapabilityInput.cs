@@ -15,11 +15,19 @@ namespace Hermes.Tools.UserManagement.Capabilities.Inputs
 		public string TeamsUserId { get; init; } = string.Empty;
 
 		/// <summary>
-		/// Optional area paths to filter work items for SLA violation checks.
-		/// If null or empty, all area paths are checked.
-		/// Supports multiple area paths for users working across multiple teams/projects.
-		/// Example: ["Project\\Team1", "Project\\Team2"]
+		/// Team IDs to subscribe to for SLA notifications.
+		/// If null or empty, user will be prompted to select teams.
+		/// Example: ["contact-center-ai", "auth-antifraud"]
 		/// </summary>
+		[JsonPropertyName("teamIds")]
+		public List<string>? TeamIds { get; init; }
+
+		/// <summary>
+		/// Legacy area paths property (deprecated).
+		/// Kept for backwards compatibility.
+		/// Use TeamIds instead - area paths are now configured per team.
+		/// </summary>
+		[Obsolete("Use TeamIds instead. Area paths are now configured per team.")]
 		[JsonPropertyName("areaPaths")]
 		public List<string>? AreaPaths { get; init; }
 	}
