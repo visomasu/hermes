@@ -155,3 +155,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Make Program class accessible for integration tests (WebApplicationFactory)
+public partial class Program { }
