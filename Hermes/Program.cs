@@ -131,6 +131,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+// Enable WebSocket support
+app.UseWebSockets();
+
 app.UseAuthorization();
 
 app.MapControllers();
