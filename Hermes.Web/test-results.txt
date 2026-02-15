@@ -1,0 +1,262 @@
+
+> hermes-web@0.0.0 test
+> playwright test
+
+
+Running 33 tests using 1 worker
+
+[1A[2K[1/33] [chromium] › tests\e2e\app.spec.ts:8:3 › Hermes Web UI › should load the application
+[1A[2K  1) [chromium] › tests\e2e\app.spec.ts:8:3 › Hermes Web UI › should load the application ──────────
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveTitle[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected pattern: [32m/Vite \+ React \+ TS/[39m
+    Received string:  [31m"hermes-web"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toHaveTitle" with timeout 5000ms[22m
+    [2m    8 × unexpected value "hermes-web"[22m
+
+
+       8 |   test('should load the application', async ({ page }) => {
+       9 |     // Check page title
+    > 10 |     await expect(page).toHaveTitle(/Vite \+ React \+ TS/);
+         |                        ^
+      11 |
+      12 |     // Check main heading
+      13 |     await expect(page.locator('h1')).toContainText('Hermes');
+        at C:\dev\repos\Hermes\Hermes.Web\tests\e2e\app.spec.ts:10:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\app-Hermes-Web-UI-should-load-the-application-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\app-Hermes-Web-UI-should-load-the-application-chromium\error-context.md
+
+
+[1A[2K[2/33] [chromium] › tests\e2e\app.spec.ts:16:3 › Hermes Web UI › should have 3-pane layout
+[1A[2K[3/33] [chromium] › tests\e2e\app.spec.ts:27:3 › Hermes Web UI › should display navigation items
+[1A[2K[4/33] [chromium] › tests\e2e\app.spec.ts:36:3 › Hermes Web UI › should navigate between views
+[1A[2K  2) [chromium] › tests\e2e\app.spec.ts:36:3 › Hermes Web UI › should navigate between views ───────
+
+    Error: locator.click: Error: strict mode violation: getByText('About') resolved to 2 elements:
+        1) <span>About</span> aka getByRole('button', { name: 'ℹ️ About' })
+        2) <p class="text-sm mt-2">Ask about configurations, SLA violations, or anyt…</p> aka getByText('Ask about configurations, SLA')
+
+    Call log:
+    [2m  - waiting for getByText('About')[22m
+
+
+      43 |
+      44 |     // Click About
+    > 45 |     await page.getByText('About').click();
+         |                                   ^
+      46 |     await expect(page.locator('main')).toContainText('What is Hermes?');
+      47 |
+      48 |     // Click back to User Settings
+        at C:\dev\repos\Hermes\Hermes.Web\tests\e2e\app.spec.ts:45:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\app-Hermes-Web-UI-should-navigate-between-views-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\app-Hermes-Web-UI-should-navigate-between-views-chromium\error-context.md
+
+
+[1A[2K[5/33] [chromium] › tests\e2e\chat.spec.ts:8:3 › Chat Functionality › should display chat pane
+[1A[2K[6/33] [chromium] › tests\e2e\chat.spec.ts:14:3 › Chat Functionality › should show WebSocket connection status
+[1A[2K[7/33] [chromium] › tests\e2e\chat.spec.ts:27:3 › Chat Functionality › should be able to toggle chat pane
+[1A[2K  3) [chromium] › tests\e2e\chat.spec.ts:27:3 › Chat Functionality › should be able to toggle chat pane 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).not.[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator:  locator('aside').last()
+    Expected: not visible
+    Received: visible
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "not toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('aside').last()[22m
+    [2m    9 × locator resolved to <aside class="w-64 bg-white border-r border-gray-200 flex flex-col">…</aside>[22m
+    [2m      - unexpected value "visible"[22m
+
+
+      33 |     // Close chat
+      34 |     await page.locator('button', { hasText: '✕' }).click();
+    > 35 |     await expect(chatPane).not.toBeVisible();
+         |                                ^
+      36 |
+      37 |     // Should show toggle button
+      38 |     await expect(page.locator('button', { hasText: '💬' })).toBeVisible();
+        at C:\dev\repos\Hermes\Hermes.Web\tests\e2e\chat.spec.ts:35:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\chat-Chat-Functionality-should-be-able-to-toggle-chat-pane-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\chat-Chat-Functionality-should-be-able-to-toggle-chat-pane-chromium\error-context.md
+
+
+[1A[2K[8/33] [chromium] › tests\e2e\chat.spec.ts:45:3 › Chat Functionality › should display chat input
+[1A[2K[9/33] [chromium] › tests\e2e\chat.spec.ts:53:3 › Chat Functionality › should be able to type in chat input
+[1A[2K[10/33] [chromium] › tests\e2e\chat.spec.ts:61:3 › Chat Functionality › should have send button enabled when text is entered
+[1A[2K[11/33] [chromium] › tests\e2e\chat.spec.ts:77:3 › Chat Functionality › should send message when send button is clicked
+[1A[2K[12/33] [chromium] › tests\e2e\chat.spec.ts:127:3 › Chat Functionality › should display empty state when no messages
+[1A[2K[13/33] [chromium] › tests\e2e\chat.spec.ts:134:3 › Chat Functionality › should handle Enter key to send message
+[1A[2K[14/33] [chromium] › tests\e2e\toggle.spec.ts:10:3 › Toggle Component Functionality › should visually update when SLA Violation toggle is clicked
+[1A[2K[15/33] [chromium] › tests\e2e\toggle.spec.ts:40:3 › Toggle Component Functionality › should toggle between on and off states multiple times
+[1A[2K[16/33] [chromium] › tests\e2e\toggle.spec.ts:56:3 › Toggle Component Functionality › should enable save button when toggle is clicked
+[1A[2K[17/33] [chromium] › tests\e2e\toggle.spec.ts:76:3 › Toggle Component Functionality › should show correct visual state for all toggles
+[1A[2K[18/33] [chromium] › tests\e2e\toggle.spec.ts:95:3 › Toggle Component Functionality › should update Work Item Update Notifications toggle
+[1A[2K[19/33] [chromium] › tests\e2e\toggle.spec.ts:107:3 › Toggle Component Functionality › should update Quiet Hours toggle
+[1A[2K[20/33] [chromium] › tests\e2e\toggle.spec.ts:119:3 › Toggle Component Functionality › should show blue background when toggle is ON
+[1A[2K[21/33] [chromium] › tests\e2e\toggle.spec.ts:141:3 › Toggle Component Functionality › should translate button when toggle is ON
+[1A[2K[22/33] [chromium] › tests\e2e\toggle.spec.ts:163:3 › Toggle Component Functionality › should keep toggle state after clicking multiple times
+[1A[2K[23/33] [chromium] › tests\e2e\toggle.spec.ts:182:3 › Toggle Component Functionality › should work independently - clicking one toggle does not affect others
+[1A[2K[24/33] [chromium] › tests\e2e\user-config.spec.ts:8:3 › User Configuration › should display user config form
+[1A[2K  4) [chromium] › tests\e2e\user-config.spec.ts:8:3 › User Configuration › should display user config form 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Quiet Hours')
+    Expected: visible
+    Error: strict mode violation: getByText('Quiet Hours') resolved to 2 elements:
+        1) <h3 class="text-lg font-semibold text-gray-900">Quiet Hours</h3> aka getByRole('heading', { name: 'Quiet Hours' })
+        2) <span class="ml-3 text-sm font-medium text-gray-700">Enable Quiet Hours</span> aka getByText('Enable Quiet Hours')
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('Quiet Hours')[22m
+
+
+       8 |   test('should display user config form', async ({ page }) => {
+       9 |     await expect(page.getByText('Notification Preferences')).toBeVisible();
+    > 10 |     await expect(page.getByText('Quiet Hours')).toBeVisible();
+         |                                                 ^
+      11 |   });
+      12 |
+      13 |   test('should have notification toggles', async ({ page }) => {
+        at C:\dev\repos\Hermes\Hermes.Web\tests\e2e\user-config.spec.ts:10:49
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\user-config-User-Configura-41485-ld-display-user-config-form-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\user-config-User-Configura-41485-ld-display-user-config-form-chromium\error-context.md
+
+
+[1A[2K[25/33] [chromium] › tests\e2e\user-config.spec.ts:13:3 › User Configuration › should have notification toggles
+[1A[2K[26/33] [chromium] › tests\e2e\user-config.spec.ts:19:3 › User Configuration › should have rate limit inputs
+[1A[2K[27/33] [chromium] › tests\e2e\user-config.spec.ts:25:3 › User Configuration › should have time zone input
+[1A[2K[28/33] [chromium] › tests\e2e\user-config.spec.ts:29:3 › User Configuration › should have quiet hours toggle
+[1A[2K[29/33] [chromium] › tests\e2e\user-config.spec.ts:33:3 › User Configuration › should show quiet hours time inputs when enabled
+[1A[2K  5) [chromium] › tests\e2e\user-config.spec.ts:33:3 › User Configuration › should show quiet hours time inputs when enabled 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('label').filter({ hasText: 'Enable Quiet Hours' }).locator('input[type="checkbox"]')[22m
+    [2m    - locator resolved to <input class="sr-only" type="checkbox" name="quietHoursEnabled"/>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="relative">…</div> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="relative">…</div> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    57 × waiting for element to be visible, enabled and stable[22m
+    [2m       - element is visible, enabled and stable[22m
+    [2m       - scrolling into view if needed[22m
+    [2m       - done scrolling[22m
+    [2m       - <div class="relative">…</div> intercepts pointer events[22m
+    [2m     - retrying click action[22m
+    [2m       - waiting 500ms[22m
+
+
+      40 |     // If not checked, click to enable
+      41 |     if (!isChecked) {
+    > 42 |       await quietHoursToggle.click();
+         |                              ^
+      43 |     }
+      44 |
+      45 |     // Time inputs should be visible
+        at C:\dev\repos\Hermes\Hermes.Web\tests\e2e\user-config.spec.ts:42:30
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\user-config-User-Configura-044da-rs-time-inputs-when-enabled-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\user-config-User-Configura-044da-rs-time-inputs-when-enabled-chromium\error-context.md
+
+
+[1A[2K[30/33] [chromium] › tests\e2e\user-config.spec.ts:50:3 › User Configuration › should have save and reset buttons
+[1A[2K[31/33] [chromium] › tests\e2e\user-config.spec.ts:55:3 › User Configuration › should initially disable save button when no changes
+[1A[2K[32/33] [chromium] › tests\e2e\user-config.spec.ts:65:3 › User Configuration › should enable save button when form is changed
+[1A[2K  6) [chromium] › tests\e2e\user-config.spec.ts:65:3 › User Configuration › should enable save button when form is changed 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[type="checkbox"]').first()[22m
+    [2m    - locator resolved to <input checked class="sr-only" type="checkbox" name="slaViolationNotifications"/>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="relative">…</div> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="relative">…</div> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    53 × waiting for element to be visible, enabled and stable[22m
+    [2m       - element is visible, enabled and stable[22m
+    [2m       - scrolling into view if needed[22m
+    [2m       - done scrolling[22m
+    [2m       - <div class="relative">…</div> intercepts pointer events[22m
+    [2m     - retrying click action[22m
+    [2m       - waiting 500ms[22m
+
+
+      74 |     // Make a change - find first toggle and click it
+      75 |     const toggles = page.locator('input[type="checkbox"]');
+    > 76 |     await toggles.first().click();
+         |                           ^
+      77 |
+      78 |     // Wait for state update
+      79 |     await page.waitForTimeout(500);
+        at C:\dev\repos\Hermes\Hermes.Web\tests\e2e\user-config.spec.ts:76:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\user-config-User-Configura-2dc37-button-when-form-is-changed-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\user-config-User-Configura-2dc37-button-when-form-is-changed-chromium\error-context.md
+
+
+[1A[2K[33/33] [chromium] › tests\e2e\user-config.spec.ts:85:3 › User Configuration › should show loading state
+[1A[2K  6 failed
+    [chromium] › tests\e2e\app.spec.ts:8:3 › Hermes Web UI › should load the application ───────────
+    [chromium] › tests\e2e\app.spec.ts:36:3 › Hermes Web UI › should navigate between views ────────
+    [chromium] › tests\e2e\chat.spec.ts:27:3 › Chat Functionality › should be able to toggle chat pane 
+    [chromium] › tests\e2e\user-config.spec.ts:8:3 › User Configuration › should display user config form 
+    [chromium] › tests\e2e\user-config.spec.ts:33:3 › User Configuration › should show quiet hours time inputs when enabled 
+    [chromium] › tests\e2e\user-config.spec.ts:65:3 › User Configuration › should enable save button when form is changed 
+  27 passed (2.0m)

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .status.connecting { background-color: #fff3cd; }
+        .status.connected { background-color: #d4edda; }
+        .status.error { background-color: #f8d7da; }
+        .status.disconnected { background-color: #e2e3e5; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; margin: 10px 0; }
+        .message { margin: 5px 0; padding: 5px; border-radius: 3px; }
+        .message.sent { background-color: #cce5ff; }
+        .message.received { background-color: #d4edda; }
+        .message.error { background-color: #f8d7da; }
+        input, button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Hermes WebSocket Test</h1>
+
+    <div id="status" class="status connecting">Status: Connecting...</div>
+
+    <div>
+        <input type="text" id="messageInput" placeholder="Type your message..." style="width: 60%;" />
+        <button onclick="sendMessage()">Send</button>
+        <button onclick="connect()">Reconnect</button>
+    </div>
+
+    <div id="messages"></div>
+
+    <h3>Instructions:</h3>
+    <ol>
+        <li>This page tests the WebSocket connection to the Hermes backend</li>
+        <li>If it shows "Connected" in green, the WebSocket is working</li>
+        <li>Type a message and click Send to test communication</li>
+        <li>You should see your message appear, followed by Hermes' response</li>
+    </ol>
+
+    <script>
+        let ws = null;
+        const statusEl = document.getElementById('status');
+        const messagesEl = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+
+        function addMessage(text, type = 'received') {
+            const div = document.createElement('div');
+            div.className = 'message ' + type;
+            div.textContent = new Date().toLocaleTimeString() + ' - ' + text;
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function updateStatus(status, className) {
+            statusEl.textContent = 'Status: ' + status;
+            statusEl.className = 'status ' + className;
+        }
+
+        function connect() {
+            updateStatus('Connecting...', 'connecting');
+            addMessage('Connecting to ws://localhost:3978/api/hermes/ws', 'system');
+
+            try {
+                ws = new WebSocket('ws://localhost:3978/api/hermes/ws');
+
+                ws.onopen = () => {
+                    updateStatus('Connected ✓', 'connected');
+                    addMessage('WebSocket connected successfully!', 'received');
+                };
+
+                ws.onmessage = (event) => {
+                    addMessage('Received: ' + event.data, 'received');
+
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'response') {
+                            addMessage('Response: ' + data.message, 'received');
+                        } else if (data.type === 'progress') {
+                            addMessage('Progress: ' + data.message, 'received');
+                        } else if (data.type === 'error') {
+                            addMessage('Error: ' + data.message, 'error');
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse message:', e);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    updateStatus('Error ✗', 'error');
+                    addMessage('WebSocket error occurred', 'error');
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = () => {
+                    updateStatus('Disconnected', 'disconnected');
+                    addMessage('WebSocket disconnected', 'error');
+                };
+            } catch (error) {
+                updateStatus('Error ✗', 'error');
+                addMessage('Failed to create WebSocket: ' + error.message, 'error');
+                console.error('WebSocket creation error:', error);
+            }
+        }
+
+        function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('WebSocket not connected!', 'error');
+                return;
+            }
+
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            const message = {
+                text: text,
+                userId: 'testuser@microsoft.com',
+                sessionId: 'test-' + Date.now()
+            };
+
+            addMessage('Sending: ' + text, 'sent');
+            ws.send(JSON.stringify(message));
+            messageInput.value = '';
+        }
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Connect on load
+        connect();
+    </script>
+</body>
+</html>
