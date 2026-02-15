@@ -21,10 +21,20 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5175',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  webServer: [
+    {
+      command: 'npm run dev',
+      url: 'http://localhost:5175',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+    {
+      command: 'cd ../Hermes && dotnet run --configuration Release',
+      url: 'http://localhost:3978/api/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 180 * 1000, // 3 minutes for backend to fully start
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  ],
 });

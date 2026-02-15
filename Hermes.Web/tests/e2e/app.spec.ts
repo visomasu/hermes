@@ -34,19 +34,24 @@ test.describe('Hermes Web UI', () => {
   });
 
   test('should navigate between views', async ({ page }) => {
-    // Default view should be User Settings
-    await expect(page.locator('main')).toContainText('Notification Preferences');
+    // Default view should be Focus Mode
+    await expect(page.locator('main')).toContainText('No Content in Focus');
+
+    // Click User Settings and wait for configuration to load
+    await page.locator('nav button').filter({ hasText: 'User Settings' }).click();
+    // Wait for loading state to clear and content to appear (API call may take time)
+    await expect(page.locator('main')).toContainText('Notification Preferences', { timeout: 10000 });
 
     // Click Team Settings
-    await page.getByText('Team Settings').click();
+    await page.locator('nav button').filter({ hasText: 'Team Settings' }).click();
     await expect(page.locator('main')).toContainText('Team Configuration');
 
     // Click About
-    await page.getByText('About').click();
+    await page.locator('nav button').filter({ hasText: 'About' }).click();
     await expect(page.locator('main')).toContainText('What is Hermes?');
 
-    // Click back to User Settings
-    await page.getByText('User Settings').click();
-    await expect(page.locator('main')).toContainText('Notification Preferences');
+    // Click back to Focus Mode
+    await page.locator('nav button').filter({ hasText: 'Focus Mode' }).click();
+    await expect(page.locator('main')).toContainText('No Content in Focus');
   });
 });
